@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">Hey!</string>
+
+    <!-- Lista de recordatorios -->
+    <string name="reminders_list_title">Remember</string>
+    <string name="reminders_tab_pending">Pendientes</string>
+    <string name="reminders_tab_done">Hechos</string>
+    <!-- Pestaña con su contador, ej. "Pendientes · 3". %1$s = nombre de la pestaña, %2$d = cantidad. -->
+    <string name="reminders_tab_with_count">%1$s · %2$d</string>
+    <string name="reminders_empty">No hay recordatorios acá</string>
+
+    <!-- Fila de recordatorio -->
+    <string name="reminder_photo_description">Foto del recordatorio</string>
 </resources>

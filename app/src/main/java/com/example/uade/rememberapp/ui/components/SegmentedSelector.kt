@@ -35,7 +35,7 @@ fun <T> SegmentedSelector(
     options: List<T>,
     selected: T,
     onSelected: (T) -> Unit,
-    label: (T) -> String,
+    label: @Composable (T) -> String,
     modifier: Modifier = Modifier,
 ) {
     Row(

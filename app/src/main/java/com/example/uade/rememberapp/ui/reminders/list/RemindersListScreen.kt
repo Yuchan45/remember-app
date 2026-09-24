@@ -1,6 +1,5 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,15 +11,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.ui.components.SegmentedSelector
+import com.example.uade.rememberapp.ui.reminders.components.ReminderList
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
+import java.time.Instant
 
 /**
  * Pantalla de inicio: la lista de recordatorios.
@@ -38,6 +41,7 @@ fun RemindersListScreen(
     RemindersListContent(
         uiState = uiState,
         onTabSelected = viewModel::onTabSelected,
+        onReminderCompleted = viewModel::onReminderCompleted,
     )
 }
 
@@ -50,6 +54,7 @@ fun RemindersListScreen(
 private fun RemindersListContent(
     uiState: RemindersListUiState,
     onTabSelected: (ReminderTab) -> Unit,
+    onReminderCompleted: (id: Long, isDone: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
@@ -60,7 +65,7 @@ private fun RemindersListContent(
                 .padding(horizontal = 16.dp),
         ) {
             Text(
-                text = "Remember",
+                text = stringResource(R.string.reminders_list_title),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier.padding(top = 16.dp),
@@ -72,22 +77,25 @@ private fun RemindersListContent(
                 options = ReminderTab.entries,
                 selected = uiState.selectedTab,
                 onSelected = onTabSelected,
-                label = { tab -> "${tab.label} · ${uiState.countFor(tab)}" },
+                label = { tab ->
+                    stringResource(
+                        R.string.reminders_tab_with_count,
+                        stringResource(tab.labelRes),
+                        uiState.countFor(tab),
+                    )
+                },
             )
 
-            Box(
+            Spacer(Modifier.height(16.dp))
+
+            // TODO: botón para agregar y estado uiState.isLoading.
+            ReminderList(
+                reminders = uiState.visibleReminders,
+                onReminderCheckedChange = onReminderCompleted,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                contentAlignment = Alignment.Center,
-            ) {
-                // TODO: lista de recordatorios (uiState.visibleReminders) y botón para agregar.
-                // Estados a cubrir: uiState.isLoading, uiState.isEmpty y el contenido.
-                Text(
-                    text = "Pantalla de inicio",
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-            }
+            )
         }
     }
 }
@@ -97,8 +105,14 @@ private fun RemindersListContent(
 private fun RemindersListContentPreview() {
     RememberAppTheme {
         RemindersListContent(
-            uiState = RemindersListUiState(),
+            uiState = RemindersListUiState(
+                reminders = listOf(
+                    Reminder(id = 1, text = "Comprar el cargador", createdAt = Instant.now()),
+                    Reminder(id = 2, text = "Pagar la cuota de la facu", createdAt = Instant.now()),
+                ),
+            ),
             onTabSelected = {},
+            onReminderCompleted = { _, _ -> },
         )
     }
 }
