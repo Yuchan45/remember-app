@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Claude Code (config personal)
+.claude/settings.local.json
+CLAUDE.local.md

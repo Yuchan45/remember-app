@@ -1,0 +1,78 @@
+# Hey! (RememberApp)
+
+App Android de recordatorios para el TP de Desarrollo de Aplicaciones I (UADE). El usuario captura
+un pendiente (texto y/o foto) y elige cuándo vuelve: nunca, a una hora, o al llegar a un lugar.
+
+## Stack
+- Kotlin + Jetpack Compose + Material3. Una sola Activity (`MainActivity`).
+- Navigation Compose (dependencia ya agregada, NavGraph todavía sin crear).
+- ViewModel + `StateFlow` + `collectAsStateWithLifecycle`.
+- Dependencias en `gradle/libs.versions.toml` (version catalog). Nunca hardcodear versiones en `build.gradle.kts`.
+- minSdk 26, targetSdk/compileSdk 37, Java 11.
+- Paquete base: `com.example.uade.rememberapp`.
+
+## Arquitectura (clean architecture por capas)
+```
+app/src/main/java/com/example/uade/rememberapp/
+├── domain/        Kotlin puro, sin imports de android.*
+│   ├── model/        Reminder, Place, Trigger (sealed)
+│   ├── repository/   interfaces (ReminderRepository, PlaceRepository)
+│   ├── scheduler/    interfaces (ReminderScheduler, GeofenceRegistrar)
+│   └── usecase/      un caso de uso por clase
+├── data/          implementaciones
+│   ├── local/        Room: dao/, entity/, mapper/
+│   ├── repository/   *RepositoryImpl
+│   ├── scheduler/    AlarmManager / Geofencing
+│   └── storage/      archivos (fotos)
+├── platform/      notification/, receiver/ (BroadcastReceivers)
+├── ui/
+│   ├── components/   componentes reutilizables entre features
+│   ├── navigation/   NavGraph y rutas
+│   ├── theme/
+│   └── <feature>/<list|edit|detail>/   XScreen.kt + XViewModel.kt
+│       └── <feature>/components/         componentes propios de la feature
+├── MainActivity.kt
+└── RememberApp.kt  Application; acá vive el AppContainer (DI manual)
+```
+Dependencias permitidas: `ui → domain`, `data → domain`, `platform → domain`. `domain` no depende de nadie.
+La UI nunca importa nada de `data`.
+
+## Convenciones de UI
+- Cada pantalla tiene dos composables:
+  - `XScreen(viewModel = viewModel())`: **con estado**, solo obtiene el ViewModel y lee `uiState`.
+  - `private XContent(uiState, onAlgo: ..., modifier)`: **sin estado**, recibe todo por parámetros y avisa por lambdas. Es el que lleva `@Preview`.
+- UiState = `data class XUiState` inmutable con valores por defecto; lo derivado va como `val get()`.
+- ViewModel expone `val uiState: StateFlow<XUiState>` (privado `_uiState` + `asStateFlow()`) y funciones `onEvento(...)`.
+- Componentes sin estado: el valor entra por parámetro y el cambio sale por callback. `modifier: Modifier = Modifier` siempre es el primer parámetro opcional.
+- **Nada de textos hardcodeados**: todo va a `res/values/strings.xml`, agrupado con un comentario por pantalla, con prefijo de feature (`reminders_...`, `places_...`). En el ViewModel se guarda el `@StringRes Int`, no el String (el ViewModel no tiene Context).
+- Colores del tema vía `MaterialTheme.colorScheme`; colores propios en `ui/theme/Color.kt`.
+- Toda preview va envuelta en `RememberAppTheme { }`.
+
+## Estilo de código
+- Comentarios KDoc en español, explicando el *por qué* (ver `RemindersListViewModel.kt`).
+- Trailing commas en listas de parámetros multilínea.
+- `TODO:` en español para lo que queda pendiente.
+
+## Comandos
+```bash
+./gradlew assembleDebug        # compilar
+./gradlew testDebugUnitTest    # tests unitarios
+./gradlew lintDebug            # lint
+./gradlew connectedDebugAndroidTest  # tests instrumentados (requiere emulador)
+```
+En PowerShell: `.\gradlew.bat <tarea>`.
+
+## Skills externas
+Instaladas con `npx skills add ... -a claude-code --copy` y registradas en `skills-lock.json`
+(para restaurarlas: `npx skills experimental_install`; para actualizarlas: `npx skills update -p`):
+- Google (`android/skills`): `android-permissions-security`, `android-intent-security`
+- Chris Banes (`chrisbanes/skills`): `compose-state-and-effects`, `compose-performance`, `kotlin-concurrency-and-flow`
+
+Son guías genéricas. **Si contradicen este archivo o las skills propias del proyecto, mandan las del proyecto.**
+En particular: la app tiene una sola Activity, así que los permisos se piden desde Compose con
+`rememberLauncherForActivityResult` y no con Activities nuevas como `RuntimePermissionsActivity`.
+Tampoco se agregan dependencias ni plugins sin preguntar.
+
+## Git
+- Commits: `tipo(scope): descripción breve`, ej. `feat(list-screen): agrega selector de pestañas`. Usar la skill `commit`.
+- No commitear `local.properties`, `build/`, `.gradle/`.
