@@ -34,10 +34,43 @@
     <string name="reminders_empty">No hay recordatorios acá</string>
 
     <!-- Home: captura rápida -->
-    <string name="reminders_quick_capture_hint">Recordame algo…</string>
+    <string name="reminders_quick_capture_hint">Nota rápida…</string>
     <string name="reminders_quick_capture_new">Nuevo recordatorio</string>
     <string name="reminders_quick_capture_voice">Dictar recordatorio</string>
     <string name="reminders_quick_capture_photo">Agregar foto</string>
+
+    <!-- Captura rápida: modal para crear una nota -->
+    <string name="reminders_capture_title_hint">¿Qué querés recordar?</string>
+    <string name="reminders_capture_section_when">Cuándo</string>
+    <string name="reminders_capture_section_repeat">Repetir</string>
+    <string name="reminders_capture_section_favorite_places">Lugares favoritos</string>
+    <string name="reminders_capture_section_notify">Avisar</string>
+    <!-- Atajos de hora. TODO: calcular los textos con fecha según la hora actual. -->
+    <string name="reminders_capture_time_in_one_hour">En 1 hora</string>
+    <string name="reminders_capture_time_tonight">Hoy 21:00</string>
+    <string name="reminders_capture_time_tomorrow_morning">Mañana 9:00</string>
+    <string name="reminders_capture_time_weekend">Sáb 10:00</string>
+    <string name="reminders_capture_time_pick_date">Elegir fecha…</string>
+    <string name="reminders_capture_repeat_none">No</string>
+    <string name="reminders_capture_repeat_daily">Diario</string>
+    <string name="reminders_capture_repeat_weekdays">Lun a Vie</string>
+    <string name="reminders_capture_repeat_weekly">Semanal</string>
+    <string name="reminders_capture_place_arrive">Al llegar</string>
+    <string name="reminders_capture_place_leave">Al salir</string>
+    <string name="reminders_capture_place_search">Buscar dirección…</string>
+    <!-- Chips de aviso. %1$s = nombre del lugar, ej. "Al llegar a Facultad". -->
+    <string name="reminders_capture_trigger_time">Fecha y hora</string>
+    <string name="reminders_capture_trigger_place">Ubicación</string>
+    <string name="reminders_capture_trigger_arrive_at">Al llegar a %1$s</string>
+    <string name="reminders_capture_trigger_leave_from">Al salir de %1$s</string>
+    <string name="reminders_capture_trigger_label">Etiqueta</string>
+    <string name="reminders_capture_tool_checklist">Convertir en lista</string>
+    <string name="reminders_capture_tool_expand">Abrir en pantalla completa</string>
+    <string name="reminders_capture_tool_collapse">Salir de pantalla completa</string>
+    <string name="reminders_capture_save">Guardar</string>
+
+    <!-- Captura rápida: diálogo "Elegir fecha…" -->
+    <string name="reminders_capture_date_set_time">Establecer hora</string>
 
     <!-- Card de recordatorio -->
     <!-- %1$d = cantidad de ítems de la lista que no se muestran. -->
@@ -58,6 +91,16 @@
     <!-- Ajustes (template) -->
     <string name="settings_title">Ajustes</string>
     <string name="settings_placeholder">Acá van a estar las preferencias de la app.</string>
+
+    <!-- Comunes: diálogos, calendario y reloj (ui/components) -->
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_accept">Aceptar</string>
+    <string name="common_done">Listo</string>
+    <string name="calendar_previous_month">Mes anterior</string>
+    <string name="calendar_next_month">Mes siguiente</string>
+    <!-- Formato del título del calendario (DateTimeFormatter), ej. "septiembre de 2026". -->
+    <string name="calendar_month_year_pattern">LLLL \'de\' yyyy</string>
+    <string name="time_picker_title">Selecciona una hora</string>
 
     <!-- Barra de navegación inferior -->
     <string name="nav_home">Inicio</string>

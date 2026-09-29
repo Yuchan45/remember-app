@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * ViewModel de la Home. Por ahora solo expone los datos de ejemplo: todos los eventos
@@ -38,8 +39,16 @@ class RemindersListViewModel : ViewModel() {
     // TODO: navegar al detalle del recordatorio.
     fun onReminderClick(id: Long) = Unit
 
-    // TODO: abrir la creación de recordatorios (texto, voz o foto).
-    fun onQuickCaptureClick() = Unit
+    /** Abre el modal de captura rápida (tocar el texto "Toma una nota rápida…"). */
+    fun onQuickCaptureClick() {
+        _uiState.update { it.copy(isQuickCaptureOpen = true) }
+    }
+
+    fun onQuickCaptureDismiss() {
+        _uiState.update { it.copy(isQuickCaptureOpen = false) }
+    }
+
+    // TODO: abrir la creación de recordatorios desde el +, por voz o con foto.
     fun onNewReminderClick() = Unit
     fun onVoiceCaptureClick() = Unit
     fun onPhotoCaptureClick() = Unit

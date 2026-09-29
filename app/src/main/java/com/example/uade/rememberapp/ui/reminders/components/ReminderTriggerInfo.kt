@@ -13,12 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.uade.rememberapp.ui.theme.rememberAppLocale
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.domain.model.isDueSoon
@@ -48,7 +48,7 @@ fun ReminderTriggerInfo(
         Trigger.None -> Unit
 
         is Trigger.AtTime -> {
-            val locale = LocalConfiguration.current.locales[0]
+            val locale = rememberAppLocale()
             val icon = if (isSameDay(trigger.at, now)) R.drawable.ic_alarm else R.drawable.ic_calendar_month
             Row(
                 modifier = modifier,

@@ -60,6 +60,8 @@ data class RemindersListUiState(
     val sections: List<ReminderSection> = emptyList(),
     /** Nombre de cada lugar por id, para mostrar "Al llegar a Casa" (el Trigger solo guarda el id). */
     val placeNames: Map<Long, String> = emptyMap(),
+    /** Si el modal de captura rápida está abierto. Lo abre la barra "Toma una nota rápida…". */
+    val isQuickCaptureOpen: Boolean = false,
 ) {
     val isEmpty: Boolean get() = !isLoading && sections.all { it.reminders.isEmpty() }
 }

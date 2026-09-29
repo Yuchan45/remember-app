@@ -26,6 +26,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.ui.components.swipeUpPastEnd
+import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.ReminderCard
 import com.example.uade.rememberapp.ui.reminders.list.components.HomeHeader
 import com.example.uade.rememberapp.ui.reminders.list.components.QuickCaptureBar
@@ -75,6 +77,10 @@ fun RemindersListScreen(
             onPhotoCapture = viewModel::onPhotoCaptureClick,
         ),
     )
+
+    if (uiState.isQuickCaptureOpen) {
+        QuickCaptureSheet(onDismiss = viewModel::onQuickCaptureDismiss)
+    }
 }
 
 /**
@@ -138,7 +144,12 @@ private fun RemindersListContent(
         // Se usa como contentPadding y no como padding, así la lista pasa por detrás de las
         // barras y el último ítem igual queda visible al final del scroll.
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                // Seguir deslizando hacia arriba cuando la lista ya no sube (entra entera o
+                // llegó al final) abre la captura rápida. La barra de captura, que está fuera
+                // de la lista, tiene su propio swipe.
+                .swipeUpPastEnd(onSwipeUp = actions.onQuickCaptureClick),
             contentPadding = PaddingValues(
                 top = contentPadding.calculateTopPadding() + 8.dp,
                 bottom = innerPadding.calculateBottomPadding() + 16.dp,
