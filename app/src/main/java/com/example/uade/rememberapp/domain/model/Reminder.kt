@@ -2,12 +2,34 @@ package com.example.uade.rememberapp.domain.model
 
 import java.time.Instant
 
-/** Un pendiente capturado por el usuario: texto y/o foto, con un disparador opcional. */
+/**
+ * Un pendiente capturado por el usuario. Puede ser una nota o una lista; fuera de los ítems
+ * de la lista, los dos tipos comparten todo: título, descripción, foto, aviso y etiquetas.
+ *
+ * Tiene que tener al menos uno de [title], [description] o [photoPath].
+ */
 data class Reminder(
     val id: Long = 0,
-    val text: String,
+    val type: ReminderType = ReminderType.Note,
+    val title: String? = null,
+    val description: String? = null,
     val photoPath: String? = null,
+    /** Solo se usa en [ReminderType.Checklist]; en una nota queda vacía. */
+    val items: List<ChecklistItem> = emptyList(),
+    val labels: List<Label> = emptyList(),
     val trigger: Trigger = Trigger.None,
     val isDone: Boolean = false,
     val createdAt: Instant,
-)
+) {
+    init {
+        require(!title.isNullOrBlank() || !description.isNullOrBlank() || photoPath != null) {
+            "Un recordatorio necesita título, descripción o foto"
+        }
+    }
+}
+
+/** Qué tipo de recordatorio es. Cambia el formulario de creación y cómo se dibuja el cuerpo. */
+enum class ReminderType {
+    Note,
+    Checklist,
+}

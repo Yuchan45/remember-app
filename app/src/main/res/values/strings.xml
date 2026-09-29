@@ -1,14 +1,67 @@
 <resources>
     <string name="app_name">Hey!</string>
 
-    <!-- Lista de recordatorios -->
-    <string name="reminders_list_title">Remember</string>
-    <string name="reminders_tab_pending">Pendientes</string>
-    <string name="reminders_tab_done">Hechos</string>
-    <!-- Pestaña con su contador, ej. "Pendientes · 3". %1$s = nombre de la pestaña, %2$d = cantidad. -->
-    <string name="reminders_tab_with_count">%1$s · %2$d</string>
+    <!-- Home / lista de recordatorios: header -->
+    <!-- %1$s = nombre del usuario. -->
+    <string name="reminders_home_greeting">Hola, %1$s</string>
+    <string name="reminders_list_title">Recordatorios</string>
+    <string name="reminders_home_action_toggle_layout">Cambiar vista</string>
+    <string name="reminders_home_action_collapse_all">Colapsar todo</string>
+    <string name="reminders_home_action_search">Buscar</string>
+
+    <!-- Home: filtros. %1$s = valor elegido, ej. "Tipo: Todo". -->
+    <string name="reminders_filter_type_label">Tipo: %1$s</string>
+    <string name="reminders_filter_group_label">Grupo: %1$s</string>
+    <string name="reminders_filter_sort_label">Ordenar: %1$s</string>
+    <string name="reminders_filter_type_all">Todo</string>
+    <string name="reminders_filter_type_notes">Notas</string>
+    <string name="reminders_filter_type_lists">Listas</string>
+    <string name="reminders_filter_group_date">Fecha</string>
+    <string name="reminders_filter_group_label_value">Etiqueta</string>
+    <string name="reminders_filter_group_place">Lugar</string>
+    <string name="reminders_filter_sort_upcoming">Próximos</string>
+    <string name="reminders_filter_sort_recent">Recientes</string>
+    <string name="reminders_filter_sort_title">Título</string>
+
+    <!-- Home: secciones -->
+    <string name="reminders_section_today">Hoy</string>
+    <string name="reminders_section_tomorrow">Mañana</string>
+    <string name="reminders_section_upcoming">Próximos</string>
+    <string name="reminders_section_no_date">Sin fecha</string>
+    <string name="reminders_section_toggle">Mostrar u ocultar sección</string>
+    <string name="reminders_section_expanded">Expandida</string>
+    <string name="reminders_section_collapsed">Colapsada</string>
     <string name="reminders_empty">No hay recordatorios acá</string>
 
-    <!-- Fila de recordatorio -->
-    <string name="reminder_photo_description">Foto del recordatorio</string>
+    <!-- Home: captura rápida -->
+    <string name="reminders_quick_capture_hint">Recordame algo…</string>
+    <string name="reminders_quick_capture_new">Nuevo recordatorio</string>
+    <string name="reminders_quick_capture_voice">Dictar recordatorio</string>
+    <string name="reminders_quick_capture_photo">Agregar foto</string>
+
+    <!-- Card de recordatorio -->
+    <!-- %1$d = cantidad de ítems de la lista que no se muestran. -->
+    <string name="reminders_checklist_more_items">+ %1$d más</string>
+    <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
+    <string name="reminders_trigger_on_arrival">Al llegar a %1$s</string>
+    <string name="reminders_trigger_due_soon">Aviso próximo o vencido</string>
+    <string name="reminders_photo_description">Foto del recordatorio</string>
+
+    <!-- Audios (template) -->
+    <string name="audios_title">Audios</string>
+    <string name="audios_placeholder">Muy pronto vas a poder grabar y enviar recordatorios de voz.</string>
+
+    <!-- Lugares: lista (template) -->
+    <string name="places_list_title">Lugares</string>
+    <string name="places_list_placeholder">Acá vas a ver y administrar tus lugares guardados.</string>
+
+    <!-- Ajustes (template) -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_placeholder">Acá van a estar las preferencias de la app.</string>
+
+    <!-- Barra de navegación inferior -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_audios">Audios</string>
+    <string name="nav_places">Lugares</string>
+    <string name="nav_settings">Ajustes</string>
 </resources>

@@ -11,7 +11,12 @@ Leé esos dos archivos antes de empezar y copiá su estilo.
 ## Ubicación y nombres
 
 - Carpeta: `ui/<feature>/<tipo>/`, donde `tipo` es `list`, `edit` o `detail`. Ejemplo: `ui/places/list/`.
-- Archivos: `<Feature><Tipo>Screen.kt` y `<Feature><Tipo>ViewModel.kt`. Ejemplo: `PlacesListScreen.kt`, `PlacesListViewModel.kt`.
+- Archivos: `<Feature><Tipo>Screen.kt`, `<Feature><Tipo>ViewModel.kt` y `<Feature><Tipo>UiState.kt` (el UiState y sus enums en archivo aparte). Ejemplo: `PlacesListScreen.kt`, `PlacesListViewModel.kt`, `PlacesListUiState.kt`.
+- Dónde va cada componente:
+  - `ui/<feature>/<tipo>/components/`: piezas que solo usa esta pantalla.
+  - `ui/<feature>/components/`: piezas que comparten varias pantallas de la feature.
+  - `ui/components/`: piezas genéricas que no saben de ninguna feature.
+- Datos de ejemplo para previews: `ui/<feature>/sample/`. Ejemplo: `SampleReminders`.
 - Si el ViewModel ya existe (hay esqueletos en `places/edit`, `places/list`, `reminders/edit`, `reminders/detail`), completarlo en lugar de crear otro.
 
 ## 1. ViewModel + UiState (`<X>ViewModel.kt`)
@@ -79,8 +84,11 @@ private fun XContentPreview() {
 
 - `XContent` no toca el ViewModel ni el dominio: todo entra por parámetros y sale por lambdas.
 - Agregar una preview por cada estado relevante: con contenido, vacío y cargando.
-- Reutilizar lo que ya existe en `ui/components/` (por ejemplo `SegmentedSelector`) y en `ui/<feature>/components/`.
-- Padding horizontal de pantalla: `16.dp`. Títulos: `MaterialTheme.typography.displaySmall`.
+- Reutilizar lo que ya existe en `ui/components/` (`CircleIconButton`, `DropdownFilterChip`, `LabelChip`, `SegmentedSelector`), en `ui/<feature>/components/` (ej. `ReminderCard`) y en `ui/navigation/AppBottomBar`.
+- Si la pantalla tiene muchos eventos, agruparlos en `data class XActions(val onAlgo: () -> Unit = {}, ...)`, como `RemindersListActions`.
+- Padding horizontal de pantalla: `16.dp`. Títulos: `MaterialTheme.typography.headlineMedium` en negrita (ver `HomeHeader`).
+- La app es oscura: fondo con `Brush.verticalGradient(listOf(BackgroundTop, Background))` y `Scaffold(containerColor = Color.Transparent)`.
+- Íconos nuevos: vector drawable de Material Symbols (ver `CLAUDE.md`), nunca una librería de íconos.
 
 ## 3. Strings
 
@@ -90,11 +98,12 @@ private fun XContentPreview() {
 
 ## 4. Navegación
 
-- Las rutas y el `NavHost` viven en `ui/navigation/`.
-- Si todavía no existe un NavGraph (`MainActivity` monta `RemindersListScreen()` directo):
-  1. Crear `ui/navigation/Routes.kt` con las rutas como constantes (`object Routes { const val REMINDERS_LIST = "reminders" ... }`). Rutas con argumento: `"reminders/{id}"`.
-  2. Crear `ui/navigation/AppNavHost.kt` con `NavHost(navController, startDestination = Routes.REMINDERS_LIST)`.
-  3. Reemplazar `RemindersListScreen()` en `MainActivity` por `AppNavHost()`.
+- Las rutas y el `NavHost` viven en `ui/navigation/`:
+  1. Agregar la ruta como constante en `Routes.kt`. Si lleva argumento: `"reminders/{id}"`.
+  2. Registrarla en `AppNavHost.kt` con `composable(Routes.X) { XScreen(contentPadding = contentPadding) }`.
+  3. Si es un destino principal (aparece en la barra inferior), agregarlo también a `AppDestination` en `AppBottomBar.kt`.
+- Toda pantalla recibe `contentPadding: PaddingValues`, con el alto de la barra de estado y de la barra inferior, y lo aplica por dentro (como `contentPadding` de la lista o `padding` del contenido). Si la pantalla tiene su propio `Scaffold`, usar `contentWindowInsets = WindowInsets(0)` para no sumar los insets dos veces (ver `RemindersListScreen`).
+- Para una sección que todavía no está hecha, usar `PlaceholderScreen` de `ui/components/` (ver `AudiosScreen`).
 - No agregar el plugin de kotlinx-serialization para rutas type-safe sin preguntar antes.
 - Las pantallas reciben la navegación como lambdas (`onReminderClick: (Long) -> Unit`); solo `AppNavHost` conoce el `NavController`.
 
