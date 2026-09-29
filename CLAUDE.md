@@ -5,7 +5,7 @@ un pendiente (texto y/o foto) y elige cuándo vuelve: nunca, a una hora, o al ll
 
 ## Stack
 - Kotlin + Jetpack Compose + Material3. Una sola Activity (`MainActivity`).
-- Navigation Compose: `ui/navigation/AppNavHost.kt` es la raíz de la app (barra inferior + NavHost); rutas en `Routes.kt`.
+- Navegación: `ui/navigation/AppNavHost.kt` es la raíz (NavHost). Su destino `Routes.MAIN` es `MainTabs`: las 4 pantallas principales como páginas de un `HorizontalPager` (se deslizan de costado) con `AppBottomBar` encima. Las pantallas que se abren encima (detalles) van como rutas en `Routes.kt`.
 - ViewModel + `StateFlow` + `collectAsStateWithLifecycle`.
 - Dependencias en `gradle/libs.versions.toml` (version catalog). Nunca hardcodear versiones en `build.gradle.kts`.
 - minSdk 26, targetSdk/compileSdk 37, Java 11.

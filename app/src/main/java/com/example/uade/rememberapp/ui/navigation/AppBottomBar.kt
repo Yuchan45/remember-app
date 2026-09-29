@@ -33,25 +33,27 @@ import com.example.uade.rememberapp.ui.theme.NavBarOnSelected
 import com.example.uade.rememberapp.ui.theme.NavBarSelected
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
-/** Destinos principales de la app, en el orden en que aparecen en la barra. */
+/**
+ * Destinos principales de la app. El orden es el de la barra y también el de las páginas:
+ * deslizar a la izquierda pasa al siguiente.
+ */
 enum class AppDestination(
-    val route: String,
     @get:DrawableRes val icon: Int,
     @get:StringRes val label: Int,
 ) {
-    Home(Routes.REMINDERS_LIST, R.drawable.ic_notes, R.string.nav_home),
+    Home(R.drawable.ic_notes, R.string.nav_home),
 
     /** A futuro: enviar audios. Por ahora abre una pantalla template. */
-    Audios(Routes.AUDIOS, R.drawable.ic_queue_music, R.string.nav_audios),
-    Places(Routes.PLACES_LIST, R.drawable.ic_location_on, R.string.nav_places),
-    Settings(Routes.SETTINGS, R.drawable.ic_settings, R.string.nav_settings),
+    Audios(R.drawable.ic_queue_music, R.string.nav_audios),
+    Places(R.drawable.ic_location_on, R.string.nav_places),
+    Settings(R.drawable.ic_settings, R.string.nav_settings),
 }
 
 /**
  * Barra de navegación inferior flotante (una "píldora" celeste). El destino elegido se
  * muestra con ícono y texto sobre fondo oscuro; los demás, solo con el ícono.
  *
- * Se dibuja una sola vez, en [AppNavHost], para todas las pantallas principales.
+ * Se dibuja una sola vez, en [MainTabs], para todas las pantallas principales.
  */
 @Composable
 fun AppBottomBar(
