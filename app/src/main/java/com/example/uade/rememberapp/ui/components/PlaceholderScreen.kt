@@ -55,36 +55,54 @@ fun PlaceholderScreen(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = 16.dp),
         )
-        Box(
+        PlaceholderMessage(
+            icon = icon,
+            message = message,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentAlignment = Alignment.Center,
+        )
+    }
+}
+
+/**
+ * Ícono en un círculo + mensaje, centrados en el espacio que les den. Es el cuerpo de
+ * [PlaceholderScreen], y sirve también para estados vacíos dentro de otras pantallas
+ * (ej. las pestañas de Archivo).
+ */
+@Composable
+fun PlaceholderMessage(
+    @DrawableRes icon: Int,
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.primary,
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                ) {
-                    Icon(
-                        painter = painterResource(icon),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(20.dp)
-                            .size(40.dp),
-                    )
-                }
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .size(40.dp),
                 )
             }
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

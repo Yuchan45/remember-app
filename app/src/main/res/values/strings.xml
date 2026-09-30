@@ -80,9 +80,25 @@
     <string name="reminders_trigger_due_soon">Aviso próximo o vencido</string>
     <string name="reminders_photo_description">Foto del recordatorio</string>
 
-    <!-- Audios (template) -->
-    <string name="audios_title">Audios</string>
-    <string name="audios_placeholder">Muy pronto vas a poder grabar y enviar recordatorios de voz.</string>
+    <!-- Menú "Crear" (botón +) -->
+    <string name="reminders_create_title">Crear</string>
+    <string name="reminders_create_note">Nota</string>
+    <string name="reminders_create_note_description">Texto, imagen o ambos</string>
+    <string name="reminders_create_checklist">Checklist</string>
+    <string name="reminders_create_checklist_description">Ítems tildables</string>
+    <string name="reminders_create_audio">Audio</string>
+    <string name="reminders_create_audio_description">Transcripción con Groq</string>
+    <string name="reminders_create_long_text">Texto largo</string>
+    <string name="reminders_create_long_text_description">La IA separa en recordatorios</string>
+    <string name="reminders_create_scheduled_message">Mensaje programado</string>
+    <string name="reminders_create_scheduled_message_description">WhatsApp, SMS o mail</string>
+
+    <!-- Archivo: recordatorios archivados y eliminados -->
+    <string name="archive_title">Archivo</string>
+    <string name="archive_tab_archived">Archivados</string>
+    <string name="archive_tab_deleted">Eliminados</string>
+    <string name="archive_empty_archived">Acá van a aparecer los recordatorios que archives.</string>
+    <string name="archive_empty_deleted">Acá van a aparecer los recordatorios que elimines, para que puedas recuperarlos.</string>
 
     <!-- Lugares: lista (template) -->
     <string name="places_list_title">Lugares</string>
@@ -104,7 +120,7 @@
 
     <!-- Barra de navegación inferior -->
     <string name="nav_home">Inicio</string>
-    <string name="nav_audios">Audios</string>
+    <string name="nav_archive">Archivo</string>
     <string name="nav_places">Lugares</string>
     <string name="nav_settings">Ajustes</string>
 </resources>

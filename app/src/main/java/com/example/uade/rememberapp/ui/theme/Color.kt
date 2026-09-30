@@ -39,3 +39,12 @@ val PhotoScrim = Color(0xB3000000)
 
 // Fondo de la foto de un recordatorio (placeholder hasta cargar la foto real).
 val PhotoBackground = Color(0xFF6B4A3A)
+
+// Menú "Crear": color de fondo del ícono de cada tipo de recordatorio, y el del ícono encima.
+// TODO: los valores están estimados de una captura; reemplazarlos por los del Figma.
+val CreateNoteColor = Color(0xFFA8D8F8)
+val CreateChecklistColor = Color(0xFFA78BFA)
+val CreateAudioColor = Color(0xFF6FD08C)
+val CreateLongTextColor = Color(0xFFF4A28C)
+val CreateScheduledMessageColor = Color(0xFF4DE0E0)
+val CreateIconContent = Color(0xFF0F1B23)

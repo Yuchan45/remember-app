@@ -43,8 +43,8 @@ enum class AppDestination(
 ) {
     Home(R.drawable.ic_notes, R.string.nav_home),
 
-    /** A futuro: enviar audios. Por ahora abre una pantalla template. */
-    Audios(R.drawable.ic_queue_music, R.string.nav_audios),
+    /** Recordatorios archivados y eliminados. */
+    Archive(R.drawable.ic_archive, R.string.nav_archive),
     Places(R.drawable.ic_location_on, R.string.nav_places),
     Settings(R.drawable.ic_settings, R.string.nav_settings),
 }

@@ -29,6 +29,7 @@ import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.ui.components.swipeUpPastEnd
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.ReminderCard
+import com.example.uade.rememberapp.ui.reminders.create.CreateReminderSheet
 import com.example.uade.rememberapp.ui.reminders.list.components.HomeHeader
 import com.example.uade.rememberapp.ui.reminders.list.components.QuickCaptureBar
 import com.example.uade.rememberapp.ui.reminders.list.components.ReminderFilterBar
@@ -72,7 +73,6 @@ fun RemindersListScreen(
             onSectionToggle = viewModel::onSectionToggle,
             onReminderClick = viewModel::onReminderClick,
             onQuickCaptureClick = viewModel::onQuickCaptureClick,
-            onNewReminder = viewModel::onNewReminderClick,
             onVoiceCapture = viewModel::onVoiceCaptureClick,
             onPhotoCapture = viewModel::onPhotoCaptureClick,
         ),
@@ -80,6 +80,14 @@ fun RemindersListScreen(
 
     if (uiState.isQuickCaptureOpen) {
         QuickCaptureSheet(onDismiss = viewModel::onQuickCaptureDismiss)
+    }
+
+    // Lo abre el "+" de la barra inferior (MainTabs), que llama a este mismo ViewModel.
+    if (uiState.isCreateMenuOpen) {
+        CreateReminderSheet(
+            onOptionClick = viewModel::onCreateOptionClick,
+            onDismiss = viewModel::onCreateMenuDismiss,
+        )
     }
 }
 
@@ -97,7 +105,6 @@ data class RemindersListActions(
     val onSectionToggle: (ReminderSectionKey) -> Unit = {},
     val onReminderClick: (id: Long) -> Unit = {},
     val onQuickCaptureClick: () -> Unit = {},
-    val onNewReminder: () -> Unit = {},
     val onVoiceCapture: () -> Unit = {},
     val onPhotoCapture: () -> Unit = {},
 )
@@ -128,7 +135,6 @@ private fun RemindersListContent(
         bottomBar = {
             QuickCaptureBar(
                 onClick = actions.onQuickCaptureClick,
-                onNewReminder = actions.onNewReminder,
                 onVoice = actions.onVoiceCapture,
                 onAddPhoto = actions.onPhotoCapture,
                 modifier = Modifier.padding(

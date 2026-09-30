@@ -62,6 +62,8 @@ data class RemindersListUiState(
     val placeNames: Map<Long, String> = emptyMap(),
     /** Si el modal de captura rápida está abierto. Lo abre la barra "Toma una nota rápida…". */
     val isQuickCaptureOpen: Boolean = false,
+    /** Si el menú "Crear" está abierto. Lo abre el botón "+" de la barra inferior. */
+    val isCreateMenuOpen: Boolean = false,
 ) {
     val isEmpty: Boolean get() = !isLoading && sections.all { it.reminders.isEmpty() }
 }

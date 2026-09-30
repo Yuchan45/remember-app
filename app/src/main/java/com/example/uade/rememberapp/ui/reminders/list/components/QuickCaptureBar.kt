@@ -29,11 +29,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.ui.components.CircleIconButton
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
 /**
- * Barra de captura rápida: "+  Toma una nota rápida…  🎤 🖼".
+ * Barra de captura rápida: "Nota rápida…  🎤 🖼". El texto ocupa todo el ancho disponible;
+ * el botón "+" ya no está acá sino al lado de la barra de navegación (ver MainTabs).
  *
  * Es un botón con forma de campo: tocarla avisa por [onClick] y deslizarla hacia arriba avisa
  * por [onSwipeUp] (en la Home, los dos abren el modal de captura rápida).
@@ -41,7 +41,6 @@ import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 @Composable
 fun QuickCaptureBar(
     onClick: () -> Unit,
-    onNewReminder: () -> Unit,
     onVoice: () -> Unit,
     onAddPhoto: () -> Unit,
     modifier: Modifier = Modifier,
@@ -58,17 +57,11 @@ fun QuickCaptureBar(
         shadowElevation = 6.dp,
     ) {
         Row(
-            modifier = Modifier.padding(6.dp),
+            // Sin el "+", el texto arranca con el mismo margen que la píldora de la barra.
+            modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CircleIconButton(
-                icon = R.drawable.ic_add,
-                contentDescription = stringResource(R.string.reminders_quick_capture_new),
-                onClick = onNewReminder,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
             Text(
                 text = stringResource(R.string.reminders_quick_capture_hint),
                 style = MaterialTheme.typography.bodyLarge,
@@ -129,7 +122,6 @@ private fun QuickCaptureBarPreview() {
     RememberAppTheme {
         QuickCaptureBar(
             onClick = {},
-            onNewReminder = {},
             onVoice = {},
             onAddPhoto = {},
             modifier = Modifier.padding(16.dp),

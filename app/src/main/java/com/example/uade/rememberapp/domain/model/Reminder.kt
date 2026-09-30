@@ -19,6 +19,8 @@ data class Reminder(
     val labels: List<Label> = emptyList(),
     val trigger: Trigger = Trigger.None,
     val isDone: Boolean = false,
+    /** Dónde está: en la lista principal, archivado o en la papelera. */
+    val status: ReminderStatus = ReminderStatus.Active,
     val createdAt: Instant,
 ) {
     init {
@@ -32,4 +34,19 @@ data class Reminder(
 enum class ReminderType {
     Note,
     Checklist,
+}
+
+/**
+ * Estado del recordatorio respecto de la lista principal. Archivar y eliminar lo sacan de la
+ * Home y lo mandan a la sección Archivo, desde donde se puede recuperar.
+ */
+enum class ReminderStatus {
+    /** En la lista principal (Home). */
+    Active,
+
+    /** Guardado aparte: ya no molesta en la Home pero no se pierde. */
+    Archived,
+
+    /** En la papelera. TODO: definir si se borra definitivamente después de un tiempo. */
+    Deleted,
 }

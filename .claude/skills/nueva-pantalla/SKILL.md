@@ -102,7 +102,7 @@ private fun XContentPreview() {
   - **Destino principal** (aparece en la barra inferior y se llega deslizando de costado): agregarlo a `AppDestination` en `AppBottomBar.kt` (el orden del enum es el orden de las páginas) y al `when` de `MainTabPage` en `MainTabs.kt`. No lleva ruta.
   - **Pantalla que se abre encima** (detalle, edición): agregar la ruta a `Routes.kt` (con argumento: `"reminders/{id}"`) y registrarla en `AppNavHost.kt` con `composable(Routes.X) { … }`. Estas pantallas no muestran la barra inferior.
 - Las pantallas principales reciben `contentPadding: PaddingValues`, con el alto de la barra de estado y de la barra inferior, y lo aplican por dentro (como `contentPadding` de la lista o `padding` del contenido). Si la pantalla tiene su propio `Scaffold`, usar `contentWindowInsets = WindowInsets(0)` para no sumar los insets dos veces (ver `RemindersListScreen`).
-- Para una sección que todavía no está hecha, usar `PlaceholderScreen` de `ui/components/` (ver `AudiosScreen`).
+- Para una sección que todavía no está hecha, usar `PlaceholderScreen` de `ui/components/` (ver `SettingsScreen`). Para un estado vacío dentro de una pantalla, `PlaceholderMessage` (ver `ArchiveScreen`).
 - No agregar el plugin de kotlinx-serialization para rutas type-safe sin preguntar antes.
 - Las pantallas reciben la navegación como lambdas (`onReminderClick: (Long) -> Unit`); solo `AppNavHost` conoce el `NavController`.
 

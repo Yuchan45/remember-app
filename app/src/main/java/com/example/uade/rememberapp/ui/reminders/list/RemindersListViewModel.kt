@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
 import androidx.lifecycle.ViewModel
+import com.example.uade.rememberapp.ui.reminders.create.CreateReminderOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,8 +49,19 @@ class RemindersListViewModel : ViewModel() {
         _uiState.update { it.copy(isQuickCaptureOpen = false) }
     }
 
-    // TODO: abrir la creación de recordatorios desde el +, por voz o con foto.
-    fun onNewReminderClick() = Unit
+    /** El botón "+": abre el menú "Crear" con los tipos de recordatorio. */
+    fun onNewReminderClick() {
+        _uiState.update { it.copy(isCreateMenuOpen = true) }
+    }
+
+    fun onCreateMenuDismiss() {
+        _uiState.update { it.copy(isCreateMenuOpen = false) }
+    }
+
+    // TODO: abrir la creación del tipo elegido (Nota, Checklist, Audio, …). Por ahora es maquetado.
+    fun onCreateOptionClick(option: CreateReminderOption) = Unit
+
+    // TODO: dictar un recordatorio o crearlo con una foto desde la barra de captura.
     fun onVoiceCaptureClick() = Unit
     fun onPhotoCaptureClick() = Unit
 }
