@@ -84,7 +84,7 @@ private fun XContentPreview() {
 
 - `XContent` no toca el ViewModel ni el dominio: todo entra por parámetros y sale por lambdas.
 - Agregar una preview por cada estado relevante: con contenido, vacío y cargando.
-- Reutilizar lo que ya existe en `ui/components/` (`CircleIconButton`, `DropdownFilterChip`, `LabelChip`, `SegmentedSelector`), en `ui/<feature>/components/` (ej. `ReminderCard`) y en `ui/navigation/AppBottomBar`.
+- Reutilizar lo que ya existe en `ui/components/` (`CircleIconButton`, `DropdownFilterChip`, `TagChip`, `SegmentedSelector`), en `ui/<feature>/components/` (ej. `ReminderCard`) y en `ui/navigation/AppBottomBar`.
 - Si la pantalla tiene muchos eventos, agruparlos en `data class XActions(val onAlgo: () -> Unit = {}, ...)`, como `RemindersListActions`.
 - Padding horizontal de pantalla: `16.dp`. Títulos: `MaterialTheme.typography.headlineMedium` en negrita (ver `HomeHeader`).
 - La app es oscura: fondo con `Brush.verticalGradient(listOf(BackgroundTop, Background))` y `Scaffold(containerColor = Color.Transparent)`.

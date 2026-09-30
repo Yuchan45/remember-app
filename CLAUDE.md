@@ -26,7 +26,7 @@ app/src/main/java/com/example/uade/rememberapp/
 │   └── storage/      archivos (fotos)
 ├── platform/      notification/, receiver/ (BroadcastReceivers)
 ├── ui/
-│   ├── components/   componentes genéricos, sin saber de ninguna feature (CircleIconButton, LabelChip…)
+│   ├── components/   componentes genéricos, sin saber de ninguna feature (CircleIconButton, TagChip…)
 │   ├── navigation/   NavGraph, rutas y AppBottomBar
 │   ├── theme/        Color.kt (paleta del Figma), Theme.kt (siempre oscuro, sin dynamic color)
 │   └── <feature>/

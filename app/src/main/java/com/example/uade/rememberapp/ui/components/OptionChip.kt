@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,6 +22,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
@@ -44,6 +46,8 @@ enum class OptionChipStyle {
  * - Seleccionado: según [style], con fondo de acento o solo con borde de acento.
  *
  * No guarda estado: [selected] entra por parámetro y el toque sale por [onClick].
+ * [contentPadding] e [iconSpacing] permiten una versión más compacta donde el ancho es justo
+ * (ej. la fila de avisos de la nota rápida).
  */
 @Composable
 fun OptionChip(
@@ -53,6 +57,8 @@ fun OptionChip(
     modifier: Modifier = Modifier,
     @DrawableRes icon: Int? = null,
     style: OptionChipStyle = OptionChipStyle.Filled,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 14.dp, vertical = 9.dp),
+    iconSpacing: Dp = 8.dp,
 ) {
     val colors = MaterialTheme.colorScheme
     val filled = selected && style == OptionChipStyle.Filled
@@ -74,9 +80,9 @@ fun OptionChip(
         },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+            modifier = Modifier.padding(contentPadding),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(iconSpacing),
         ) {
             if (icon != null) {
                 Icon(

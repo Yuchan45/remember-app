@@ -11,6 +11,7 @@ import java.time.LocalTime
 enum class CapturePanel {
     Time,
     Place,
+    Tags,
 }
 
 /**
@@ -77,6 +78,9 @@ data class QuickCaptureUiState(
     val pickedDate: LocalDate? = null,
     val pickedTime: LocalTime? = null,
     val isDatePickerOpen: Boolean = false,
+
+    // Etiquetas elegidas en el panel de etiquetas. TODO: guardarlas en el Reminder al crear.
+    val selectedTagIds: Set<Long> = emptySet(),
 ) {
     val selectedPlace: Place? get() = favoritePlaces.firstOrNull { it.id == selectedPlaceId }
     val hasTime: Boolean get() = selectedTime != null

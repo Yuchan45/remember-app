@@ -17,7 +17,7 @@
     <string name="reminders_filter_type_notes">Notas</string>
     <string name="reminders_filter_type_lists">Listas</string>
     <string name="reminders_filter_group_date">Fecha</string>
-    <string name="reminders_filter_group_label_value">Etiqueta</string>
+    <string name="reminders_filter_group_tag">Etiqueta</string>
     <string name="reminders_filter_group_place">Lugar</string>
     <string name="reminders_filter_sort_upcoming">Próximos</string>
     <string name="reminders_filter_sort_recent">Recientes</string>
@@ -63,7 +63,7 @@
     <string name="reminders_capture_trigger_place">Ubicación</string>
     <string name="reminders_capture_trigger_arrive_at">Al llegar a %1$s</string>
     <string name="reminders_capture_trigger_leave_from">Al salir de %1$s</string>
-    <string name="reminders_capture_trigger_label">Etiqueta</string>
+    <string name="reminders_capture_trigger_tag">Etiqueta</string>
     <string name="reminders_capture_tool_checklist">Convertir en lista</string>
     <string name="reminders_capture_tool_expand">Abrir en pantalla completa</string>
     <string name="reminders_capture_tool_collapse">Salir de pantalla completa</string>
@@ -92,6 +92,35 @@
     <string name="reminders_create_long_text_description">La IA separa en recordatorios</string>
     <string name="reminders_create_scheduled_message">Mensaje programado</string>
     <string name="reminders_create_scheduled_message_description">WhatsApp, SMS o mail</string>
+
+    <!-- Etiquetas: diálogo para crear, editar, borrar y asignar -->
+    <string name="tags_show_creator">Mostrar creación de etiquetas</string>
+    <string name="tags_hide_creator">Ocultar creación de etiquetas</string>
+    <string name="tags_section_assigned">Asignadas</string>
+    <string name="tags_section_available">Disponibles</string>
+    <string name="tags_empty_assigned">Todavía no asignaste etiquetas</string>
+    <string name="tags_empty_available">No hay otras etiquetas</string>
+    <string name="tags_name_hint">Nueva etiqueta</string>
+    <!-- %1$d = caracteres escritos, %2$d = máximo. Ej. "8/20". -->
+    <string name="tags_name_counter">%1$d/%2$d</string>
+    <string name="tags_add">Crear etiqueta</string>
+    <!-- %1$s = nombre de la etiqueta que se está editando. -->
+    <string name="tags_editing">Editando «%1$s»</string>
+    <string name="tags_save">Guardar</string>
+    <string name="tags_delete">Eliminar</string>
+    <string name="tags_cancel_edit">Cancelar edición</string>
+    <string name="tags_deleted">Etiqueta eliminada</string>
+    <string name="tags_undo">Deshacer</string>
+    <string name="tags_done">Hecho</string>
+    <string name="tags_color">Color de la etiqueta</string>
+    <string name="tags_error_empty">Escribí un nombre</string>
+    <string name="tags_error_too_long">Puede tener hasta 20 caracteres</string>
+    <string name="tags_error_duplicate">Ya existe una etiqueta con ese nombre</string>
+    <!-- Chip "Etiqueta" del modal de nota rápida cuando ya hay etiquetas elegidas. -->
+    <plurals name="reminders_capture_trigger_tags">
+        <item quantity="one">%d Etiqueta</item>
+        <item quantity="other">%d Etiquetas</item>
+    </plurals>
 
     <!-- Archivo: recordatorios archivados y eliminados -->
     <string name="archive_title">Archivo</string>

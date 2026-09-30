@@ -17,7 +17,7 @@ enum class ReminderTypeFilter(@get:StringRes val label: Int) {
 /** Filtro "Grupo: …": por qué se arman las secciones. */
 enum class ReminderGrouping(@get:StringRes val label: Int) {
     Date(R.string.reminders_filter_group_date),
-    Label(R.string.reminders_filter_group_label_value),
+    Tag(R.string.reminders_filter_group_tag),
     Place(R.string.reminders_filter_group_place),
 }
 

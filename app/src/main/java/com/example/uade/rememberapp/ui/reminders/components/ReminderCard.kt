@@ -37,7 +37,7 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Trigger
-import com.example.uade.rememberapp.ui.components.LabelChip
+import com.example.uade.rememberapp.ui.components.TagChip
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
 import com.example.uade.rememberapp.ui.theme.PhotoBackground
 import com.example.uade.rememberapp.ui.theme.PhotoScrim
@@ -67,7 +67,7 @@ fun ReminderCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val accentColor = reminder.labels.firstOrNull()?.let { Color(it.colorArgb) }
+    val accentColor = reminder.tags.firstOrNull()?.let { Color(it.colorArgb) }
     val hasPhoto = reminder.photoPath != null
 
     Surface(
@@ -154,7 +154,7 @@ private fun ReminderCardContent(
             )
         }
 
-        if (reminder.labels.isNotEmpty() || hasVisibleTrigger(reminder.trigger, placeName)) {
+        if (reminder.tags.isNotEmpty() || hasVisibleTrigger(reminder.trigger, placeName)) {
             Spacer(Modifier.weight(1f))
             ReminderCardFooter(reminder = reminder, placeName = placeName, now = now)
         }
@@ -178,8 +178,8 @@ private fun ReminderCardFooter(
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            reminder.labels.forEach { label ->
-                LabelChip(name = label.name, color = Color(label.colorArgb))
+            reminder.tags.forEach { tag ->
+                TagChip(name = tag.name, color = Color(tag.colorArgb))
             }
         }
         ReminderTriggerInfo(

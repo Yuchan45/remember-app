@@ -1,7 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.sample
 
 import com.example.uade.rememberapp.domain.model.ChecklistItem
-import com.example.uade.rememberapp.domain.model.Label
+import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Trigger
@@ -22,9 +22,9 @@ import java.time.ZoneId
  */
 object SampleReminders {
 
-    private val health = Label(id = 1, name = "Salud", colorArgb = 0xFF6FCF97)
-    private val home = Label(id = 2, name = "Casa", colorArgb = 0xFF56CCF2)
-    private val barbecue = Label(id = 3, name = "Asado", colorArgb = 0xFF9B7BEA)
+    private val health = Tag(id = 1, name = "Salud", colorArgb = 0xFF6FCF97)
+    private val home = Tag(id = 2, name = "Casa", colorArgb = 0xFF56CCF2)
+    private val barbecue = Tag(id = 3, name = "Asado", colorArgb = 0xFF9B7BEA)
 
     private const val HOME_PLACE_ID = 1L
 
@@ -72,7 +72,7 @@ object SampleReminders {
         title = "Vacuna de Tomi",
         description = "Llevar libreta sanitaria y DNI",
         photoPath = "sample",
-        labels = listOf(health),
+        tags = listOf(health),
         trigger = Trigger.AtTime(now.plus(Duration.ofMinutes(45))),
         createdAt = now,
     )
@@ -82,7 +82,7 @@ object SampleReminders {
         id = 2,
         title = "Comprar pilas AA",
         description = "Para el control del aire",
-        labels = listOf(home),
+        tags = listOf(home),
         trigger = Trigger.AtPlace(HOME_PLACE_ID),
         createdAt = now,
     )
@@ -99,7 +99,7 @@ object SampleReminders {
             ChecklistItem(id = 4, text = "Pan"),
             ChecklistItem(id = 5, text = "Hielo"),
         ),
-        labels = listOf(barbecue),
+        tags = listOf(barbecue),
         trigger = Trigger.AtTime(tomorrowAt(now, LocalTime.of(11, 0))),
         createdAt = now,
     )

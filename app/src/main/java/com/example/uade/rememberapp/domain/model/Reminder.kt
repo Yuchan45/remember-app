@@ -16,7 +16,7 @@ data class Reminder(
     val photoPath: String? = null,
     /** Solo se usa en [ReminderType.Checklist]; en una nota queda vacía. */
     val items: List<ChecklistItem> = emptyList(),
-    val labels: List<Label> = emptyList(),
+    val tags: List<Tag> = emptyList(),
     val trigger: Trigger = Trigger.None,
     val isDone: Boolean = false,
     /** Dónde está: en la lista principal, archivado o en la papelera. */

@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -22,7 +23,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,7 +51,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.ui.components.FadedDivider
 import com.example.uade.rememberapp.ui.components.observeVerticalDrag
+import com.example.uade.rememberapp.ui.tags.TagPickerContent
+import com.example.uade.rememberapp.ui.tags.TagPickerActions
+import com.example.uade.rememberapp.ui.tags.TagPickerPanel
+import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureTriggerRow
 import com.example.uade.rememberapp.ui.reminders.capture.components.PlaceOptionsPanel
@@ -122,7 +130,6 @@ fun QuickCaptureSheet(
                 onPlaceSelected = viewModel::onPlaceSelected,
                 onPlaceEventSelected = viewModel::onPlaceEventSelected,
                 onSearchAddress = viewModel::onSearchAddress,
-                onLabelClick = viewModel::onLabelClick,
                 onVoice = viewModel::onVoiceClick,
                 onPhoto = viewModel::onPhotoClick,
                 onChecklist = viewModel::onChecklistClick,
@@ -137,6 +144,13 @@ fun QuickCaptureSheet(
                 }
                 .navigationBarsPadding()
                 .imePadding(),
+            tagsPanel = {
+                TagPickerPanel(
+                    initialAssigned = uiState.selectedTagIds,
+                    onAssignedChange = viewModel::onTagsChanged,
+                    modifier = Modifier.padding(horizontal = SheetPadding),
+                )
+            },
         )
     }
 
@@ -195,7 +209,6 @@ data class QuickCaptureActions(
     val onPlaceSelected: (placeId: Long) -> Unit = {},
     val onPlaceEventSelected: (PlaceEvent) -> Unit = {},
     val onSearchAddress: () -> Unit = {},
-    val onLabelClick: () -> Unit = {},
     val onVoice: () -> Unit = {},
     val onPhoto: () -> Unit = {},
     val onChecklist: () -> Unit = {},
@@ -207,7 +220,9 @@ data class QuickCaptureActions(
  * Contenido del modal, sin estado:
  * ```
  * Llamar al plomero|
+ * ───────────────────────────────────── (separador fino)
  * ┌ panel de hora o de lugar (solo si hay uno abierto) ┐
+ * ───────────────────────────────────── (separador, solo con un panel abierto)
  * [🕒 Fecha y hora] [📍 Ubicación] [🏷 Etiqueta]
  * 🎤 🖼 ☑ ⤢                             Guardar
  * ```
@@ -215,12 +230,16 @@ data class QuickCaptureActions(
  *
  * En pantalla completa ([QuickCaptureUiState.isFullScreen]) ocupa todo el alto disponible y
  * los chips y la barra de herramientas quedan pegados abajo.
+ *
+ * [tagsPanel] es el panel de etiquetas: entra como slot porque tiene su propio ViewModel, así
+ * este contenido sigue sin estado (las previews le pasan una versión sin estado).
  */
 @Composable
 fun QuickCaptureContent(
     uiState: QuickCaptureUiState,
     actions: QuickCaptureActions,
     modifier: Modifier = Modifier,
+    tagsPanel: @Composable () -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -237,9 +256,15 @@ fun QuickCaptureContent(
             modifier = Modifier.padding(horizontal = SheetPadding),
         )
 
+        // Separa lo que se escribe (el título) de las opciones de abajo.
+        FadedDivider(modifier = Modifier.padding(horizontal = SheetPadding))
+
         // Al abrir o cambiar de panel, el alto lo anima una sola vez el animateContentSize() del
         // Column; acá el tamaño salta de golpe (snap) y solo se anima la opacidad. Si los dos
         // animaran el alto, se pisarían y el modal quedaría atrasado respecto del contenido.
+        //
+        // weight(fill = false) + verticalScroll: si con el teclado abierto no entra todo, solo el
+        // panel se achica y se desplaza; el título, los chips y "Guardar" siguen a la vista.
         AnimatedContent(
             targetState = uiState.expandedPanel,
             transitionSpec = {
@@ -248,37 +273,25 @@ fun QuickCaptureContent(
                     SizeTransform(clip = false) { _, _ -> snap() }
             },
             label = "capturePanel",
+            modifier = Modifier.weight(1f, fill = false),
         ) { panel ->
-            when (panel) {
-                CapturePanel.Time -> TimeOptionsPanel(
-                    shortcuts = uiState.timeShortcuts,
-                    selectedShortcut = uiState.selectedTime,
-                    pickedDate = uiState.pickedDate,
-                    pickedTime = uiState.pickedTime,
-                    repeatOptions = uiState.repeatOptions,
-                    selectedRepeat = uiState.selectedRepeat,
-                    onShortcutClick = actions.onTimeSelected,
-                    onRepeatClick = actions.onRepeatSelected,
-                    modifier = Modifier.padding(horizontal = SheetPadding),
-                )
-
-                CapturePanel.Place -> PlaceOptionsPanel(
-                    places = uiState.favoritePlaces,
-                    selectedPlaceId = uiState.selectedPlaceId,
-                    events = uiState.placeEvents,
-                    selectedEvent = uiState.selectedPlaceEvent,
-                    onPlaceClick = actions.onPlaceSelected,
-                    onSearchAddress = actions.onSearchAddress,
-                    onEventClick = actions.onPlaceEventSelected,
-                    modifier = Modifier.padding(horizontal = SheetPadding),
-                )
-
-                null -> Box(Modifier.fillMaxWidth())
+            Box(Modifier.verticalScroll(rememberScrollState())) {
+                CapturePanelContent(panel = panel, uiState = uiState, actions = actions, tagsPanel = tagsPanel)
             }
         }
 
         if (uiState.isFullScreen) {
             Spacer(Modifier.weight(1f))
+        }
+
+        // Con un panel abierto, separa sus opciones de los chips que lo abren. Solo fundido: el
+        // alto lo anima el animateContentSize() del Column.
+        AnimatedVisibility(
+            visible = uiState.expandedPanel != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            FadedDivider(modifier = Modifier.padding(horizontal = SheetPadding))
         }
 
         CaptureTriggerRow(
@@ -287,7 +300,7 @@ fun QuickCaptureContent(
             selectedPlace = uiState.selectedPlace,
             placeEvent = uiState.selectedPlaceEvent,
             onPanelClick = actions.onPanelToggle,
-            onLabelClick = actions.onLabelClick,
+            tagCount = uiState.selectedTagIds.size,
             contentPadding = PaddingValues(horizontal = SheetPadding),
         )
 
@@ -300,6 +313,44 @@ fun QuickCaptureContent(
             onSave = actions.onSave,
             modifier = Modifier.padding(start = 4.dp, end = SheetPadding),
         )
+    }
+}
+
+/** El panel abierto: opciones de hora, de lugar o etiquetas (o nada). */
+@Composable
+private fun CapturePanelContent(
+    panel: CapturePanel?,
+    uiState: QuickCaptureUiState,
+    actions: QuickCaptureActions,
+    tagsPanel: @Composable () -> Unit,
+) {
+    when (panel) {
+        CapturePanel.Time -> TimeOptionsPanel(
+            shortcuts = uiState.timeShortcuts,
+            selectedShortcut = uiState.selectedTime,
+            pickedDate = uiState.pickedDate,
+            pickedTime = uiState.pickedTime,
+            repeatOptions = uiState.repeatOptions,
+            selectedRepeat = uiState.selectedRepeat,
+            onShortcutClick = actions.onTimeSelected,
+            onRepeatClick = actions.onRepeatSelected,
+            modifier = Modifier.padding(horizontal = SheetPadding),
+        )
+
+        CapturePanel.Place -> PlaceOptionsPanel(
+            places = uiState.favoritePlaces,
+            selectedPlaceId = uiState.selectedPlaceId,
+            events = uiState.placeEvents,
+            selectedEvent = uiState.selectedPlaceEvent,
+            onPlaceClick = actions.onPlaceSelected,
+            onSearchAddress = actions.onSearchAddress,
+            onEventClick = actions.onPlaceEventSelected,
+            modifier = Modifier.padding(horizontal = SheetPadding),
+        )
+
+        CapturePanel.Tags -> tagsPanel()
+
+        null -> Box(Modifier.fillMaxWidth())
     }
 }
 
@@ -344,9 +395,28 @@ private fun QuickCaptureContentPreviewFrame(uiState: QuickCaptureUiState) {
                 uiState = uiState,
                 actions = QuickCaptureActions(),
                 modifier = Modifier.padding(top = 16.dp),
+                tagsPanel = {
+                    TagPickerContent(
+                        uiState = previewTagPickerState(),
+                        actions = TagPickerActions(),
+                        modifier = Modifier.padding(horizontal = SheetPadding),
+                    )
+                },
             )
         }
     }
+}
+
+@Preview(name = "Panel de etiquetas", heightDp = 900)
+@Composable
+private fun QuickCaptureContentTagsPreview() {
+    QuickCaptureContentPreviewFrame(
+        SampleQuickCapture.uiState().copy(
+            title = "Turno con el médico",
+            expandedPanel = CapturePanel.Tags,
+            selectedTagIds = setOf(1),
+        ),
+    )
 }
 
 @Preview(name = "Vacío")

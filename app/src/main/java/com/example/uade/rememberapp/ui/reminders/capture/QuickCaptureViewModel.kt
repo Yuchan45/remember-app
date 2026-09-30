@@ -70,8 +70,15 @@ class QuickCaptureViewModel : ViewModel() {
     // TODO: abrir el buscador de direcciones (mapa).
     fun onSearchAddress() = Unit
 
-    // TODO: abrir el selector de etiquetas.
-    fun onLabelClick() = Unit
+    // El chip "Etiqueta" abre el panel de etiquetas con onPanelToggle(CapturePanel.Tags).
+
+    /**
+     * El panel de etiquetas cambió las asignadas (se aplica al momento, sin cerrar el panel).
+     * TODO: guardarlas en el recordatorio al crear la nota.
+     */
+    fun onTagsChanged(ids: Set<Long>) {
+        _uiState.update { it.copy(selectedTagIds = ids) }
+    }
 
     // TODO: dictado, foto y convertir en lista.
     fun onVoiceClick() = Unit
