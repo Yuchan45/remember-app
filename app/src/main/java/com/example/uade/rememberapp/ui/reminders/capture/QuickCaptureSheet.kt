@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -81,11 +82,20 @@ private val SheetPadding = 16.dp
 @Composable
 fun QuickCaptureSheet(
     onDismiss: () -> Unit,
-    viewModel: QuickCaptureViewModel = viewModel(),
+    viewModel: QuickCaptureViewModel = viewModel(factory = QuickCaptureViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+
+    // Guardado: baja el modal con su animación y recién después lo saca (y reinicia el estado).
+    LaunchedEffect(uiState.isSaved) {
+        if (uiState.isSaved) {
+            sheetState.hide()
+            viewModel.onDismissed()
+            onDismiss()
+        }
+    }
     val density = LocalDensity.current
     val maxStretchPx = with(density) { HandleMaxStretch.toPx() }
 
@@ -311,6 +321,7 @@ fun QuickCaptureContent(
             onChecklist = actions.onChecklist,
             onToggleFullScreen = actions.onToggleFullScreen,
             onSave = actions.onSave,
+            canSave = uiState.canSave,
             modifier = Modifier.padding(start = 4.dp, end = SheetPadding),
         )
     }

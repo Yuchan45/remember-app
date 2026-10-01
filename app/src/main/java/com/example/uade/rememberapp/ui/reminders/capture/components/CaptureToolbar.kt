@@ -25,6 +25,7 @@ import com.example.uade.rememberapp.ui.theme.RememberAppTheme
  * Barra inferior del modal: 🎤 🖼 ☑ ⤢ a la izquierda y "Guardar" a la derecha.
  *
  * El último ícono alterna la pantalla completa: ⤢ para abrirla y ⤡ para volver al modal chico.
+ * "Guardar" se ve deshabilitado si [canSave] es false (ej. sin título).
  */
 @Composable
 fun CaptureToolbar(
@@ -35,6 +36,7 @@ fun CaptureToolbar(
     onToggleFullScreen: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
+    canSave: Boolean = true,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -51,7 +53,7 @@ fun CaptureToolbar(
 
         Spacer(Modifier.weight(1f))
 
-        TextButton(onClick = onSave) {
+        TextButton(onClick = onSave, enabled = canSave) {
             Text(
                 text = stringResource(R.string.reminders_capture_save),
                 style = MaterialTheme.typography.titleSmall,

@@ -81,7 +81,15 @@ data class QuickCaptureUiState(
 
     // Etiquetas elegidas en el panel de etiquetas. TODO: guardarlas en el Reminder al crear.
     val selectedTagIds: Set<Long> = emptySet(),
+
+    /** true mientras se guarda: evita guardar dos veces con un doble toque. */
+    val isSaving: Boolean = false,
+
+    /** true cuando la nota ya quedó guardada: el modal lo ve y se cierra. */
+    val isSaved: Boolean = false,
 ) {
+    /** Hace falta un título para guardar (por ahora es lo único que se puede escribir). */
+    val canSave: Boolean get() = title.isNotBlank() && !isSaving && !isSaved
     val selectedPlace: Place? get() = favoritePlaces.firstOrNull { it.id == selectedPlaceId }
     val hasTime: Boolean get() = selectedTime != null
     val hasPlace: Boolean get() = selectedPlace != null

@@ -51,7 +51,7 @@ private val ScreenPadding = 16.dp
  */
 @Composable
 fun RemindersListScreen(
-    viewModel: RemindersListViewModel = viewModel(),
+    viewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

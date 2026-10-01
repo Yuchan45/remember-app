@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainTabs(
     modifier: Modifier = Modifier,
-    remindersViewModel: RemindersListViewModel = viewModel(),
+    remindersViewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
 ) {
     val destinations = AppDestination.entries
     val pagerState = rememberPagerState(pageCount = { destinations.size })

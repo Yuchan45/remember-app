@@ -7,6 +7,8 @@ un pendiente (texto y/o foto) y elige cuándo vuelve: nunca, a una hora, o al ll
 - Kotlin + Jetpack Compose + Material3. Una sola Activity (`MainActivity`).
 - Navegación: `ui/navigation/AppNavHost.kt` es la raíz (NavHost). Su destino `Routes.MAIN` es `MainTabs`: las 4 pantallas principales como páginas de un `HorizontalPager` (se deslizan de costado) con `AppBottomBar` encima. Las pantallas que se abren encima (detalles) van como rutas en `Routes.kt`.
 - ViewModel + `StateFlow` + `collectAsStateWithLifecycle`.
+- Persistencia con Room (KSP genera el código). `data/local/AppDatabase.kt` lista las tablas; al cambiar columnas, subir `version` (por ahora borra y recrea la base: `fallbackToDestructiveMigration`).
+- DI manual: `AppContainer(context)` crea base, repositorios y casos de uso `by lazy`; los ViewModels con dependencias exponen un `Factory` que los toma de `(application as RememberApp).container`.
 - Dependencias en `gradle/libs.versions.toml` (version catalog). Nunca hardcodear versiones en `build.gradle.kts`.
 - minSdk 26, targetSdk/compileSdk 37, Java 11.
 - Paquete base: `com.example.uade.rememberapp`.
