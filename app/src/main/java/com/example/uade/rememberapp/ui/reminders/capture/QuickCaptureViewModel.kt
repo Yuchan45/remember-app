@@ -48,6 +48,21 @@ class QuickCaptureViewModel(
         }
     }
 
+    /**
+     * Se tiró de la manija hacia arriba: si el modal está en su tamaño chico (sin panel abierto
+     * y sin pantalla completa), se "extiende" abriendo el panel de Fecha y hora. Si ya está
+     * extendido no hace nada (la manija solo se estira y rebota).
+     */
+    fun onDragHandlePulledUp() {
+        _uiState.update { state ->
+            if (state.expandedPanel == null && !state.isFullScreen) {
+                state.copy(expandedPanel = CapturePanel.Time)
+            } else {
+                state
+            }
+        }
+    }
+
     /** Al cerrar el modal se descarta todo, así la próxima vez abre vacío. */
     fun onDismissed() {
         _uiState.value = SampleQuickCapture.uiState()

@@ -12,6 +12,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -99,6 +103,7 @@ fun QuickCaptureSheet(
     }
     val density = LocalDensity.current
     val maxStretchPx = with(density) { HandleMaxStretch.toPx() }
+    val pullToExpandPx = with(density) { HandlePullToExpand.toPx() }
 
     // Cuánto se "estira" el contenido (en px) al tirar de la manija hacia arriba: el efecto de
     // que el modal no puede crecer más. Vuelve a 0 con un rebote al soltar.
@@ -124,8 +129,10 @@ fun QuickCaptureSheet(
                 val pull = (-dy).coerceAtLeast(0f)
                 scope.launch { stretch.snapTo(rubberBand(pull, maxStretchPx)) }
             },
-            onRelease = {
-                // El modal no tiene una "segunda extensión": al soltar solo vuelve a su lugar.
+            onRelease = { dy, isVertical ->
+                // Un tirón hacia arriba suficiente extiende el modal abriendo "Fecha y hora"
+                // (el ViewModel decide si corresponde). Siempre vuelve a su lugar con un rebote.
+                if (isVertical && -dy >= pullToExpandPx) viewModel.onDragHandlePulledUp()
                 scope.launch {
                     stretch.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
                 }
@@ -179,6 +186,9 @@ fun QuickCaptureSheet(
 /** Lo máximo que se puede estirar el contenido al tirar de la manija. */
 private val HandleMaxStretch = 32.dp
 
+/** Cuánto hay que tirar de la manija hacia arriba para extender el modal (evita abrir con un roce). */
+private val HandlePullToExpand = 48.dp
+
 /**
  * Resistencia tipo "banda elástica": al principio sigue al dedo y después cada vez cuesta más,
  * sin pasar nunca de [max].
@@ -189,26 +199,50 @@ private fun rubberBand(pull: Float, max: Float): Float = max * (1f - exp(-pull /
  * La manija "—" de arriba del modal.
  *
  * - Arrastrarla hacia abajo cierra el modal (lo maneja el ModalBottomSheet).
- * - Arrastrarla hacia arriba avisa el recorrido por [onDrag] (para el estiramiento) y el fin
- *   del gesto por [onRelease]. No abre nada: el modal no crece más.
+ * - Arrastrarla hacia arriba avisa el recorrido por [onDrag] (para el estiramiento) y, al
+ *   soltar, el recorrido total por [onRelease] (para decidir si se extiende el modal).
  *
- * Ocupa todo el ancho para que sea fácil de agarrar. El gesto solo se observa, así el arrastre
- * hacia abajo del modal sigue funcionando.
+ * Ocupa todo el ancho para que sea fácil de agarrar. El gesto se observa sin quitárselo al
+ * modal, salvo el movimiento hacia arriba (ver [consumeUpwardDrag]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun QuickCaptureDragHandle(
     onDrag: (dy: Float) -> Unit,
-    onRelease: () -> Unit,
+    onRelease: (dy: Float, isVertical: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .observeVerticalDrag(onDrag = onDrag, onRelease = { _, _ -> onRelease() }),
+            .observeVerticalDrag(onDrag = onDrag, onRelease = onRelease)
+            .consumeUpwardDrag(),
         contentAlignment = Alignment.Center,
     ) {
         BottomSheetDefaults.DragHandle()
+    }
+}
+
+/**
+ * Se queda con el movimiento hacia arriba para que no le llegue al ModalBottomSheet.
+ *
+ * El modal ya está arriba del todo y no puede subir más, pero si recibe el arrastre, al soltar
+ * corre su animación de "asentarse" y mientras dura ignora los cambios de tamaño: el panel de
+ * Fecha y hora aparecía primero y el modal se extendía después, a los saltos. Sin el arrastre,
+ * el modal crece junto con el contenido, igual que al tocar el chip.
+ *
+ * El movimiento hacia abajo no se toca, así arrastrar la manija hacia abajo sigue cerrando el
+ * modal. Se consume en la pasada Main, que va de hijo a padre: la manija lo ve antes que el modal.
+ */
+private fun Modifier.consumeUpwardDrag(): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false)
+        do {
+            val event = awaitPointerEvent()
+            event.changes.forEach { change ->
+                if (change.positionChange().y < 0f) change.consume()
+            }
+        } while (event.changes.any { it.pressed })
     }
 }
 
