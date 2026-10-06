@@ -34,10 +34,10 @@ import com.example.uade.rememberapp.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
 /**
- * Las cuatro pantallas principales como páginas deslizables, con la barra inferior encima.
+ * Las cuatro pantallas principales como páginas de un pager, con la barra inferior encima.
  *
- * - Deslizar hacia los costados pasa a la pantalla vecina y la barra se actualiza sola.
- * - Tocar un destino de la barra desliza hasta esa página.
+ * - Solo se cambia de pestaña tocando la barra (deslizar con el dedo está desactivado); el
+ *   cambio se anima deslizando hasta esa página.
  * - "Atrás" desde otra pestaña vuelve a Inicio; desde Inicio sale de la app.
  *
  * El Scaffold calcula cuánto ocupan la barra de estado y la barra inferior y se lo pasa a
@@ -58,8 +58,8 @@ fun MainTabs(
     val pagerState = rememberPagerState(pageCount = { destinations.size })
     val scope = rememberCoroutineScope()
 
-    // targetPage cambia apenas el gesto decide a qué página va, así la barra no espera a que
-    // termine la animación del deslizamiento.
+    // targetPage cambia apenas se toca un destino, así la barra no espera a que termine la
+    // animación del cambio de página.
     val selected = destinations[pagerState.targetPage]
 
     BackHandler(enabled = pagerState.currentPage != AppDestination.Home.ordinal) {
@@ -102,6 +102,8 @@ fun MainTabs(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
+            // Solo se cambia de pestaña con la barra: deslizar de costado no hace nada.
+            userScrollEnabled = false,
             key = { destinations[it].name },
         ) { page ->
             MainTabPage(

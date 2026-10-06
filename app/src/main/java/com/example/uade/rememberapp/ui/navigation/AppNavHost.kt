@@ -12,7 +12,7 @@ import androidx.navigation.compose.rememberNavController
  * Raíz de la app: el grafo de navegación.
  *
  * Por ahora tiene un solo destino, [MainTabs], con las cuatro pantallas principales como
- * páginas deslizables y la barra inferior. Las pantallas que se abran encima (ej. el detalle
+ * páginas y la barra inferior. Las pantallas que se abran encima (ej. el detalle
  * de un recordatorio) se agregan acá como nuevos `composable(Routes.X)`.
  *
  * Es el único lugar que conoce el [NavHostController]; las pantallas reciben la navegación
