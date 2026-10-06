@@ -1,11 +1,6 @@
 package com.example.uade.rememberapp.ui.navigation
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,18 +13,21 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.archive.ArchiveScreen
 import com.example.uade.rememberapp.ui.components.CircleIconButton
 import com.example.uade.rememberapp.ui.components.CookieShape
 import com.example.uade.rememberapp.ui.places.list.PlacesListScreen
+import com.example.uade.rememberapp.ui.reminders.create.CreateReminderSheet
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListScreen
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListViewModel
 import com.example.uade.rememberapp.ui.settings.SettingsScreen
@@ -45,15 +43,17 @@ import kotlinx.coroutines.launch
  * El Scaffold calcula cuánto ocupan la barra de estado y la barra inferior y se lo pasa a
  * cada pantalla como `contentPadding`, así el contenido pasa por detrás de la barra flotante.
  *
- * En Inicio, al lado de la barra aparece el "+" de nuevo recordatorio. Llama al mismo
- * [RemindersListViewModel] que usa la pantalla de Inicio: `viewModel()` devuelve la misma
- * instancia porque las dos viven en el mismo destino de navegación.
+ * Al lado de la barra está el "+" de nuevo recordatorio, en todas las pestañas. Abre el menú
+ * "Crear", que se dibuja acá. Usa el mismo [RemindersListViewModel] que la pantalla de Inicio:
+ * `viewModel()` devuelve la misma instancia porque las dos viven en el mismo destino de
+ * navegación.
  */
 @Composable
 fun MainTabs(
     modifier: Modifier = Modifier,
     remindersViewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
 ) {
+    val remindersState by remindersViewModel.uiState.collectAsStateWithLifecycle()
     val destinations = AppDestination.entries
     val pagerState = rememberPagerState(pageCount = { destinations.size })
     val scope = rememberCoroutineScope()
@@ -86,24 +86,16 @@ fun MainTabs(
                         scope.launch { pagerState.animateScrollToPage(destination.ordinal) }
                     },
                 )
-                // El "+" es de Inicio: en las otras pestañas se achica y desaparece, y el
-                // grupo se vuelve a centrar solo.
-                AnimatedVisibility(
-                    visible = selected == AppDestination.Home,
-                    enter = fadeIn() + scaleIn(),
-                    exit = fadeOut() + scaleOut(),
-                ) {
-                    CircleIconButton(
-                        icon = R.drawable.ic_add,
-                        contentDescription = stringResource(R.string.reminders_quick_capture_new),
-                        onClick = remindersViewModel::onNewReminderClick,
-                        // Mismo alto que la barra (48dp de destino + 4dp de margen arriba y abajo).
-                        size = 56.dp,
-                        shape = CookieShape,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
+                CircleIconButton(
+                    icon = R.drawable.ic_add,
+                    contentDescription = stringResource(R.string.reminders_quick_capture_new),
+                    onClick = remindersViewModel::onNewReminderClick,
+                    // Mismo alto que la barra (48dp de destino + 4dp de margen arriba y abajo).
+                    size = 56.dp,
+                    shape = CookieShape,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
             }
         },
     ) { contentPadding ->
@@ -117,6 +109,15 @@ fun MainTabs(
                 contentPadding = contentPadding,
             )
         }
+    }
+
+    // Va acá y no en una pestaña: el pager solo compone la página visible, y el menú se tiene
+    // que poder abrir desde cualquiera.
+    if (remindersState.isCreateMenuOpen) {
+        CreateReminderSheet(
+            onOptionClick = remindersViewModel::onCreateOptionClick,
+            onDismiss = remindersViewModel::onCreateMenuDismiss,
+        )
     }
 }
 
