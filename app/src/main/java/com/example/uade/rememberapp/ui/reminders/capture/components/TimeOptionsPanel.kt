@@ -15,6 +15,7 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.components.OptionChip
 import com.example.uade.rememberapp.ui.components.OptionChipStyle
 import com.example.uade.rememberapp.ui.components.SectionLabel
+import com.example.uade.rememberapp.ui.reminders.capture.DefaultPickedTime
 import com.example.uade.rememberapp.ui.reminders.capture.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.capture.TimeShortcut
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
@@ -33,7 +34,7 @@ import java.util.Locale
  * secundarias, a diferencia de los chips de aviso de abajo, que se marcan con fondo.
  * Las opciones entran por parámetro (vienen del UiState) y los chips pasan a la línea
  * siguiente si no entran. Si ya se eligió un día en el calendario ([pickedDate]), el chip de
- * "Elegir fecha…" lo muestra en su lugar, ej. "Mar 29 sept · 19:00".
+ * "Elegir fecha…" lo muestra en su lugar, siempre con hora, ej. "Mar 29 sept · 19:00".
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -93,12 +94,16 @@ fun TimeOptionsPanel(
     }
 }
 
-/** Día elegido para el chip, ej. "Mar 29 sept" o "Mar 29 sept · 19:00" si tiene hora. */
+/**
+ * Día y hora elegidos para el chip, ej. "Mar 29 sept · 19:00". Si no se eligió hora muestra la
+ * que se va a usar al guardar ([DefaultPickedTime]), así el usuario sabe a qué hora va a sonar.
+ */
 private fun formatPickedDate(date: LocalDate, time: LocalTime?, locale: Locale): String {
     val day = date.format(DateTimeFormatter.ofPattern("EEE d MMM", locale))
         .replace(".", "")
         .replaceFirstChar { it.titlecase(locale) }
-    return if (time == null) day else "$day · ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+    val hour = (time ?: DefaultPickedTime).format(DateTimeFormatter.ofPattern("HH:mm"))
+    return "$day · $hour"
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF1E2C36)
