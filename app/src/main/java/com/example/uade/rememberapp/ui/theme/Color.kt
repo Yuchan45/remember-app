@@ -48,3 +48,10 @@ val CreateAudioColor = Color(0xFF6FD08C)
 val CreateLongTextColor = Color(0xFFF4A28C)
 val CreateScheduledMessageColor = Color(0xFF4DE0E0)
 val CreateIconContent = Color(0xFF0F1B23)
+
+// Acciones que aparecen al deslizar una card hacia la izquierda: fondo de cada botón.
+// TODO: los valores están estimados de una captura; reemplazarlos por los del Figma.
+val SwipeDoneColor = Color(0xFF1F5E2C)
+val SwipeArchiveColor = Color(0xFF4A4F54)
+val SwipeTrashColor = Color(0xFF6E1A1A)
+val SwipeActionContent = Color(0xFFFFFFFF)

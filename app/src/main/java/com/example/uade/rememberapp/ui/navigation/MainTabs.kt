@@ -12,12 +12,20 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,10 +74,20 @@ fun MainTabs(
         scope.launch { pagerState.animateScrollToPage(AppDestination.Home.ordinal) }
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    TrashedReminderSnackbar(
+        trashedReminderId = remindersState.trashedReminderId,
+        snackbarHostState = snackbarHostState,
+        onUndo = remindersViewModel::onUndoTrash,
+        onDone = remindersViewModel::onTrashNoticeDone,
+    )
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         // Cada pantalla dibuja su propio fondo.
         containerColor = Color.Transparent,
+        // El Scaffold lo ubica justo encima de la barra inferior.
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             // Barra y "+" juntos, centrados como grupo (no repartidos a los extremos).
             Row(
@@ -120,6 +138,40 @@ fun MainTabs(
             onOptionClick = remindersViewModel::onCreateOptionClick,
             onDismiss = remindersViewModel::onCreateMenuDismiss,
         )
+    }
+}
+
+/**
+ * Muestra "1 movido a la papelera · Deshacer ✕" unos segundos cada vez que [trashedReminderId]
+ * pasa a tener un recordatorio. "Deshacer" avisa por [onUndo]; al terminar el aviso (por deshacer, cerrar con
+ * la ✕ o vencerse) avisa por [onDone] para que el ViewModel lo olvide.
+ *
+ * Si se manda otro a la papelera mientras se ve el aviso, el LaunchedEffect se reinicia con el
+ * id nuevo: el aviso anterior se cierra y el nuevo ofrece deshacer el último.
+ */
+@Composable
+private fun TrashedReminderSnackbar(
+    trashedReminderId: Long?,
+    snackbarHostState: SnackbarHostState,
+    onUndo: (Long) -> Unit,
+    onDone: (Long) -> Unit,
+) {
+    val message = pluralStringResource(R.plurals.reminders_trashed, 1, 1)
+    val undoLabel = stringResource(R.string.reminders_undo)
+    val currentOnUndo by rememberUpdatedState(onUndo)
+    val currentOnDone by rememberUpdatedState(onDone)
+
+    LaunchedEffect(trashedReminderId) {
+        val id = trashedReminderId ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = message,
+            actionLabel = undoLabel,
+            withDismissAction = true,
+            // Corto (4s): es informativo, para deshacer rápido un error.
+            duration = SnackbarDuration.Short,
+        )
+        if (result == SnackbarResult.ActionPerformed) currentOnUndo(id)
+        currentOnDone(id)
     }
 }
 

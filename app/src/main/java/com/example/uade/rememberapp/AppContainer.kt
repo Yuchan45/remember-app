@@ -9,7 +9,9 @@ import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
+import com.example.uade.rememberapp.domain.usecase.RestoreReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.TrashReminderUseCase
 
 /**
  * Inyección de dependencias manual: crea una sola vez la base de datos, los repositorios y los
@@ -40,6 +42,8 @@ class AppContainer(context: Context) {
 
     val saveReminderUseCase: SaveReminderUseCase by lazy { SaveReminderUseCase(reminderRepository) }
     val observeRemindersUseCase: ObserveRemindersUseCase by lazy { ObserveRemindersUseCase(reminderRepository) }
+    val trashReminderUseCase: TrashReminderUseCase by lazy { TrashReminderUseCase(reminderRepository) }
+    val restoreReminderUseCase: RestoreReminderUseCase by lazy { RestoreReminderUseCase(reminderRepository) }
 
     // TODO: pasar a Room. Mientras tanto arranca con etiquetas de ejemplo.
     val tagRepository: TagRepository by lazy {

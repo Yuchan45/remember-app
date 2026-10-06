@@ -27,7 +27,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
-import com.example.uade.rememberapp.ui.reminders.components.ReminderCard
+import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
+import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutside
+import com.example.uade.rememberapp.ui.reminders.components.rememberSwipeRevealGroupState
 import com.example.uade.rememberapp.ui.reminders.list.components.HomeHeader
 import com.example.uade.rememberapp.ui.reminders.list.components.QuickCaptureBar
 import com.example.uade.rememberapp.ui.reminders.list.components.ReminderFilterBar
@@ -70,6 +72,9 @@ fun RemindersListScreen(
             onSortClick = viewModel::onSortClick,
             onSectionToggle = viewModel::onSectionToggle,
             onReminderClick = viewModel::onReminderClick,
+            onReminderDone = viewModel::onReminderDone,
+            onReminderArchive = viewModel::onReminderArchive,
+            onReminderTrash = viewModel::onReminderTrash,
             onQuickCaptureClick = viewModel::onQuickCaptureClick,
             onVoiceCapture = viewModel::onVoiceCaptureClick,
             onPhotoCapture = viewModel::onPhotoCaptureClick,
@@ -94,6 +99,9 @@ data class RemindersListActions(
     val onSortClick: () -> Unit = {},
     val onSectionToggle: (ReminderSectionKey) -> Unit = {},
     val onReminderClick: (id: Long) -> Unit = {},
+    val onReminderDone: (id: Long) -> Unit = {},
+    val onReminderArchive: (id: Long) -> Unit = {},
+    val onReminderTrash: (id: Long) -> Unit = {},
     val onQuickCaptureClick: () -> Unit = {},
     val onVoiceCapture: () -> Unit = {},
     val onPhotoCapture: () -> Unit = {},
@@ -114,9 +122,14 @@ private fun RemindersListContent(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
+    // Qué card está deslizada mostrando sus acciones (una a la vez). Es estado visual: vive acá.
+    val revealGroup = rememberSwipeRevealGroupState()
+
     Scaffold(
         modifier = modifier
             .fillMaxSize()
+            // Tocar en cualquier lado que no sea la card abierta la cierra.
+            .closeSwipeOnTapOutside(revealGroup)
             .appBackground(),
         // Transparente para que se vea el degradé de fondo.
         containerColor = Color.Transparent,
@@ -201,13 +214,17 @@ private fun RemindersListContent(
                         // por etiqueta) sin repetir keys, que en un LazyColumn es un crash.
                         key = { "${section.key}-${it.id}" },
                     ) { reminder ->
-                        ReminderCard(
+                        SwipeableReminderCard(
                             reminder = reminder,
                             placeName = (reminder.trigger as? Trigger.AtPlace)
                                 ?.let { uiState.placeNames[it.placeId] },
                             now = now,
                             onClick = { actions.onReminderClick(reminder.id) },
+                            onDone = { actions.onReminderDone(reminder.id) },
+                            onArchive = { actions.onReminderArchive(reminder.id) },
+                            onTrash = { actions.onReminderTrash(reminder.id) },
                             modifier = Modifier.padding(horizontal = ScreenPadding),
+                            revealGroup = revealGroup,
                         )
                     }
                 }

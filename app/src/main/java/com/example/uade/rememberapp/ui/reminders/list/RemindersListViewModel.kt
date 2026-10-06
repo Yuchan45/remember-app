@@ -7,6 +7,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
+import com.example.uade.rememberapp.domain.usecase.RestoreReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.TrashReminderUseCase
 import com.example.uade.rememberapp.ui.reminders.create.CreateReminderOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,8 @@ import java.time.Instant
  */
 class RemindersListViewModel(
     private val observeReminders: ObserveRemindersUseCase,
+    private val trashReminder: TrashReminderUseCase,
+    private val restoreReminder: RestoreReminderUseCase,
     private val now: () -> Instant = Instant::now,
 ) : ViewModel() {
 
@@ -74,6 +78,38 @@ class RemindersListViewModel(
     // TODO: navegar al detalle del recordatorio.
     fun onReminderClick(id: Long) = Unit
 
+    // Acciones que aparecen al deslizar una card hacia la izquierda.
+    // TODO: marcarlo como hecho y archivarlo (con casos de uso, como la papelera).
+    fun onReminderDone(id: Long) = Unit
+    fun onReminderArchive(id: Long) = Unit
+
+    /**
+     * "Papelera": lo manda a la papelera y deja anotado cuál fue, para ofrecer deshacerlo. No hace
+     * falta sacarlo de la lista a mano: al cambiar en la base, el Flow de [observeReminders]
+     * vuelve a emitir y la Home se rearma sin él.
+     */
+    fun onReminderTrash(id: Long) {
+        viewModelScope.launch {
+            trashReminder(id)
+            _uiState.update { it.copy(trashedReminderId = id) }
+        }
+    }
+
+    /** "Deshacer" en el aviso: lo devuelve a la lista. */
+    fun onUndoTrash(id: Long) {
+        viewModelScope.launch { restoreReminder(id) }
+    }
+
+    /**
+     * El aviso de [id] terminó (se deshizo, se cerró o venció). Solo lo borra si sigue siendo el
+     * último: si mientras tanto se mandó otro a la papelera, el aviso nuevo sigue en pie.
+     */
+    fun onTrashNoticeDone(id: Long) {
+        _uiState.update { state ->
+            if (state.trashedReminderId == id) state.copy(trashedReminderId = null) else state
+        }
+    }
+
     /** Abre el modal de captura rápida (tocar el texto "Toma una nota rápida…"). */
     fun onQuickCaptureClick() {
         _uiState.update { it.copy(isQuickCaptureOpen = true) }
@@ -100,11 +136,15 @@ class RemindersListViewModel(
     fun onPhotoCaptureClick() = Unit
 
     companion object {
-        /** Crea el ViewModel con el caso de uso del [RememberApp.container]. */
+        /** Crea el ViewModel con los casos de uso del [RememberApp.container]. */
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as RememberApp
-                RemindersListViewModel(app.container.observeRemindersUseCase)
+                RemindersListViewModel(
+                    observeReminders = app.container.observeRemindersUseCase,
+                    trashReminder = app.container.trashReminderUseCase,
+                    restoreReminder = app.container.restoreReminderUseCase,
+                )
             }
         }
     }

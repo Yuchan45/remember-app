@@ -26,6 +26,10 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainerHighest = SurfaceVariant,
     outline = Outline,
     outlineVariant = Outline,
+    // Los "inverse" los usa el Snackbar: claro sobre la app oscura, con la acción en azul.
+    inverseSurface = OnSurface,
+    inverseOnSurface = Background,
+    inversePrimary = PrimaryContainer,
 )
 
 /**

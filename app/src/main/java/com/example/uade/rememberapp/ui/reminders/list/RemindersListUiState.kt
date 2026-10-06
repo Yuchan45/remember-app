@@ -64,6 +64,11 @@ data class RemindersListUiState(
     val isQuickCaptureOpen: Boolean = false,
     /** Si el menú "Crear" está abierto. Lo abre el botón "+" de la barra inferior. */
     val isCreateMenuOpen: Boolean = false,
+    /**
+     * El último recordatorio mandado a la papelera, mientras se muestra el aviso para deshacerlo.
+     * Mientras no sea null, MainTabs muestra el snackbar "1 movido a la papelera · Deshacer".
+     */
+    val trashedReminderId: Long? = null,
 ) {
     val isEmpty: Boolean get() = !isLoading && sections.all { it.reminders.isEmpty() }
 }

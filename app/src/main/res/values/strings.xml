@@ -89,6 +89,11 @@
     <string name="reminders_trigger_on_arrival">Al llegar a %1$s</string>
     <string name="reminders_trigger_due_soon">Aviso próximo o vencido</string>
     <string name="reminders_photo_description">Foto del recordatorio</string>
+    <!-- Acciones al deslizar una card hacia la izquierda -->
+    <string name="reminders_action_done">Hecho</string>
+    <string name="reminders_action_archive">Archivar</string>
+    <string name="reminders_action_trash">Papelera</string>
+    <string name="reminders_undo">Deshacer</string>
 
     <!-- Menú "Crear" (botón +) -->
     <string name="reminders_create_title">Crear</string>
@@ -130,6 +135,11 @@
     <plurals name="reminders_capture_trigger_tags">
         <item quantity="one">%d Etiqueta</item>
         <item quantity="other">%d Etiquetas</item>
+    </plurals>
+    <!-- Aviso al mandar recordatorios a la papelera. %d = cuántos. -->
+    <plurals name="reminders_trashed">
+        <item quantity="one">%d movido a la papelera</item>
+        <item quantity="other">%d movidos a la papelera</item>
     </plurals>
 
     <!-- Archivo: recordatorios archivados y eliminados -->
