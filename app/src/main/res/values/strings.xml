@@ -1,14 +1,155 @@
 <resources>
     <string name="app_name">Hey!</string>
 
-    <!-- Lista de recordatorios -->
-    <string name="reminders_list_title">Remember</string>
-    <string name="reminders_tab_pending">Pendientes</string>
-    <string name="reminders_tab_done">Hechos</string>
-    <!-- Pestaña con su contador, ej. "Pendientes · 3". %1$s = nombre de la pestaña, %2$d = cantidad. -->
-    <string name="reminders_tab_with_count">%1$s · %2$d</string>
+    <!-- Home / lista de recordatorios: header -->
+    <!-- %1$s = nombre del usuario. -->
+    <string name="reminders_home_greeting">Hola, %1$s</string>
+    <string name="reminders_list_title">Recordatorios</string>
+    <string name="reminders_home_action_toggle_layout">Cambiar vista</string>
+    <string name="reminders_home_action_collapse_all">Colapsar todo</string>
+    <string name="reminders_home_action_search">Buscar</string>
+
+    <!-- Home: filtros. %1$s = valor elegido, ej. "Tipo: Todo". -->
+    <string name="reminders_filter_type_label">Tipo: %1$s</string>
+    <string name="reminders_filter_group_label">Grupo: %1$s</string>
+    <string name="reminders_filter_sort_label">Ordenar: %1$s</string>
+    <string name="reminders_filter_type_all">Todo</string>
+    <string name="reminders_filter_type_notes">Notas</string>
+    <string name="reminders_filter_type_lists">Listas</string>
+    <string name="reminders_filter_group_date">Fecha</string>
+    <string name="reminders_filter_group_tag">Etiqueta</string>
+    <string name="reminders_filter_group_place">Lugar</string>
+    <string name="reminders_filter_sort_upcoming">Próximos</string>
+    <string name="reminders_filter_sort_recent">Recientes</string>
+    <string name="reminders_filter_sort_title">Título</string>
+
+    <!-- Home: secciones -->
+    <string name="reminders_section_today">Hoy</string>
+    <string name="reminders_section_tomorrow">Mañana</string>
+    <string name="reminders_section_upcoming">Próximos</string>
+    <string name="reminders_section_no_date">Sin fecha</string>
+    <string name="reminders_section_toggle">Mostrar u ocultar sección</string>
+    <string name="reminders_section_expanded">Expandida</string>
+    <string name="reminders_section_collapsed">Colapsada</string>
     <string name="reminders_empty">No hay recordatorios acá</string>
 
-    <!-- Fila de recordatorio -->
-    <string name="reminder_photo_description">Foto del recordatorio</string>
+    <!-- Home: captura rápida -->
+    <string name="reminders_quick_capture_hint">Nota rápida…</string>
+    <string name="reminders_quick_capture_new">Nuevo recordatorio</string>
+    <string name="reminders_quick_capture_voice">Dictar recordatorio</string>
+    <string name="reminders_quick_capture_photo">Agregar foto</string>
+
+    <!-- Captura rápida: modal para crear una nota -->
+    <string name="reminders_capture_title_hint">¿Qué querés recordar?</string>
+    <string name="reminders_capture_section_when">Cuándo</string>
+    <string name="reminders_capture_section_repeat">Repetir</string>
+    <string name="reminders_capture_section_favorite_places">Lugares favoritos</string>
+    <string name="reminders_capture_section_notify">Avisar</string>
+    <!-- Atajos de hora. TODO: calcular los textos con fecha según la hora actual. -->
+    <string name="reminders_capture_time_in_one_hour">En 1 hora</string>
+    <string name="reminders_capture_time_tonight">Hoy 21:00</string>
+    <string name="reminders_capture_time_tomorrow_morning">Mañana 9:00</string>
+    <string name="reminders_capture_time_weekend">Sáb 10:00</string>
+    <string name="reminders_capture_time_pick_date">Elegir fecha…</string>
+    <string name="reminders_capture_repeat_none">No</string>
+    <string name="reminders_capture_repeat_daily">Diario</string>
+    <string name="reminders_capture_repeat_weekdays">Lun a Vie</string>
+    <string name="reminders_capture_repeat_weekly">Semanal</string>
+    <string name="reminders_capture_place_arrive">Al llegar</string>
+    <string name="reminders_capture_place_leave">Al salir</string>
+    <string name="reminders_capture_place_search">Buscar dirección…</string>
+    <!-- Chips de aviso. %1$s = nombre del lugar, ej. "Al llegar a Facultad". -->
+    <string name="reminders_capture_trigger_time">Fecha y hora</string>
+    <string name="reminders_capture_trigger_place">Ubicación</string>
+    <string name="reminders_capture_trigger_arrive_at">Al llegar a %1$s</string>
+    <string name="reminders_capture_trigger_leave_from">Al salir de %1$s</string>
+    <string name="reminders_capture_trigger_tag">Etiqueta</string>
+    <string name="reminders_capture_tool_checklist">Convertir en lista</string>
+    <string name="reminders_capture_tool_expand">Abrir en pantalla completa</string>
+    <string name="reminders_capture_tool_collapse">Salir de pantalla completa</string>
+    <string name="reminders_capture_save">Guardar</string>
+
+    <!-- Captura rápida: diálogo "Elegir fecha…" -->
+    <string name="reminders_capture_date_set_time">Establecer hora</string>
+
+    <!-- Card de recordatorio -->
+    <!-- %1$d = cantidad de ítems de la lista que no se muestran. -->
+    <string name="reminders_checklist_more_items">+ %1$d más</string>
+    <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
+    <string name="reminders_trigger_on_arrival">Al llegar a %1$s</string>
+    <string name="reminders_trigger_due_soon">Aviso próximo o vencido</string>
+    <string name="reminders_photo_description">Foto del recordatorio</string>
+
+    <!-- Menú "Crear" (botón +) -->
+    <string name="reminders_create_title">Crear</string>
+    <string name="reminders_create_note">Nota</string>
+    <string name="reminders_create_note_description">Texto, imagen o ambos</string>
+    <string name="reminders_create_checklist">Checklist</string>
+    <string name="reminders_create_checklist_description">Ítems tildables</string>
+    <string name="reminders_create_audio">Audio</string>
+    <string name="reminders_create_audio_description">Transcripción con Groq</string>
+    <string name="reminders_create_long_text">Texto largo</string>
+    <string name="reminders_create_long_text_description">La IA separa en recordatorios</string>
+    <string name="reminders_create_scheduled_message">Mensaje programado</string>
+    <string name="reminders_create_scheduled_message_description">WhatsApp, SMS o mail</string>
+
+    <!-- Etiquetas: diálogo para crear, editar, borrar y asignar -->
+    <string name="tags_show_creator">Mostrar creación de etiquetas</string>
+    <string name="tags_hide_creator">Ocultar creación de etiquetas</string>
+    <string name="tags_section_assigned">Asignadas</string>
+    <string name="tags_section_available">Disponibles</string>
+    <string name="tags_empty_assigned">Todavía no asignaste etiquetas</string>
+    <string name="tags_empty_available">No hay otras etiquetas</string>
+    <string name="tags_name_hint">Nueva etiqueta</string>
+    <!-- %1$d = caracteres escritos, %2$d = máximo. Ej. "8/20". -->
+    <string name="tags_name_counter">%1$d/%2$d</string>
+    <string name="tags_add">Crear etiqueta</string>
+    <!-- %1$s = nombre de la etiqueta que se está editando. -->
+    <string name="tags_editing">Editando «%1$s»</string>
+    <string name="tags_save">Guardar</string>
+    <string name="tags_delete">Eliminar</string>
+    <string name="tags_cancel_edit">Cancelar edición</string>
+    <string name="tags_deleted">Etiqueta eliminada</string>
+    <string name="tags_undo">Deshacer</string>
+    <string name="tags_done">Hecho</string>
+    <string name="tags_color">Color de la etiqueta</string>
+    <string name="tags_error_empty">Escribí un nombre</string>
+    <string name="tags_error_too_long">Puede tener hasta 20 caracteres</string>
+    <string name="tags_error_duplicate">Ya existe una etiqueta con ese nombre</string>
+    <!-- Chip "Etiqueta" del modal de nota rápida cuando ya hay etiquetas elegidas. -->
+    <plurals name="reminders_capture_trigger_tags">
+        <item quantity="one">%d Etiqueta</item>
+        <item quantity="other">%d Etiquetas</item>
+    </plurals>
+
+    <!-- Archivo: recordatorios archivados y eliminados -->
+    <string name="archive_title">Archivo</string>
+    <string name="archive_tab_archived">Archivados</string>
+    <string name="archive_tab_deleted">Eliminados</string>
+    <string name="archive_empty_archived">Acá van a aparecer los recordatorios que archives.</string>
+    <string name="archive_empty_deleted">Acá van a aparecer los recordatorios que elimines, para que puedas recuperarlos.</string>
+
+    <!-- Lugares: lista (template) -->
+    <string name="places_list_title">Lugares</string>
+    <string name="places_list_placeholder">Acá vas a ver y administrar tus lugares guardados.</string>
+
+    <!-- Ajustes (template) -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_placeholder">Acá van a estar las preferencias de la app.</string>
+
+    <!-- Comunes: diálogos, calendario y reloj (ui/components) -->
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_accept">Aceptar</string>
+    <string name="common_done">Listo</string>
+    <string name="calendar_previous_month">Mes anterior</string>
+    <string name="calendar_next_month">Mes siguiente</string>
+    <!-- Formato del título del calendario (DateTimeFormatter), ej. "septiembre de 2026". -->
+    <string name="calendar_month_year_pattern">LLLL \'de\' yyyy</string>
+    <string name="time_picker_title">Selecciona una hora</string>
+
+    <!-- Barra de navegación inferior -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_archive">Archivo</string>
+    <string name="nav_places">Lugares</string>
+    <string name="nav_settings">Ajustes</string>
 </resources>

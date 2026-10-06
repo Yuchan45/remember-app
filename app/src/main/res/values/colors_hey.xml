@@ -2,4 +2,6 @@
 <resources>
     <color name="hey_red">#D7263D</color>
     <color name="ic_launcher_background">#FBF6EE</color>
+    <!-- Fondo de la ventana mientras arranca Compose. Igual a Background de ui/theme/Color.kt. -->
+    <color name="hey_background">#0B141B</color>
 </resources>

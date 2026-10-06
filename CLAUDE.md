@@ -5,8 +5,10 @@ un pendiente (texto y/o foto) y elige cuándo vuelve: nunca, a una hora, o al ll
 
 ## Stack
 - Kotlin + Jetpack Compose + Material3. Una sola Activity (`MainActivity`).
-- Navigation Compose (dependencia ya agregada, NavGraph todavía sin crear).
+- Navegación: `ui/navigation/AppNavHost.kt` es la raíz (NavHost). Su destino `Routes.MAIN` es `MainTabs`: las 4 pantallas principales como páginas de un `HorizontalPager` (se deslizan de costado) con `AppBottomBar` encima. Las pantallas que se abren encima (detalles) van como rutas en `Routes.kt`.
 - ViewModel + `StateFlow` + `collectAsStateWithLifecycle`.
+- Persistencia con Room (KSP genera el código). `data/local/AppDatabase.kt` lista las tablas; al cambiar columnas, subir `version` (por ahora borra y recrea la base: `fallbackToDestructiveMigration`).
+- DI manual: `AppContainer(context)` crea base, repositorios y casos de uso `by lazy`; los ViewModels con dependencias exponen un `Factory` que los toma de `(application as RememberApp).container`.
 - Dependencias en `gradle/libs.versions.toml` (version catalog). Nunca hardcodear versiones en `build.gradle.kts`.
 - minSdk 26, targetSdk/compileSdk 37, Java 11.
 - Paquete base: `com.example.uade.rememberapp`.
@@ -26,11 +28,14 @@ app/src/main/java/com/example/uade/rememberapp/
 │   └── storage/      archivos (fotos)
 ├── platform/      notification/, receiver/ (BroadcastReceivers)
 ├── ui/
-│   ├── components/   componentes reutilizables entre features
-│   ├── navigation/   NavGraph y rutas
-│   ├── theme/
-│   └── <feature>/<list|edit|detail>/   XScreen.kt + XViewModel.kt
-│       └── <feature>/components/         componentes propios de la feature
+│   ├── components/   componentes genéricos, sin saber de ninguna feature (CircleIconButton, TagChip…)
+│   ├── navigation/   NavGraph, rutas y AppBottomBar
+│   ├── theme/        Color.kt (paleta del Figma), Theme.kt (siempre oscuro, sin dynamic color)
+│   └── <feature>/
+│       ├── components/                  compartidos entre pantallas de la feature (ej. ReminderCard)
+│       ├── sample/                      datos mock para previews (y para el VM mientras no hay datos)
+│       └── <list|edit|detail>/          XScreen.kt + XViewModel.kt + XUiState.kt
+│           └── components/              piezas que solo usa esa pantalla (ej. HomeHeader)
 ├── MainActivity.kt
 └── RememberApp.kt  Application; acá vive el AppContainer (DI manual)
 ```
@@ -44,8 +49,10 @@ La UI nunca importa nada de `data`.
 - UiState = `data class XUiState` inmutable con valores por defecto; lo derivado va como `val get()`.
 - ViewModel expone `val uiState: StateFlow<XUiState>` (privado `_uiState` + `asStateFlow()`) y funciones `onEvento(...)`.
 - Componentes sin estado: el valor entra por parámetro y el cambio sale por callback. `modifier: Modifier = Modifier` siempre es el primer parámetro opcional.
-- **Nada de textos hardcodeados**: todo va a `res/values/strings.xml`, agrupado con un comentario por pantalla, con prefijo de feature (`reminders_...`, `places_...`). En el ViewModel se guarda el `@StringRes Int`, no el String (el ViewModel no tiene Context).
+- **Nada de textos hardcodeados**: todo va a `res/values/strings.xml`, agrupado con un comentario por pantalla, con prefijo de feature (`reminders_...`, `places_...`); lo global de navegación usa `nav_...`. En el ViewModel se guarda el `@StringRes Int`, no el String (el ViewModel no tiene Context).
 - Colores del tema vía `MaterialTheme.colorScheme`; colores propios en `ui/theme/Color.kt`.
+- Íconos: vector drawables de Material Symbols Outlined en `res/drawable/ic_<nombre>.xml` (sin librería de íconos). Se bajan de `google/material-design-icons` (`symbols/web/<nombre>/materialsymbolsoutlined/<nombre>_24px.svg`), con viewport 960 y `<group android:translateY="960">`.
+- Si una pantalla tiene muchos eventos, agruparlos en una `data class XActions` con lambdas por defecto (ver `RemindersListActions`).
 - Toda preview va envuelta en `RememberAppTheme { }`.
 
 ## Estilo de código
