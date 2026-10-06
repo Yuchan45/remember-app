@@ -88,6 +88,14 @@ class QuickCaptureViewModel(
     fun onPlaceSelected(placeId: Long) = Unit
     fun onPlaceEventSelected(event: PlaceEvent) = Unit
 
+    /**
+     * Elige la importancia. Tocar la ya elegida no la deselecciona: siempre tiene que haber una.
+     * TODO: guardarla en el recordatorio y usarla para el aviso. Por ahora es maquetado.
+     */
+    fun onImportanceSelected(importance: ReminderImportance) {
+        _uiState.update { it.copy(selectedImportance = importance) }
+    }
+
     // TODO: abrir el buscador de direcciones (mapa).
     fun onSearchAddress() = Unit
 

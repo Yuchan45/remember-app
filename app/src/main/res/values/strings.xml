@@ -40,7 +40,7 @@
     <string name="reminders_quick_capture_photo">Agregar foto</string>
 
     <!-- Captura rápida: modal para crear una nota -->
-    <string name="reminders_capture_title_hint">¿Qué querés recordar?</string>
+    <string name="reminders_capture_title_hint">Crea un recordatorio rápido</string>
     <string name="reminders_capture_section_when">Cuándo</string>
     <string name="reminders_capture_section_repeat">Repetir</string>
     <string name="reminders_capture_section_favorite_places">Lugares favoritos</string>
@@ -64,6 +64,16 @@
     <string name="reminders_capture_trigger_arrive_at">Al llegar a %1$s</string>
     <string name="reminders_capture_trigger_leave_from">Al salir de %1$s</string>
     <string name="reminders_capture_trigger_tag">Etiqueta</string>
+    <string name="reminders_capture_trigger_importance">Importancia</string>
+    <string name="reminders_capture_section_importance">Cómo avisar</string>
+    <string name="reminders_capture_importance_low">Baja</string>
+    <string name="reminders_capture_importance_low_desc">Silenciosa: sin sonido, vibración ni ícono en la barra de estado</string>
+    <string name="reminders_capture_importance_default">Predeterminada</string>
+    <string name="reminders_capture_importance_default_desc">Con sonido y vibración</string>
+    <string name="reminders_capture_importance_high">Alta</string>
+    <string name="reminders_capture_importance_high_desc">Aparece en pantalla como alerta emergente</string>
+    <string name="reminders_capture_importance_critical">Crítica</string>
+    <string name="reminders_capture_importance_critical_desc">Suena como alarma aunque el teléfono esté en silencio, y repite cada 15 min hasta marcarla hecha</string>
     <string name="reminders_capture_tool_checklist">Convertir en lista</string>
     <string name="reminders_capture_tool_expand">Abrir en pantalla completa</string>
     <string name="reminders_capture_tool_collapse">Salir de pantalla completa</string>

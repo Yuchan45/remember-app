@@ -12,6 +12,7 @@ enum class CapturePanel {
     Time,
     Place,
     Tags,
+    Importance,
 }
 
 /**
@@ -37,6 +38,39 @@ enum class RepeatOption(@get:StringRes val label: Int) {
     Daily(R.string.reminders_capture_repeat_daily),
     Weekdays(R.string.reminders_capture_repeat_weekdays),
     Weekly(R.string.reminders_capture_repeat_weekly),
+}
+
+/**
+ * Qué tan insistente es el aviso: de silencioso a una alarma que se repite.
+ *
+ * TODO: por ahora es solo maquetado. Pasarlo al dominio (Reminder) y usarlo para elegir el canal
+ * de notificación cuando existan los avisos.
+ */
+enum class ReminderImportance(
+    @get:DrawableRes val icon: Int,
+    @get:StringRes val label: Int,
+    @get:StringRes val description: Int,
+) {
+    Low(
+        R.drawable.ic_notifications_off,
+        R.string.reminders_capture_importance_low,
+        R.string.reminders_capture_importance_low_desc,
+    ),
+    Default(
+        R.drawable.ic_notifications,
+        R.string.reminders_capture_importance_default,
+        R.string.reminders_capture_importance_default_desc,
+    ),
+    High(
+        R.drawable.ic_notifications_active,
+        R.string.reminders_capture_importance_high,
+        R.string.reminders_capture_importance_high_desc,
+    ),
+    Critical(
+        R.drawable.ic_alarm,
+        R.string.reminders_capture_importance_critical,
+        R.string.reminders_capture_importance_critical_desc,
+    ),
 }
 
 /** Si el aviso por lugar salta al llegar o al salir. */
@@ -67,12 +101,15 @@ data class QuickCaptureUiState(
     val repeatOptions: List<RepeatOption> = emptyList(),
     val favoritePlaces: List<Place> = emptyList(),
     val placeEvents: List<PlaceEvent> = emptyList(),
+    val importanceOptions: List<ReminderImportance> = emptyList(),
 
     // Lo que eligió el usuario.
     val selectedTime: TimeShortcut? = null,
     val selectedRepeat: RepeatOption = RepeatOption.None,
     val selectedPlaceId: Long? = null,
     val selectedPlaceEvent: PlaceEvent = PlaceEvent.Arrive,
+    /** Siempre hay una elegida; arranca en la predeterminada. */
+    val selectedImportance: ReminderImportance = ReminderImportance.Default,
 
     // "Elegir fecha…": el día y la hora (opcional) elegidos en el diálogo del calendario.
     val pickedDate: LocalDate? = null,

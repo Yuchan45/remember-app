@@ -60,6 +60,7 @@ import com.example.uade.rememberapp.ui.tags.TagPickerPanel
 import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureTriggerRow
+import com.example.uade.rememberapp.ui.reminders.capture.components.ImportanceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.capture.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.capture.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.capture.components.TimeOptionsPanel
@@ -139,6 +140,7 @@ fun QuickCaptureSheet(
                 onRepeatSelected = viewModel::onRepeatSelected,
                 onPlaceSelected = viewModel::onPlaceSelected,
                 onPlaceEventSelected = viewModel::onPlaceEventSelected,
+                onImportanceSelected = viewModel::onImportanceSelected,
                 onSearchAddress = viewModel::onSearchAddress,
                 onVoice = viewModel::onVoiceClick,
                 onPhoto = viewModel::onPhotoClick,
@@ -218,6 +220,7 @@ data class QuickCaptureActions(
     val onRepeatSelected: (RepeatOption) -> Unit = {},
     val onPlaceSelected: (placeId: Long) -> Unit = {},
     val onPlaceEventSelected: (PlaceEvent) -> Unit = {},
+    val onImportanceSelected: (ReminderImportance) -> Unit = {},
     val onSearchAddress: () -> Unit = {},
     val onVoice: () -> Unit = {},
     val onPhoto: () -> Unit = {},
@@ -231,9 +234,9 @@ data class QuickCaptureActions(
  * ```
  * Llamar al plomero|
  * ───────────────────────────────────── (separador fino)
- * ┌ panel de hora o de lugar (solo si hay uno abierto) ┐
+ * ┌ panel del chip tocado (solo si hay uno abierto) ┐
  * ───────────────────────────────────── (separador, solo con un panel abierto)
- * [🕒 Fecha y hora] [📍 Ubicación] [🏷 Etiqueta]
+ * [🕒 Fecha y hora] [📍] [🏷] [🔔]          (solo el chip elegido muestra el texto)
  * 🎤 🖼 ☑ ⤢                             Guardar
  * ```
  * Al abrirse no pide el foco: el teclado aparece recién cuando el usuario toca el título.
@@ -311,6 +314,7 @@ fun QuickCaptureContent(
             placeEvent = uiState.selectedPlaceEvent,
             onPanelClick = actions.onPanelToggle,
             tagCount = uiState.selectedTagIds.size,
+            importance = uiState.selectedImportance,
             contentPadding = PaddingValues(horizontal = SheetPadding),
         )
 
@@ -360,6 +364,13 @@ private fun CapturePanelContent(
         )
 
         CapturePanel.Tags -> tagsPanel()
+
+        CapturePanel.Importance -> ImportanceOptionsPanel(
+            options = uiState.importanceOptions,
+            selected = uiState.selectedImportance,
+            onSelect = actions.onImportanceSelected,
+            modifier = Modifier.padding(horizontal = SheetPadding),
+        )
 
         null -> Box(Modifier.fillMaxWidth())
     }
@@ -446,6 +457,18 @@ private fun QuickCaptureContentTimePreview() {
 @Composable
 private fun QuickCaptureContentPlacePreview() {
     QuickCaptureContentPreviewFrame(SampleQuickCapture.placePanelState())
+}
+
+@Preview(name = "Panel de importancia", heightDp = 900)
+@Composable
+private fun QuickCaptureContentImportancePreview() {
+    QuickCaptureContentPreviewFrame(
+        SampleQuickCapture.uiState().copy(
+            title = "Tomar la medicación",
+            expandedPanel = CapturePanel.Importance,
+            selectedImportance = ReminderImportance.Critical,
+        ),
+    )
 }
 
 @Preview(name = "Pantalla completa", heightDp = 800)
