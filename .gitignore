@@ -13,6 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+.agent_gemini
 
 # Claude Code (config personal)
 .claude/settings.local.json
