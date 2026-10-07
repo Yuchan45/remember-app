@@ -152,4 +152,11 @@
     <string name="nav_archive">Archivo</string>
     <string name="nav_places">Lugares</string>
     <string name="nav_settings">Ajustes</string>
+
+    <!-- Notificaciones del sistema -->
+    <string name="notification_channel_reminders_name">Recordatorios</string>
+    <string name="notification_channel_reminders_desc">Avisos y alarmas de tareas programadas</string>
+    <string name="notification_action_done">Hecho</string>
+    <string name="notification_action_snooze">Posponer (15 min)</string>
+    <string name="notification_default_title">Recordatorio</string>
 </resources>

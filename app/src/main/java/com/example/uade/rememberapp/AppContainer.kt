@@ -8,8 +8,13 @@ import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
+import com.example.uade.rememberapp.data.scheduler.AlarmReminderScheduler
+import com.example.uade.rememberapp.domain.scheduler.ReminderScheduler
+import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
+import com.example.uade.rememberapp.domain.usecase.RescheduleRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.SnoozeReminderUseCase
 
 /**
  * Inyección de dependencias manual: crea una sola vez la base de datos, los repositorios y los
@@ -38,8 +43,29 @@ class AppContainer(context: Context) {
         ReminderRepositoryImpl(database.reminderDao())
     }
 
-    val saveReminderUseCase: SaveReminderUseCase by lazy { SaveReminderUseCase(reminderRepository) }
-    val observeRemindersUseCase: ObserveRemindersUseCase by lazy { ObserveRemindersUseCase(reminderRepository) }
+    val reminderScheduler: ReminderScheduler by lazy {
+        AlarmReminderScheduler(appContext)
+    }
+
+    val saveReminderUseCase: SaveReminderUseCase by lazy {
+        SaveReminderUseCase(reminderRepository, reminderScheduler)
+    }
+
+    val observeRemindersUseCase: ObserveRemindersUseCase by lazy {
+        ObserveRemindersUseCase(reminderRepository)
+    }
+
+    val markReminderDoneUseCase: MarkReminderDoneUseCase by lazy {
+        MarkReminderDoneUseCase(reminderRepository, reminderScheduler)
+    }
+
+    val snoozeReminderUseCase: SnoozeReminderUseCase by lazy {
+        SnoozeReminderUseCase(reminderRepository, reminderScheduler)
+    }
+
+    val rescheduleRemindersUseCase: RescheduleRemindersUseCase by lazy {
+        RescheduleRemindersUseCase(reminderRepository, reminderScheduler)
+    }
 
     // TODO: pasar a Room. Mientras tanto arranca con etiquetas de ejemplo.
     val tagRepository: TagRepository by lazy {
