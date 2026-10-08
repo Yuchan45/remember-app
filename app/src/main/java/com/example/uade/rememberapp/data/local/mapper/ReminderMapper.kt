@@ -1,9 +1,11 @@
 package com.example.uade.rememberapp.data.local.mapper
 
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
+import com.example.uade.rememberapp.data.local.entity.ReminderWithTags
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Trigger
 import java.time.Instant
 
@@ -14,12 +16,20 @@ internal const val TriggerNone = "NONE"
 internal const val TriggerAtTime = "AT_TIME"
 internal const val TriggerAtPlace = "AT_PLACE"
 
-fun ReminderEntity.toDomain(): Reminder = Reminder(
+/** El recordatorio con sus etiquetas, tal como lo trae Room en una sola consulta. */
+fun ReminderWithTags.toDomain(): Reminder = reminder.toDomain(tags = tags.map { it.toDomain() })
+
+/**
+ * Las etiquetas no están en esta fila (viven en `tags` + `reminder_tags`): entran por [tags].
+ * Al revés, [toEntity] no las incluye; las guarda aparte ReminderDao.saveWithTags.
+ */
+fun ReminderEntity.toDomain(tags: List<Tag> = emptyList()): Reminder = Reminder(
     id = id,
     type = enumOrDefault(type, ReminderType.Note),
     title = title,
     description = description,
     photoPath = photoPath,
+    tags = tags,
     trigger = toTrigger(),
     isDone = isDone,
     status = enumOrDefault(status, ReminderStatus.Active),

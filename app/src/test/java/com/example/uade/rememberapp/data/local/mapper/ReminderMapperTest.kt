@@ -1,7 +1,10 @@
 package com.example.uade.rememberapp.data.local.mapper
 
+import com.example.uade.rememberapp.data.local.entity.ReminderWithTags
+import com.example.uade.rememberapp.data.local.entity.TagEntity
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderStatus
+import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Trigger
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -38,6 +41,17 @@ class ReminderMapperTest {
         assertEquals(TriggerAtTime, entity.triggerType)
         assertEquals(1_000L, entity.triggerAtMillis)
         assertEquals(null, entity.triggerPlaceId)
+    }
+
+    @Test
+    fun `el recordatorio con sus etiquetas de la base trae las etiquetas al dominio`() {
+        val salud = TagEntity(id = 1, name = "Salud", colorArgb = 0xFF6FCF97)
+        val row = ReminderWithTags(reminder = reminder(Trigger.None).toEntity(), tags = listOf(salud))
+
+        val domain = row.toDomain()
+
+        assertEquals(listOf(Tag(id = 1, name = "Salud", colorArgb = 0xFF6FCF97)), domain.tags)
+        assertEquals("Llamar al plomero", domain.title)
     }
 
     @Test

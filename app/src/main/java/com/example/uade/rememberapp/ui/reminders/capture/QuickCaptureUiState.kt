@@ -116,7 +116,7 @@ data class QuickCaptureUiState(
     val pickedTime: LocalTime? = null,
     val isDatePickerOpen: Boolean = false,
 
-    // Etiquetas elegidas en el panel de etiquetas. TODO: guardarlas en el Reminder al crear.
+    // Etiquetas elegidas en el panel de etiquetas; se guardan con la nota.
     val selectedTagIds: Set<Long> = emptySet(),
 
     /** true mientras se guarda: evita guardar dos veces con un doble toque. */

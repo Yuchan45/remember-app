@@ -197,7 +197,7 @@ private fun ReminderCardFooter(
  * TODO: cargar la foto real desde photoPath (con Coil) debajo del velo.
  */
 @Composable
-private fun ReminderPhotoBackground(modifier: Modifier = Modifier) {
+internal fun ReminderPhotoBackground(modifier: Modifier = Modifier) {
     val description = stringResource(R.string.reminders_photo_description)
     Box(
         modifier = modifier
@@ -211,7 +211,7 @@ private fun ReminderPhotoBackground(modifier: Modifier = Modifier) {
 
 /** Ícono junto al título: lista, nota por lugar (pin) o nota común. */
 @DrawableRes
-private fun Reminder.typeIcon(): Int = when {
+internal fun Reminder.typeIcon(): Int = when {
     type == ReminderType.Checklist -> R.drawable.ic_checklist
     trigger is Trigger.AtPlace -> R.drawable.ic_location_on
     else -> R.drawable.ic_description

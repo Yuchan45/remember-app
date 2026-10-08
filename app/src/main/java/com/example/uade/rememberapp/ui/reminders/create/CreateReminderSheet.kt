@@ -23,6 +23,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -33,12 +36,16 @@ import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.theme.CreateIconContent
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
+import kotlinx.coroutines.launch
 
 /**
  * Modal "Crear" que abre el botón "+": una grilla de dos columnas con los tipos de
  * recordatorio que se pueden crear ([CreateReminderOption]).
  *
- * Por ahora es maquetado: tocar una opción avisa por [onOptionClick], que todavía no hace nada.
+ * Tocar una opción primero baja el modal (con su animación) y recién al terminar avisa por
+ * [onOptionClick]. Si se avisara enseguida, la pantalla que se abre (ej. la nota nueva)
+ * aparecería por debajo del modal, que se dibuja en su propia ventana encima de todo y tarda en
+ * irse.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +54,8 @@ fun CreateReminderSheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    val currentOnOptionClick by rememberUpdatedState(onOptionClick)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -62,7 +71,12 @@ fun CreateReminderSheet(
         }
         CreateReminderContent(
             options = CreateReminderOption.entries,
-            onOptionClick = onOptionClick,
+            onOptionClick = { option ->
+                scope.launch { sheetState.hide() }.invokeOnCompletion {
+                    // Solo si terminó de bajar (no si se canceló, ej. porque se volvió a arrastrar).
+                    if (!sheetState.isVisible) currentOnOptionClick(option)
+                }
+            },
             modifier = Modifier.navigationBarsPadding(),
         )
     }

@@ -142,6 +142,41 @@
         <item quantity="other">%d movidos a la papelera</item>
     </plurals>
 
+    <!-- Detalle de un recordatorio: barra superior y estados -->
+    <string name="reminder_detail_back">Volver</string>
+    <string name="reminder_detail_share">Compartir</string>
+    <string name="reminder_detail_done">Listo</string>
+    <string name="reminder_detail_title_hint">Título</string>
+    <string name="reminder_detail_not_found">No se encontró el recordatorio</string>
+    <!-- Campo de la descripción cuando todavía está vacío -->
+    <string name="reminder_detail_empty_title">Nota vacía</string>
+    <string name="reminder_detail_empty_hint">Toca aquí para empezar a escribir…</string>
+    <!-- Detalle: opciones del recordatorio (título y valor actual) -->
+    <string name="reminder_detail_tags">Etiquetas</string>
+    <string name="reminder_detail_tags_none">Sin etiquetas</string>
+    <string name="reminder_detail_time">Recordatorio</string>
+    <string name="reminder_detail_time_none">Sin fecha</string>
+    <!-- %1$s = hora, ej. "18:00". -->
+    <string name="reminder_detail_time_today">Hoy %1$s</string>
+    <!-- %1$s = cuándo suena, ej. "Hoy 18:00" o "Sáb 10:00". -->
+    <string name="reminder_detail_time_value">%1$s · No se repite</string>
+    <string name="reminder_detail_place">Ubicación</string>
+    <string name="reminder_detail_place_none">Sin ubicación</string>
+    <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
+    <string name="reminder_detail_place_arrive">Al llegar a %1$s</string>
+    <string name="reminder_detail_place_unknown">Al llegar a un lugar</string>
+    <string name="reminder_detail_behavior">Comportamiento</string>
+    <string name="reminder_detail_behavior_value">Predeterminada</string>
+    <string name="reminder_detail_notification_action">Acción de notificación</string>
+    <string name="reminder_detail_notification_action_none">Sin acción</string>
+    <string name="reminder_detail_image">Imagen</string>
+    <string name="reminder_detail_image_cover">Portada</string>
+    <string name="reminder_detail_image_none">Sin imagen</string>
+    <string name="reminder_detail_attachments">Adjuntos</string>
+    <string name="reminder_detail_attachments_none">Sin adjuntos</string>
+    <string name="reminder_detail_share_option">Compartir</string>
+    <string name="reminder_detail_share_value">Crear link</string>
+
     <!-- Archivo: recordatorios archivados y eliminados -->
     <string name="archive_title">Archivo</string>
     <string name="archive_tab_archived">Archivados</string>

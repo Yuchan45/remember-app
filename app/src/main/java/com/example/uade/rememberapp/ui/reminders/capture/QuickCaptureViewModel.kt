@@ -8,12 +8,16 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -30,12 +34,20 @@ import java.time.ZonedDateTime
  */
 class QuickCaptureViewModel(
     private val saveReminder: SaveReminderUseCase,
+    tagRepository: TagRepository,
     private val now: () -> ZonedDateTime = { ZonedDateTime.now() },
 ) : ViewModel() {
 
     // TODO: reemplazar las opciones de ejemplo por datos reales.
     private val _uiState = MutableStateFlow(SampleQuickCapture.uiState())
     val uiState: StateFlow<QuickCaptureUiState> = _uiState.asStateFlow()
+
+    /**
+     * Todas las etiquetas, al día. El estado solo guarda los ids elegidos; al guardar hace falta
+     * el Tag completo para armar el Reminder.
+     */
+    private val allTags: StateFlow<List<Tag>> =
+        tagRepository.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun onTitleChanged(title: String) {
         _uiState.update { it.copy(title = title) }
@@ -118,7 +130,7 @@ class QuickCaptureViewModel(
 
     /**
      * El panel de etiquetas cambió las asignadas (se aplica al momento, sin cerrar el panel).
-     * TODO: guardarlas en el recordatorio al crear la nota.
+     * Se guardan en el recordatorio al tocar "Guardar".
      */
     fun onTagsChanged(ids: Set<Long>) {
         _uiState.update { it.copy(selectedTagIds = ids) }
@@ -139,7 +151,7 @@ class QuickCaptureViewModel(
      * para que el modal se cierre. Con el título vacío no hace nada (el botón ya se ve
      * deshabilitado).
      *
-     * TODO: guardar también etiquetas, lugar y repetición.
+     * TODO: guardar también lugar, repetición e importancia.
      */
     fun onSave() {
         val state = _uiState.value
@@ -151,6 +163,8 @@ class QuickCaptureViewModel(
         val reminder = Reminder(
             type = ReminderType.Note,
             title = state.title.trim(),
+            // Si una elegida se borró mientras tanto, ya no está en allTags y queda afuera.
+            tags = allTags.value.filter { it.id in state.selectedTagIds },
             trigger = at?.let { Trigger.AtTime(it.toInstant()) } ?: Trigger.None,
             createdAt = current.toInstant(),
         )
@@ -165,7 +179,10 @@ class QuickCaptureViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as RememberApp
-                QuickCaptureViewModel(app.container.saveReminderUseCase)
+                QuickCaptureViewModel(
+                    saveReminder = app.container.saveReminderUseCase,
+                    tagRepository = app.container.tagRepository,
+                )
             }
         }
     }

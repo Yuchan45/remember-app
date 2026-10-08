@@ -55,3 +55,6 @@ val SwipeDoneColor = Color(0xFF1F5E2C)
 val SwipeArchiveColor = Color(0xFF4A4F54)
 val SwipeTrashColor = Color(0xFF6E1A1A)
 val SwipeActionContent = Color(0xFFFFFFFF)
+
+/** El ✓ de guardar cuando hay cambios sin guardar. */
+val UnsavedChangesGreen = Color(0xFF6FCF97)

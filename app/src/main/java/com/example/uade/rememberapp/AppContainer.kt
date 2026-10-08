@@ -3,11 +3,12 @@ package com.example.uade.rememberapp
 import android.content.Context
 import androidx.room.Room
 import com.example.uade.rememberapp.data.local.AppDatabase
-import com.example.uade.rememberapp.data.repository.InMemoryTagRepository
+import com.example.uade.rememberapp.data.local.SeedTagsCallback
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
-import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
+import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.RestoreReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
@@ -33,6 +34,7 @@ class AppContainer(context: Context) {
             // Mientras la app no esté publicada: si cambia el esquema, borra y recrea la base.
             // TODO: escribir migraciones antes de publicar.
             .fallbackToDestructiveMigration(dropAllTables = true)
+            .addCallback(SeedTagsCallback())
             .build()
     }
 
@@ -42,16 +44,12 @@ class AppContainer(context: Context) {
 
     val saveReminderUseCase: SaveReminderUseCase by lazy { SaveReminderUseCase(reminderRepository) }
     val observeRemindersUseCase: ObserveRemindersUseCase by lazy { ObserveRemindersUseCase(reminderRepository) }
+    val getReminderUseCase: GetReminderUseCase by lazy { GetReminderUseCase(reminderRepository) }
     val trashReminderUseCase: TrashReminderUseCase by lazy { TrashReminderUseCase(reminderRepository) }
     val restoreReminderUseCase: RestoreReminderUseCase by lazy { RestoreReminderUseCase(reminderRepository) }
 
-    // TODO: pasar a Room. Mientras tanto arranca con etiquetas de ejemplo.
+    /** Arranca con las etiquetas de ejemplo que carga [SeedTagsCallback] al crear la base. */
     val tagRepository: TagRepository by lazy {
-        InMemoryTagRepository(initial = SampleTags)
+        TagRepositoryImpl(database.tagDao())
     }
 }
-
-private val SampleTags = listOf(
-    Tag(id = 1, name = "Salud", colorArgb = 0xFF6FCF97),
-    Tag(id = 5, name = "Ideas", colorArgb = 0xFFF2C94C),
-)
