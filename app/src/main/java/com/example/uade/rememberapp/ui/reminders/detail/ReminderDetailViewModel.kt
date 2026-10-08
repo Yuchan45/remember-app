@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.navigation.Routes
@@ -39,6 +40,7 @@ class ReminderDetailViewModel(
     savedStateHandle: SavedStateHandle,
     private val getReminder: GetReminderUseCase,
     private val saveReminder: SaveReminderUseCase,
+    tagRepository: TagRepository,
     private val now: () -> Instant = Instant::now,
 ) : ViewModel() {
 
@@ -60,10 +62,32 @@ class ReminderDetailViewModel(
                         reminder = reminder,
                         title = reminder?.title.orEmpty(),
                         description = reminder?.description.orEmpty(),
+                        tagIds = reminder?.tags.orEmpty().map { tag -> tag.id }.toSet(),
                     )
                 }
             }
         }
+        // Todas las etiquetas, al día: para mostrar las asignadas con su nombre y color actual
+        // (si se renombra o borra una desde el panel, se ve enseguida).
+        viewModelScope.launch {
+            tagRepository.observeAll().collect { tags ->
+                _uiState.update { it.copy(allTags = tags) }
+            }
+        }
+    }
+
+    /** Tocar "Etiquetas" en el panel de opciones abre el modal de etiquetas. */
+    fun onTagsClick() {
+        _uiState.update { it.copy(isTagSheetOpen = true) }
+    }
+
+    fun onTagSheetDismiss() {
+        _uiState.update { it.copy(isTagSheetOpen = false) }
+    }
+
+    /** El modal de etiquetas cambió las asignadas. Se guardan recién con ✓, como el resto. */
+    fun onTagsChanged(ids: Set<Long>) {
+        _uiState.update { it.copy(tagIds = ids) }
     }
 
     fun onTitleChange(title: String) {
@@ -75,9 +99,10 @@ class ReminderDetailViewModel(
     }
 
     /**
-     * ✓: guarda y cierra. Título y descripción vacíos se guardan como null.
+     * ✓: guarda y cierra. Título y descripción vacíos se guardan como null. Las etiquetas se
+     * guardan como están asignadas en el modal.
      *
-     * - Nota nueva: la crea, salvo que esté todo vacío (no se crean notas vacías).
+     * - Nota nueva: la crea, salvo que no tenga título ni descripción (no se crean notas vacías).
      * - Existente: guarda los cambios, salvo que no haya cambios o que la nota quede sin título,
      *   descripción ni foto (Reminder no lo permite).
      *
@@ -95,10 +120,11 @@ class ReminderDetailViewModel(
                 type = ReminderType.Note,
                 title = title,
                 description = description,
+                tags = state.tags,
                 createdAt = now(),
             )
             reminder != null && (title != null || description != null || reminder.photoPath != null) ->
-                reminder.copy(title = title, description = description)
+                reminder.copy(title = title, description = description, tags = state.tags)
             else -> null
         }
 
@@ -124,6 +150,7 @@ class ReminderDetailViewModel(
                     savedStateHandle = createSavedStateHandle(),
                     getReminder = app.container.getReminderUseCase,
                     saveReminder = app.container.saveReminderUseCase,
+                    tagRepository = app.container.tagRepository,
                 )
             }
         }

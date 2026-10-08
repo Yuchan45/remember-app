@@ -30,6 +30,12 @@ data class ReminderDetailUiState(
     val placeName: String? = null,
     val title: String = "",
     val description: String = "",
+    /** Las etiquetas asignadas en el modal de etiquetas; se guardan recién con ✓. */
+    val tagIds: Set<Long> = emptySet(),
+    /** Todas las etiquetas del usuario, al día (para mostrar las asignadas con nombre y color). */
+    val allTags: List<Tag> = emptyList(),
+    /** Si está abierto el modal de etiquetas (se abre tocando "Etiquetas"). */
+    val isTagSheetOpen: Boolean = false,
     /** true cuando se guardó con ✓: la pantalla lo ve y se cierra. */
     val isSaved: Boolean = false,
 ) {
@@ -39,20 +45,29 @@ data class ReminderDetailUiState(
     val isEditable: Boolean get() = isNew || reminder != null
 
     /**
-     * true si lo escrito difiere de lo guardado (el ✓ se pinta de verde). Compara como se
-     * guardaría: sin espacios de los bordes y con "vacío" igual a null. En una nota nueva,
-     * cualquier texto cuenta como cambio.
+     * true si hay algo para guardar (el ✓ se pinta de verde). Compara como se guardaría: sin
+     * espacios de los bordes y con "vacío" igual a null.
+     *
+     * - Nota nueva: hace falta título o descripción (solo etiquetas no alcanza para crearla).
+     * - Existente: cambió el título, la descripción o las etiquetas asignadas.
      */
     val hasUnsavedChanges: Boolean
         get() = when {
             isNew -> cleanTitle != null || cleanDescription != null
-            reminder != null -> cleanTitle != reminder.title || cleanDescription != reminder.description
+            reminder != null -> cleanTitle != reminder.title ||
+                cleanDescription != reminder.description ||
+                tagIds != reminder.tags.map { it.id }.toSet()
             else -> false
         }
 
+    /**
+     * Las etiquetas asignadas, con su nombre y color actual. Si una se borró, ya no está en
+     * [allTags] y queda afuera sola.
+     */
+    val tags: List<Tag> get() = allTags.filter { it.id in tagIds }
+
     // Lo que muestran el encabezado y el panel de opciones. Una nota nueva todavía no tiene
     // nada asignado: se ve igual que una nota sin datos.
-    val tags: List<Tag> get() = reminder?.tags.orEmpty()
     val trigger: Trigger get() = reminder?.trigger ?: Trigger.None
     val photoPath: String? get() = reminder?.photoPath
 

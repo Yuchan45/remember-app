@@ -2,6 +2,8 @@ package com.example.uade.rememberapp.ui.reminders.detail
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -24,15 +27,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +51,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -56,11 +65,11 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Trigger
-import com.example.uade.rememberapp.ui.components.TagChip
 import com.example.uade.rememberapp.ui.reminders.components.ReminderPhotoBackground
 import com.example.uade.rememberapp.ui.reminders.components.formatReminderTime
 import com.example.uade.rememberapp.ui.reminders.components.isSameDay
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
+import com.example.uade.rememberapp.ui.tags.TagPickerPanel
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import com.example.uade.rememberapp.ui.theme.UnsavedChangesGreen
 import com.example.uade.rememberapp.ui.theme.appBackground
@@ -99,8 +108,47 @@ fun ReminderDetailScreen(
         onShare = viewModel::onShareClick,
         onDone = viewModel::onDone,
         onTitleChange = viewModel::onTitleChange,
+        onTagsClick = viewModel::onTagsClick,
         onDescriptionChange = viewModel::onDescriptionChange,
     )
+
+    if (uiState.isTagSheetOpen) {
+        TagsSheet(
+            assignedIds = uiState.tagIds,
+            onAssignedChange = viewModel::onTagsChanged,
+            onDismiss = viewModel::onTagSheetDismiss,
+        )
+    }
+}
+
+/**
+ * Modal de etiquetas: el mismo panel que en la nota rápida (asignar tocando, crear, editar y
+ * borrar manteniendo presionada), pero en su propio modal y sin el campo de título.
+ *
+ * Asignar y quitar se refleja enseguida en la pantalla, pero se guarda con ✓ como el resto.
+ * Crear, editar y borrar etiquetas sí se guarda al momento (son de todas las notas).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TagsSheet(
+    assignedIds: Set<Long>,
+    onAssignedChange: (Set<Long>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        TagPickerPanel(
+            initialAssigned = assignedIds,
+            onAssignedChange = onAssignedChange,
+            modifier = Modifier
+                .padding(start = ScreenPadding, end = ScreenPadding, bottom = 24.dp)
+                // Con el teclado abierto (al escribir una etiqueta nueva), el panel sube.
+                .imePadding(),
+        )
+    }
 }
 
 /**
@@ -130,6 +178,7 @@ private fun ReminderDetailContent(
     onShare: () -> Unit,
     onDone: () -> Unit,
     onTitleChange: (String) -> Unit,
+    onTagsClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -153,6 +202,7 @@ private fun ReminderDetailContent(
                 uiState = uiState,
                 now = now,
                 onTitleChange = onTitleChange,
+                onTagsClick = onTagsClick,
                 onDescriptionChange = onDescriptionChange,
             )
 
@@ -226,6 +276,7 @@ private fun ReminderDetailBody(
     uiState: ReminderDetailUiState,
     now: Instant,
     onTitleChange: (String) -> Unit,
+    onTagsClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -276,6 +327,7 @@ private fun ReminderDetailBody(
             ReminderOptionsPanel(
                 uiState = uiState,
                 now = now,
+                onTagsClick = onTagsClick,
                 modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 12.dp),
             )
         }
@@ -393,6 +445,7 @@ private fun DetailHeader(
 private fun ReminderOptionsPanel(
     uiState: ReminderDetailUiState,
     now: Instant,
+    onTagsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -404,7 +457,7 @@ private fun ReminderOptionsPanel(
             modifier = Modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            TagsOption(uiState.tags)
+            TagsOption(tags = uiState.tags, onClick = onTagsClick)
             OptionRow {
                 OptionCard(
                     icon = R.drawable.ic_alarm,
@@ -471,12 +524,19 @@ private fun OptionRow(content: @Composable RowScope.() -> Unit) {
     )
 }
 
-/** Etiquetas en una sola fila: ícono, título y los chips al lado (o "Sin etiquetas"). */
+/**
+ * Etiquetas en una sola fila: ícono, título y una bolita del color de cada asignada
+ * (o "Sin etiquetas"). Tocarla abre el modal de etiquetas.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TagsOption(tags: List<Tag>) {
+private fun TagsOption(tags: List<Tag>, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -485,12 +545,20 @@ private fun TagsOption(tags: List<Tag>) {
         if (tags.isEmpty()) {
             OptionValue(stringResource(R.string.reminder_detail_tags_none))
         } else {
+            // Las bolitas no tienen texto: para lectores de pantalla se leen los nombres.
+            val names = tags.joinToString { it.name }
             FlowRow(
+                modifier = Modifier.clearAndSetSemantics { contentDescription = names },
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 tags.forEach { tag ->
-                    TagChip(name = tag.name, color = Color(tag.colorArgb))
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(Color(tag.colorArgb)),
+                    )
                 }
             }
         }
@@ -593,6 +661,7 @@ private fun DetailPreviewFrame(uiState: ReminderDetailUiState, now: Instant = In
             onShare = {},
             onDone = {},
             onTitleChange = {},
+            onTagsClick = {},
             onDescriptionChange = {},
         )
     }
@@ -604,6 +673,8 @@ private fun loadedState(reminder: Reminder) = ReminderDetailUiState(
     reminder = reminder,
     title = reminder.title.orEmpty(),
     description = reminder.description.orEmpty(),
+    tagIds = reminder.tags.map { it.id }.toSet(),
+    allTags = reminder.tags,
 )
 
 @Preview(name = "Con foto, etiqueta y aviso", showBackground = true, heightDp = 900)
