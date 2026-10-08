@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -228,28 +229,47 @@ private fun ReminderDetailBody(
     onDescriptionChange: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(
+        // La descripción tiene que llegar hasta el panel de opciones, así todo ese espacio se
+        // puede tocar para escribir. Dentro de un scroll el alto es infinito y `weight` no
+        // reparte nada; pero con un alto MÍNIMO igual al espacio disponible, Compose le da a lo
+        // que tiene `weight` todo lo que sobra hasta ese mínimo.
+        BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = ScreenPadding, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .fillMaxWidth(),
         ) {
-            DetailHeader(typeIcon = uiState.typeIcon, title = uiState.title, onTitleChange = onTitleChange)
+            val availableHeight = maxHeight
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = availableHeight)
+                    // Abajo, solo un gap chico hasta el panel.
+                    .padding(start = ScreenPadding, end = ScreenPadding, top = 8.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                DetailHeader(typeIcon = uiState.typeIcon, title = uiState.title, onTitleChange = onTitleChange)
 
-            if (uiState.photoPath != null) {
-                // TODO: cargar la foto real desde photoPath (con Coil); por ahora el mismo
-                // placeholder que la card.
-                ReminderPhotoBackground(
+                if (uiState.photoPath != null) {
+                    // TODO: cargar la foto real desde photoPath (con Coil); por ahora el mismo
+                    // placeholder que la card.
+                    ReminderPhotoBackground(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .clip(RoundedCornerShape(20.dp)),
+                    )
+                }
+
+                DescriptionField(
+                    value = uiState.description,
+                    onValueChange = onDescriptionChange,
+                    // Todo el alto que queda: si el texto es más largo, se desplaza adentro.
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(160.dp)
-                        .clip(RoundedCornerShape(20.dp)),
+                        .weight(1f),
                 )
             }
-
-            DescriptionField(value = uiState.description, onValueChange = onDescriptionChange)
         }
 
         if (!WindowInsets.isImeVisible) {
@@ -274,16 +294,16 @@ private fun ReminderDetailBody(
 private fun DescriptionField(
     value: String,
     onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.onSurface)
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        // Alto mínimo: el área para tocar y empezar a escribir es más grande que una línea.
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 120.dp),
+        // El alto lo decide quien lo usa: en el detalle, todo el espacio hasta el panel, así se
+        // puede tocar en cualquier lugar de esa zona para empezar a escribir.
+        modifier = modifier,
         textStyle = textStyle,
         cursorBrush = SolidColor(colors.primary),
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
