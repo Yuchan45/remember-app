@@ -116,7 +116,7 @@ class RemindersListViewModel(
     }
 
     fun onQuickCaptureDismiss() {
-        _uiState.update { it.copy(isQuickCaptureOpen = false) }
+        _uiState.update { it.copy(isQuickCaptureOpen = false, capturedAudioPath = null) }
     }
 
     /** El botón "+": abre el menú "Crear" con los tipos de recordatorio. */
@@ -128,11 +128,76 @@ class RemindersListViewModel(
         _uiState.update { it.copy(isCreateMenuOpen = false) }
     }
 
-    // TODO: abrir la creación del tipo elegido (Nota, Checklist, Audio, …). Por ahora es maquetado.
-    fun onCreateOptionClick(option: CreateReminderOption) = Unit
+    fun onCreateOptionClick(option: CreateReminderOption) {
+        when (option) {
+            CreateReminderOption.Audio -> {
+                _uiState.update { it.copy(isCreateMenuOpen = false, isVoiceCaptureOpen = true) }
+            }
+            CreateReminderOption.Note -> {
+                _uiState.update { it.copy(isCreateMenuOpen = false, isQuickCaptureOpen = true) }
+            }
+            else -> Unit
+        }
+    }
 
-    // TODO: dictar un recordatorio o crearlo con una foto desde la barra de captura.
-    fun onVoiceCaptureClick() = Unit
+    /** Abre el modal de grabación por voz (al tocar el micrófono de la barra rápida). */
+    fun onVoiceCaptureClick() {
+        _uiState.update { it.copy(isVoiceCaptureOpen = true) }
+    }
+
+    fun onVoiceCaptureDismiss() {
+        _uiState.update { it.copy(isVoiceCaptureOpen = false) }
+    }
+
+    /**
+     * Termina la grabación de audio con el switch apagado:
+     * Cierra el modal de voz y abre la ventana de configuración rápida con el audio adjunto.
+     */
+    fun onVoiceRecordedForConfig(audioPath: String) {
+        _uiState.update {
+            it.copy(
+                isVoiceCaptureOpen = false,
+                isQuickCaptureOpen = true,
+                capturedAudioPath = audioPath,
+            )
+        }
+    }
+
+    /**
+     * Se completó el análisis de IA por voz (Groq):
+     * Cierra el modal de grabación y abre la pantalla de revisión de recordatorios (03.B / 03.D).
+     */
+    fun onAiAnalysisReady(result: com.example.uade.rememberapp.domain.model.AiAnalysisResult) {
+        _uiState.update {
+            it.copy(
+                isVoiceCaptureOpen = false,
+                aiAnalysisResult = result,
+            )
+        }
+    }
+
+    fun onAiReviewDismiss() {
+        _uiState.update { it.copy(aiAnalysisResult = null) }
+    }
+
+    fun onAiReviewSuccess() {
+        _uiState.update { it.copy(aiAnalysisResult = null) }
+    }
+
+    fun onOfflineVoiceSavedPending() {
+        _uiState.update {
+            it.copy(
+                isVoiceCaptureOpen = false,
+                offlineVoiceSavedNotification = true,
+            )
+        }
+    }
+
+    fun onDismissOfflineVoiceNotification() {
+        _uiState.update { it.copy(offlineVoiceSavedNotification = false) }
+    }
+
+    // TODO: crear con una foto desde la barra de captura.
     fun onPhotoCaptureClick() = Unit
 
     companion object {

@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -28,6 +29,7 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
+import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutside
 import com.example.uade.rememberapp.ui.reminders.components.rememberSwipeRevealGroupState
 import com.example.uade.rememberapp.ui.reminders.list.components.HomeHeader
@@ -59,30 +61,53 @@ fun RemindersListScreen(
     // TODO: que lo provea el ViewModel y se actualice con el paso del tiempo.
     val now = remember { Instant.now() }
 
-    RemindersListContent(
-        uiState = uiState,
-        now = now,
-        contentPadding = contentPadding,
-        actions = RemindersListActions(
-            onToggleLayout = viewModel::onToggleLayout,
-            onCollapseAll = viewModel::onCollapseAll,
-            onSearch = viewModel::onSearchClick,
-            onTypeFilterClick = viewModel::onTypeFilterClick,
-            onGroupingClick = viewModel::onGroupingClick,
-            onSortClick = viewModel::onSortClick,
-            onSectionToggle = viewModel::onSectionToggle,
-            onReminderClick = viewModel::onReminderClick,
-            onReminderDone = viewModel::onReminderDone,
-            onReminderArchive = viewModel::onReminderArchive,
-            onReminderTrash = viewModel::onReminderTrash,
-            onQuickCaptureClick = viewModel::onQuickCaptureClick,
-            onVoiceCapture = viewModel::onVoiceCaptureClick,
-            onPhotoCapture = viewModel::onPhotoCaptureClick,
-        ),
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        RemindersListContent(
+            uiState = uiState,
+            now = now,
+            contentPadding = contentPadding,
+            actions = RemindersListActions(
+                onToggleLayout = viewModel::onToggleLayout,
+                onCollapseAll = viewModel::onCollapseAll,
+                onSearch = viewModel::onSearchClick,
+                onTypeFilterClick = viewModel::onTypeFilterClick,
+                onGroupingClick = viewModel::onGroupingClick,
+                onSortClick = viewModel::onSortClick,
+                onSectionToggle = viewModel::onSectionToggle,
+                onReminderClick = viewModel::onReminderClick,
+                onReminderDone = viewModel::onReminderDone,
+                onReminderArchive = viewModel::onReminderArchive,
+                onReminderTrash = viewModel::onReminderTrash,
+                onQuickCaptureClick = viewModel::onQuickCaptureClick,
+                onVoiceCapture = viewModel::onVoiceCaptureClick,
+                onPhotoCapture = viewModel::onPhotoCaptureClick,
+            ),
+        )
 
-    if (uiState.isQuickCaptureOpen) {
-        QuickCaptureSheet(onDismiss = viewModel::onQuickCaptureDismiss)
+        if (uiState.isQuickCaptureOpen) {
+            QuickCaptureSheet(
+                initialAudioPath = uiState.capturedAudioPath,
+                onDismiss = viewModel::onQuickCaptureDismiss,
+            )
+        }
+
+        if (uiState.isVoiceCaptureOpen) {
+            VoiceCaptureSheet(
+                onDismiss = viewModel::onVoiceCaptureDismiss,
+                onAudioRecordedForConfig = viewModel::onVoiceRecordedForConfig,
+                onAiAnalysisReady = viewModel::onAiAnalysisReady,
+                onOfflineSavedPending = viewModel::onOfflineVoiceSavedPending,
+            )
+        }
+
+        val aiResult = uiState.aiAnalysisResult
+        if (aiResult != null) {
+            com.example.uade.rememberapp.ui.reminders.review.ReviewProposedRemindersScreen(
+                analysisResult = aiResult,
+                onDismiss = viewModel::onAiReviewDismiss,
+                onSuccessSaved = viewModel::onAiReviewSuccess,
+            )
+        }
     }
 }
 
