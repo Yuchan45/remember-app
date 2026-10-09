@@ -5,6 +5,7 @@ import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderWithDetails
 import com.example.uade.rememberapp.data.local.entity.TagEntity
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
@@ -56,11 +57,20 @@ class ReminderMapperTest {
     }
 
     @Test
-    fun `un evento de lugar o un estado desconocidos no rompen la lectura`() {
+    fun `la importancia se guarda por nombre y vuelve igual`() {
+        val critical = reminder.copy(importance = Importance.Critical)
+
+        assertEquals("Critical", critical.toEntity().importance)
+        assertEquals(critical, critical.toEntity().toDomain())
+    }
+
+    @Test
+    fun `un evento de lugar, un estado o una importancia desconocidos no rompen la lectura`() {
         val place = PlaceAlertEntity(reminderId = 7, placeId = 3, event = "OTRO").toDomain()
-        val domain = reminder.toEntity().copy(status = "Viejo").toDomain()
+        val domain = reminder.toEntity().copy(status = "Viejo", importance = "Urgente").toDomain()
 
         assertEquals(PlaceAlertEvent.Arrive, place.event)
         assertEquals(ReminderStatus.Active, domain.status)
+        assertEquals(Importance.Default, domain.importance)
     }
 }

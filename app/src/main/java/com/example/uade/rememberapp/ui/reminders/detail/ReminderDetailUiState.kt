@@ -3,6 +3,7 @@ package com.example.uade.rememberapp.ui.reminders.detail
 import androidx.annotation.DrawableRes
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
@@ -40,8 +41,11 @@ data class ReminderDetailUiState(
     val tagIds: Set<Long> = emptySet(),
     /** Todas las etiquetas del usuario, al día (para mostrar las asignadas con nombre y color). */
     val allTags: List<Tag> = emptyList(),
-    /** Si está abierto el modal de etiquetas (se abre tocando "Etiquetas"). */
-    val isTagSheetOpen: Boolean = false,
+    /**
+     * El modal de etiquetas mientras está abierto (null = cerrado): las asignadas como quedan en
+     * el modal. Es una copia de trabajo: "Guardar" la pasa a [tagIds] y "Cancelar" la descarta.
+     */
+    val tagsEditor: Set<Long>? = null,
 
     /** Los avisos por hora, ordenados (lo que muestra la fila "Recordatorio"). */
     val alarms: List<Instant> = emptyList(),
@@ -50,6 +54,14 @@ data class ReminderDetailUiState(
      * de trabajo: "Guardar" la pasa a [alarms] y "Cancelar" la descarta.
      */
     val alarmsEditor: AlarmsEditor? = null,
+
+    /** Qué tan insistente es el aviso (fila "Comportamiento"). */
+    val importance: Importance = Importance.Default,
+    /**
+     * El modal "Cómo avisar" mientras está abierto (null = cerrado): el nivel marcado en el modal.
+     * "Guardar" lo pasa a [importance] y "Cancelar" lo descarta.
+     */
+    val importanceEditor: Importance? = null,
 
     /** true cuando se guardó con ✓: la pantalla lo ve y se cierra. */
     val isSaved: Boolean = false,
@@ -64,7 +76,8 @@ data class ReminderDetailUiState(
      * espacios de los bordes y con "vacío" igual a null.
      *
      * - Nota nueva: hace falta título o descripción (solo etiquetas o avisos no alcanza).
-     * - Existente: cambió el título, la descripción, las etiquetas o los avisos por hora.
+     * - Existente: cambió el título, la descripción, las etiquetas, los avisos por hora o la
+     *   importancia.
      */
     val hasUnsavedChanges: Boolean
         get() = when {
@@ -72,7 +85,8 @@ data class ReminderDetailUiState(
             reminder != null -> cleanTitle != reminder.title ||
                 cleanDescription != reminder.description ||
                 tagIds != reminder.tags.map { it.id }.toSet() ||
-                alarms != reminder.alarms.map { it.at }
+                alarms != reminder.alarms.map { it.at } ||
+                importance != reminder.importance
             else -> false
         }
 

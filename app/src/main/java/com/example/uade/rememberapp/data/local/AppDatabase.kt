@@ -23,6 +23,7 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
  * - 2: `tags` y `reminder_tags` (etiquetas y a qué recordatorios están asignadas).
  * - 3: varios avisos por recordatorio: `reminder_alarms` (horas) y `reminder_places` (lugares),
  *   en lugar de las columnas de un solo aviso en `reminders`.
+ * - 4: `importance` en `reminders` (con migración, ver MIGRATION_3_4: no se pierden datos).
  */
 @Database(
     entities = [
@@ -32,7 +33,7 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
         AlarmEntity::class,
         PlaceAlertEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

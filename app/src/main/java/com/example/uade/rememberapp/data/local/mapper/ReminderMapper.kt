@@ -4,6 +4,7 @@ import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderWithDetails
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
@@ -41,6 +42,7 @@ fun ReminderEntity.toDomain(
     places = places,
     isDone = isDone,
     status = enumOrDefault(status, ReminderStatus.Active),
+    importance = enumOrDefault(importance, Importance.Default),
     createdAt = Instant.ofEpochMilli(createdAtMillis),
 )
 
@@ -53,6 +55,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     isDone = isDone,
     status = status.name,
     createdAtMillis = createdAt.toEpochMilli(),
+    importance = importance.name,
 )
 
 fun PlaceAlertEntity.toDomain(): PlaceAlert =

@@ -1,5 +1,12 @@
 package com.example.uade.rememberapp.ui.reminders.detail
 
+import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
+import com.example.uade.rememberapp.ui.components.DialogDismissButton
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -64,9 +71,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.ui.reminders.capture.ReminderImportance
 import com.example.uade.rememberapp.ui.reminders.capture.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.capture.TimeShortcut
+import com.example.uade.rememberapp.ui.reminders.capture.components.ImportanceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.capture.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheet
 import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheetActions
@@ -115,14 +125,25 @@ fun ReminderDetailScreen(
         onTitleChange = viewModel::onTitleChange,
         onTagsClick = viewModel::onTagsClick,
         onTimeClick = viewModel::onTimeClick,
+        onBehaviorClick = viewModel::onBehaviorClick,
         onDescriptionChange = viewModel::onDescriptionChange,
     )
 
-    if (uiState.isTagSheetOpen) {
+    uiState.tagsEditor?.let { assigned ->
         TagsSheet(
-            assignedIds = uiState.tagIds,
+            assignedIds = assigned,
             onAssignedChange = viewModel::onTagsChanged,
-            onDismiss = viewModel::onTagSheetDismiss,
+            onCancel = viewModel::onCancelTags,
+            onSave = viewModel::onSaveTags,
+        )
+    }
+
+    uiState.importanceEditor?.let { selected ->
+        ImportanceSheet(
+            selected = selected,
+            onSelect = viewModel::onImportanceSelected,
+            onCancel = viewModel::onCancelImportance,
+            onSave = viewModel::onSaveImportance,
         )
     }
 
@@ -157,32 +178,95 @@ fun ReminderDetailScreen(
 }
 
 /**
+ * Modal "Cómo avisar": el mismo panel de importancia que en la nota rápida (un nivel a la vez,
+ * con su descripción), con "Cancelar / Guardar" como los otros modales del detalle. Guardar pasa
+ * el nivel al borrador; se persiste con ✓.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ImportanceSheet(
+    selected: Importance,
+    onSelect: (Importance) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onCancel,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            ImportanceOptionsPanel(
+                options = ReminderImportance.entries,
+                selected = ReminderImportance.of(selected),
+                onSelect = { onSelect(it.importance) },
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onCancel)
+                DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onSave)
+            }
+        }
+    }
+}
+
+/**
  * Modal de etiquetas: el mismo panel que en la nota rápida (asignar tocando, crear, editar y
  * borrar manteniendo presionada), pero en su propio modal y sin el campo de título.
  *
- * Asignar y quitar se refleja enseguida en la pantalla, pero se guarda con ✓ como el resto.
- * Crear, editar y borrar etiquetas sí se guarda al momento (son de todas las notas).
+ * - Asignar y quitar trabaja sobre una copia: "Guardar" la pasa al borrador (se persiste con ✓)
+ *   y "Cancelar", o cerrar el modal, la descarta.
+ * - Crear, editar y borrar etiquetas sí se guarda al momento (son de todas las notas).
+ *
+ * Hay un solo par de botones a la vez: con el editor de etiquetas desplegado se ocultan
+ * "Cancelar / Guardar" del modal y quedan los del editor ("Cancelar / Hecho"), que solo
+ * afectan a la etiqueta que se está creando. Así no hay dos "Cancelar" que hacen cosas distintas.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TagsSheet(
     assignedIds: Set<Long>,
     onAssignedChange: (Set<Long>) -> Unit,
-    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
 ) {
+    // Estado visual del modal: si el editor está desplegado (lo avisa el panel).
+    var isEditorOpen by remember { mutableStateOf(false) }
+
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = onCancel,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        TagPickerPanel(
-            initialAssigned = assignedIds,
-            onAssignedChange = onAssignedChange,
+        Column(
             modifier = Modifier
-                .padding(start = ScreenPadding, end = ScreenPadding, bottom = 24.dp)
-                // Con el teclado abierto (al escribir una etiqueta nueva), el panel sube.
+                .padding(start = ScreenPadding, end = ScreenPadding, bottom = 16.dp)
+                // Con el teclado abierto (al escribir una etiqueta nueva), el contenido sube.
                 .imePadding(),
-        )
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            TagPickerPanel(
+                initialAssigned = assignedIds,
+                onAssignedChange = onAssignedChange,
+                onCreatorExpandedChange = { isEditorOpen = it },
+            )
+            AnimatedVisibility(visible = !isEditorOpen, enter = fadeIn(), exit = fadeOut()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onCancel)
+                    DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onSave)
+                }
+            }
+        }
     }
 }
 
@@ -215,6 +299,7 @@ private fun ReminderDetailContent(
     onTitleChange: (String) -> Unit,
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
+    onBehaviorClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -240,6 +325,7 @@ private fun ReminderDetailContent(
                 onTitleChange = onTitleChange,
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
+                onBehaviorClick = onBehaviorClick,
                 onDescriptionChange = onDescriptionChange,
             )
 
@@ -315,6 +401,7 @@ private fun ReminderDetailBody(
     onTitleChange: (String) -> Unit,
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
+    onBehaviorClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -367,6 +454,7 @@ private fun ReminderDetailBody(
                 now = now,
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
+                onBehaviorClick = onBehaviorClick,
                 modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 12.dp),
             )
         }
@@ -486,6 +574,7 @@ private fun ReminderOptionsPanel(
     now: Instant,
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
+    onBehaviorClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -515,8 +604,8 @@ private fun ReminderOptionsPanel(
                 OptionCard(
                     icon = R.drawable.ic_visibility,
                     title = stringResource(R.string.reminder_detail_behavior),
-                    // TODO: la importancia todavía no se guarda en el recordatorio.
-                    value = stringResource(R.string.reminder_detail_behavior_value),
+                    value = stringResource(ReminderImportance.of(uiState.importance).label),
+                    onClick = onBehaviorClick,
                 )
                 OptionCard(
                     icon = R.drawable.ic_bolt,
@@ -725,6 +814,7 @@ private fun DetailPreviewFrame(uiState: ReminderDetailUiState, now: Instant = In
             onTitleChange = {},
             onTagsClick = {},
             onTimeClick = {},
+            onBehaviorClick = {},
             onDescriptionChange = {},
         )
     }
@@ -739,6 +829,7 @@ private fun loadedState(reminder: Reminder) = ReminderDetailUiState(
     tagIds = reminder.tags.map { it.id }.toSet(),
     allTags = reminder.tags,
     alarms = reminder.alarms.map { it.at },
+    importance = reminder.importance,
 )
 
 @Preview(name = "Con foto, etiqueta y aviso", showBackground = true, heightDp = 900)

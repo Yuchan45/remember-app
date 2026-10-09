@@ -117,7 +117,7 @@ class QuickCaptureViewModel(
 
     /**
      * Elige la importancia. Tocar la ya elegida no la deselecciona: siempre tiene que haber una.
-     * TODO: guardarla en el recordatorio y usarla para el aviso. Por ahora es maquetado.
+     * Se guarda en el recordatorio. TODO: usarla para el aviso (canal de notificación).
      */
     fun onImportanceSelected(importance: ReminderImportance) {
         _uiState.update { it.copy(selectedImportance = importance) }
@@ -151,7 +151,7 @@ class QuickCaptureViewModel(
      * para que el modal se cierre. Con el título vacío no hace nada (el botón ya se ve
      * deshabilitado).
      *
-     * TODO: guardar también lugar, repetición e importancia.
+     * TODO: guardar también lugar y repetición.
      */
     fun onSave() {
         val state = _uiState.value
@@ -167,6 +167,7 @@ class QuickCaptureViewModel(
             tags = allTags.value.filter { it.id in state.selectedTagIds },
             // La nota rápida elige una sola hora; varias se agregan desde el detalle.
             alarms = listOfNotNull(at?.let { Alarm(it.toInstant()) }),
+            importance = state.selectedImportance.importance,
             createdAt = current.toInstant(),
         )
         viewModelScope.launch {

@@ -1,5 +1,6 @@
 package com.example.uade.rememberapp.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -24,4 +25,10 @@ data class ReminderEntity(
     val isDone: Boolean,
     val status: String,
     val createdAtMillis: Long,
+    /**
+     * Por nombre (ver Importance). El valor por defecto tiene que coincidir con el de la
+     * migración 3 → 4 (`DEFAULT 'Default'`): Room compara las dos al abrir la base.
+     */
+    @ColumnInfo(defaultValue = "Default")
+    val importance: String = "Default",
 )

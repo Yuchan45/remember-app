@@ -3,6 +3,7 @@ package com.example.uade.rememberapp
 import android.content.Context
 import androidx.room.Room
 import com.example.uade.rememberapp.data.local.AppDatabase
+import com.example.uade.rememberapp.data.local.MIGRATION_3_4
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
@@ -31,8 +32,10 @@ class AppContainer(context: Context) {
 
     private val database: AppDatabase by lazy {
         Room.databaseBuilder(appContext, AppDatabase::class.java, "hey.db")
-            // Mientras la app no esté publicada: si cambia el esquema, borra y recrea la base.
-            // TODO: escribir migraciones antes de publicar.
+            // Los cambios con migración escrita conservan los datos.
+            .addMigrations(MIGRATION_3_4)
+            // Si no hay migración (ej. desde la versión 1 o 2), borra y recrea la base. Sirve
+            // mientras la app no esté publicada. TODO: escribir migraciones antes de publicar.
             .fallbackToDestructiveMigration(dropAllTables = true)
             .addCallback(SeedTagsCallback())
             .build()

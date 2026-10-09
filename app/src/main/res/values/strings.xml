@@ -168,7 +168,6 @@
     <string name="reminder_detail_place_arrive">Al llegar a %1$s</string>
     <string name="reminder_detail_place_unknown">Al llegar a un lugar</string>
     <string name="reminder_detail_behavior">Comportamiento</string>
-    <string name="reminder_detail_behavior_value">Predeterminada</string>
     <string name="reminder_detail_notification_action">Acción de notificación</string>
     <string name="reminder_detail_notification_action_none">Sin acción</string>
     <string name="reminder_detail_image">Imagen</string>

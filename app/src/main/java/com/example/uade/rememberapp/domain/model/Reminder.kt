@@ -22,6 +22,7 @@ data class Reminder(
     val tags: List<Tag> = emptyList(),
     val alarms: List<Alarm> = emptyList(),
     val places: List<PlaceAlert> = emptyList(),
+    val importance: Importance = Importance.Default,
     val isDone: Boolean = false,
     /** Dónde está: en la lista principal, archivado o en la papelera. */
     val status: ReminderStatus = ReminderStatus.Active,
