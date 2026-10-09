@@ -1,4 +1,4 @@
-package com.example.uade.rememberapp.ui.reminders.capture
+package com.example.uade.rememberapp.ui.reminders.model
 
 import java.time.DayOfWeek
 import java.time.LocalDate

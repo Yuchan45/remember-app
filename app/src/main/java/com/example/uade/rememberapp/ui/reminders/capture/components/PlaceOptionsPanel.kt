@@ -17,7 +17,7 @@ import com.example.uade.rememberapp.ui.components.OptionChipStyle
 import com.example.uade.rememberapp.ui.components.SectionLabel
 import com.example.uade.rememberapp.ui.components.SegmentedSelector
 import com.example.uade.rememberapp.ui.places.components.iconRes
-import com.example.uade.rememberapp.ui.reminders.capture.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 

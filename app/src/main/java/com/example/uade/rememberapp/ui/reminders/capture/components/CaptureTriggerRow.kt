@@ -16,8 +16,8 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.ui.components.OptionChip
 import com.example.uade.rememberapp.ui.reminders.capture.CapturePanel
-import com.example.uade.rememberapp.ui.reminders.capture.PlaceEvent
-import com.example.uade.rememberapp.ui.reminders.capture.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 

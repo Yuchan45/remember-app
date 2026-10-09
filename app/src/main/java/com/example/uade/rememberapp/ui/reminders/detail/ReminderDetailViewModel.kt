@@ -15,9 +15,9 @@ import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.navigation.Routes
-import com.example.uade.rememberapp.ui.reminders.capture.RepeatOption
-import com.example.uade.rememberapp.ui.reminders.capture.TimeShortcut
-import com.example.uade.rememberapp.ui.reminders.capture.resolveReminderTime
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
+import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

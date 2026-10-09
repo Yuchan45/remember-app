@@ -1,9 +1,9 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
-import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
-import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.domain.model.Place
 import java.time.LocalDate
 import java.time.LocalTime
@@ -14,85 +14,6 @@ enum class CapturePanel {
     Place,
     Tags,
     Importance,
-}
-
-/**
- * Atajos para elegir cuándo avisar.
- *
- * TODO: los textos ("Hoy 21:00", "Sáb 10:00") son fijos; calcularlos según la hora actual
- * (ej. no ofrecer "Hoy 21:00" si ya pasaron las 21).
- */
-enum class TimeShortcut(
-    @get:DrawableRes val icon: Int,
-    @get:StringRes val label: Int,
-) {
-    InOneHour(R.drawable.ic_timer, R.string.reminders_capture_time_in_one_hour),
-    Tonight(R.drawable.ic_bedtime, R.string.reminders_capture_time_tonight),
-    TomorrowMorning(R.drawable.ic_light_mode, R.string.reminders_capture_time_tomorrow_morning),
-    Weekend(R.drawable.ic_weekend, R.string.reminders_capture_time_weekend),
-    PickDate(R.drawable.ic_calendar_month, R.string.reminders_capture_time_pick_date),
-}
-
-/** Cada cuánto se repite el aviso por hora. */
-enum class RepeatOption(@get:StringRes val label: Int) {
-    None(R.string.reminders_capture_repeat_none),
-    Daily(R.string.reminders_capture_repeat_daily),
-    Weekdays(R.string.reminders_capture_repeat_weekdays),
-    Weekly(R.string.reminders_capture_repeat_weekly),
-}
-
-/**
- * Cómo se muestra cada [Importance] del dominio: ícono, nombre y descripción. El dominio no
- * puede tener recursos de Android, por eso este enum vive en la UI y apunta a su valor del
- * dominio con [importance].
- *
- * TODO: la importancia se guarda pero todavía no cambia el aviso (canal de notificación).
- */
-enum class ReminderImportance(
-    val importance: Importance,
-    @get:DrawableRes val icon: Int,
-    @get:StringRes val label: Int,
-    @get:StringRes val description: Int,
-) {
-    Low(
-        Importance.Low,
-        R.drawable.ic_notifications_off,
-        R.string.reminders_capture_importance_low,
-        R.string.reminders_capture_importance_low_desc,
-    ),
-    Default(
-        Importance.Default,
-        R.drawable.ic_notifications,
-        R.string.reminders_capture_importance_default,
-        R.string.reminders_capture_importance_default_desc,
-    ),
-    High(
-        Importance.High,
-        R.drawable.ic_notifications_active,
-        R.string.reminders_capture_importance_high,
-        R.string.reminders_capture_importance_high_desc,
-    ),
-    Critical(
-        Importance.Critical,
-        R.drawable.ic_alarm,
-        R.string.reminders_capture_importance_critical,
-        R.string.reminders_capture_importance_critical_desc,
-    ),
-    ;
-
-    companion object {
-        /** El de la UI para un valor del dominio. */
-        fun of(importance: Importance): ReminderImportance = entries.first { it.importance == importance }
-    }
-}
-
-/** Si el aviso por lugar salta al llegar o al salir. */
-enum class PlaceEvent(
-    @get:DrawableRes val icon: Int,
-    @get:StringRes val label: Int,
-) {
-    Arrive(R.drawable.ic_login, R.string.reminders_capture_place_arrive),
-    Leave(R.drawable.ic_logout, R.string.reminders_capture_place_leave),
 }
 
 /**

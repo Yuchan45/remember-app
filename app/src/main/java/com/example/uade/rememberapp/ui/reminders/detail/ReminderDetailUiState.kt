@@ -7,8 +7,8 @@ import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
-import com.example.uade.rememberapp.ui.reminders.capture.RepeatOption
-import com.example.uade.rememberapp.ui.reminders.capture.TimeShortcut
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.components.typeIcon
 import java.time.Instant
 import java.time.LocalDate

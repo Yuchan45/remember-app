@@ -33,6 +33,7 @@ app/src/main/java/com/example/uade/rememberapp/
 │   ├── theme/        Color.kt (paleta del Figma), Theme.kt (siempre oscuro, sin dynamic color)
 │   └── <feature>/
 │       ├── components/                  compartidos entre pantallas de la feature (ej. ReminderCard)
+│       ├── model/                       modelos de UI compartidos por la feature: enums con ícono y texto (ej. TimeShortcut)
 │       ├── sample/                      datos mock para previews (y para el VM mientras no hay datos)
 │       └── <list|edit|detail>/          XScreen.kt + XViewModel.kt + XUiState.kt
 │           └── components/              piezas que solo usa esa pantalla (ej. HomeHeader)

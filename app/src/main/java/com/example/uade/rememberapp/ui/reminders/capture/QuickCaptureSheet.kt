@@ -1,5 +1,9 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -64,10 +68,10 @@ import com.example.uade.rememberapp.ui.tags.TagPickerPanel
 import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureTriggerRow
-import com.example.uade.rememberapp.ui.reminders.capture.components.ImportanceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.capture.components.PlaceOptionsPanel
-import com.example.uade.rememberapp.ui.reminders.capture.components.ReminderDateDialog
-import com.example.uade.rememberapp.ui.reminders.capture.components.TimeOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
+import com.example.uade.rememberapp.ui.reminders.components.TimeOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import kotlinx.coroutines.launch

@@ -73,11 +73,11 @@ import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.PlaceAlert
-import com.example.uade.rememberapp.ui.reminders.capture.ReminderImportance
-import com.example.uade.rememberapp.ui.reminders.capture.RepeatOption
-import com.example.uade.rememberapp.ui.reminders.capture.TimeShortcut
-import com.example.uade.rememberapp.ui.reminders.capture.components.ImportanceOptionsPanel
-import com.example.uade.rememberapp.ui.reminders.capture.components.ReminderDateDialog
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
+import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheet
 import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheetActions
 import com.example.uade.rememberapp.ui.reminders.components.ReminderPhotoBackground

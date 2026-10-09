@@ -1,4 +1,4 @@
-package com.example.uade.rememberapp.ui.reminders.capture.components
+package com.example.uade.rememberapp.ui.reminders.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +14,7 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.components.OptionChip
 import com.example.uade.rememberapp.ui.components.OptionChipStyle
 import com.example.uade.rememberapp.ui.components.SectionLabel
-import com.example.uade.rememberapp.ui.reminders.capture.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
 /**
