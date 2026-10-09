@@ -4,7 +4,8 @@ import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.ui.reminders.list.ReminderSection
 import com.example.uade.rememberapp.ui.reminders.list.ReminderSectionKey
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListUiState
@@ -61,7 +62,7 @@ object SampleReminders {
                 ChecklistItem(id = 1, text = "Cargador"),
                 ChecklistItem(id = 2, text = "DNI", isChecked = true),
             ),
-            trigger = Trigger.AtTime(now.plus(Duration.ofDays(4))),
+            alarms = listOf(Alarm(now.plus(Duration.ofDays(4)))),
             createdAt = now,
         ),
     )
@@ -73,7 +74,7 @@ object SampleReminders {
         description = "Llevar libreta sanitaria y DNI",
         photoPath = "sample",
         tags = listOf(health),
-        trigger = Trigger.AtTime(now.plus(Duration.ofMinutes(45))),
+        alarms = listOf(Alarm(now.plus(Duration.ofMinutes(45)))),
         createdAt = now,
     )
 
@@ -83,7 +84,7 @@ object SampleReminders {
         title = "Comprar pilas AA",
         description = "Para el control del aire",
         tags = listOf(home),
-        trigger = Trigger.AtPlace(HOME_PLACE_ID),
+        places = listOf(PlaceAlert(HOME_PLACE_ID)),
         createdAt = now,
     )
 
@@ -100,7 +101,7 @@ object SampleReminders {
             ChecklistItem(id = 5, text = "Hielo"),
         ),
         tags = listOf(barbecue),
-        trigger = Trigger.AtTime(tomorrowAt(now, LocalTime.of(11, 0))),
+        alarms = listOf(Alarm(tomorrowAt(now, LocalTime.of(11, 0)))),
         createdAt = now,
     )
 

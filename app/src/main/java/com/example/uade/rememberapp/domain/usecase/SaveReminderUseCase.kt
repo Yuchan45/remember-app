@@ -9,8 +9,8 @@ import com.example.uade.rememberapp.domain.repository.ReminderRepository
  * Hoy solo delega en el repositorio, pero existe para que las reglas que acompañan a guardar
  * no terminen en el ViewModel.
  *
- * TODO: con Trigger.AtTime, programar la alarma con ReminderScheduler (y cancelar la anterior
- * si cambió); con Trigger.AtPlace, registrar la geofence del lugar.
+ * TODO: programar una alarma con ReminderScheduler por cada Alarm (y cancelar las anteriores
+ * si cambiaron) y registrar la geofence de cada PlaceAlert.
  */
 class SaveReminderUseCase(
     private val reminders: ReminderRepository,

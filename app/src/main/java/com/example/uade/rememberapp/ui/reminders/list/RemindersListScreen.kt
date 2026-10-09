@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
 import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutside
@@ -217,7 +216,7 @@ private fun RemindersListContent(
                     ) { reminder ->
                         SwipeableReminderCard(
                             reminder = reminder,
-                            placeName = (reminder.trigger as? Trigger.AtPlace)
+                            placeName = reminder.places.firstOrNull()
                                 ?.let { uiState.placeNames[it.placeId] },
                             now = now,
                             onClick = { actions.onReminderClick(reminder.id) },

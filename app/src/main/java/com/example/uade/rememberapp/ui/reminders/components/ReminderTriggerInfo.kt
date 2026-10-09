@@ -20,8 +20,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.ui.theme.rememberAppLocale
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.isDueSoon
+import com.example.uade.rememberapp.domain.model.nextAlarm
 import com.example.uade.rememberapp.ui.theme.DueSoonAmber
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import java.time.Duration
@@ -31,66 +34,60 @@ import java.time.Instant
  * Cuándo vuelve el recordatorio, para el pie de la card:
  * - por hora, hoy:          ⏰ 18:00   (+ "!" si falta poco o ya pasó)
  * - por hora, otro día:     📅 Sáb 11:00
+ * - con varias horas:       ⏰ 18:00 +2   (la próxima, y cuántas más hay)
  * - por lugar:              ➤ Al llegar a Casa   (en color de acento)
+ * - hora y lugar:           los dos, uno al lado del otro
  * - sin aviso:              no dibuja nada
  *
- * [placeName] hace falta porque [Trigger.AtPlace] solo guarda el id del lugar.
+ * [placeName] es el nombre del primer lugar: PlaceAlert solo guarda el id.
  */
 @Composable
 fun ReminderTriggerInfo(
-    trigger: Trigger,
+    reminder: Reminder,
     placeName: String?,
     now: Instant,
     modifier: Modifier = Modifier,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
-    when (trigger) {
-        Trigger.None -> Unit
-
-        is Trigger.AtTime -> {
+    val next = reminder.nextAlarm(now)
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (next != null) {
             val locale = rememberAppLocale()
-            val icon = if (isSameDay(trigger.at, now)) R.drawable.ic_alarm else R.drawable.ic_calendar_month
-            Row(
-                modifier = modifier,
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                IconAndText(
-                    icon = icon,
-                    text = formatReminderTime(trigger.at, now, locale),
-                    color = contentColor,
+            val icon = if (isSameDay(next.at, now)) R.drawable.ic_alarm else R.drawable.ic_calendar_month
+            val extra = reminder.alarms.size - 1
+            val time = formatReminderTime(next.at, now, locale)
+            IconAndText(
+                icon = icon,
+                text = if (extra > 0) stringResource(R.string.reminders_trigger_more_alarms, time, extra) else time,
+                color = contentColor,
+            )
+            if (next.isDueSoon(now)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_priority_high),
+                    contentDescription = stringResource(R.string.reminders_trigger_due_soon),
+                    tint = DueSoonAmber,
+                    modifier = Modifier.size(16.dp),
                 )
-                if (trigger.isDueSoon(now)) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_priority_high),
-                        contentDescription = stringResource(R.string.reminders_trigger_due_soon),
-                        tint = DueSoonAmber,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
             }
         }
-
-        is Trigger.AtPlace -> {
-            // Sin nombre (lugar borrado o todavía sin cargar) no hay nada útil para mostrar.
-            if (placeName != null) {
-                IconAndText(
-                    icon = R.drawable.ic_near_me,
-                    text = stringResource(R.string.reminders_trigger_on_arrival, placeName),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = modifier,
-                )
-            }
+        // Sin nombre (lugar borrado o todavía sin cargar) no hay nada útil para mostrar.
+        if (reminder.places.isNotEmpty() && placeName != null) {
+            IconAndText(
+                icon = R.drawable.ic_near_me,
+                text = stringResource(R.string.reminders_trigger_on_arrival, placeName),
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
 
 /** true si [ReminderTriggerInfo] va a dibujar algo con estos datos. Evita reservar lugar vacío. */
-internal fun hasVisibleTrigger(trigger: Trigger, placeName: String?): Boolean = when (trigger) {
-    Trigger.None -> false
-    is Trigger.AtTime -> true
-    is Trigger.AtPlace -> placeName != null
-}
+internal fun hasVisibleTrigger(reminder: Reminder, placeName: String?): Boolean =
+    reminder.alarms.isNotEmpty() || (reminder.places.isNotEmpty() && placeName != null)
 
 @Composable
 private fun IconAndText(
@@ -123,14 +120,16 @@ private fun IconAndText(
 @Composable
 private fun ReminderTriggerInfoPreview() {
     val now = Instant.now()
+    fun note(alarms: List<Instant> = emptyList(), places: List<PlaceAlert> = emptyList()) =
+        Reminder(title = "Nota", alarms = alarms.map { Alarm(it) }, places = places, createdAt = now)
     RememberAppTheme {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ReminderTriggerInfo(Trigger.AtTime(now.plus(Duration.ofMinutes(30))), null, now)
-            ReminderTriggerInfo(Trigger.AtTime(now.plus(Duration.ofDays(3))), null, now)
-            ReminderTriggerInfo(Trigger.AtPlace(1), "Casa", now)
+            ReminderTriggerInfo(note(listOf(now.plus(Duration.ofMinutes(30)))), null, now)
+            ReminderTriggerInfo(note(listOf(now.plus(Duration.ofDays(3)), now.plus(Duration.ofDays(4)))), null, now)
+            ReminderTriggerInfo(note(places = listOf(PlaceAlert(placeId = 1))), "Casa", now)
         }
     }
 }

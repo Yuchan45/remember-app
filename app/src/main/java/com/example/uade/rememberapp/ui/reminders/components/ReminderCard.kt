@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.ui.components.TagChip
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
 import com.example.uade.rememberapp.ui.theme.PhotoBackground
@@ -154,7 +153,7 @@ private fun ReminderCardContent(
             )
         }
 
-        if (reminder.tags.isNotEmpty() || hasVisibleTrigger(reminder.trigger, placeName)) {
+        if (reminder.tags.isNotEmpty() || hasVisibleTrigger(reminder, placeName)) {
             Spacer(Modifier.weight(1f))
             ReminderCardFooter(reminder = reminder, placeName = placeName, now = now)
         }
@@ -183,7 +182,7 @@ private fun ReminderCardFooter(
             }
         }
         ReminderTriggerInfo(
-            trigger = reminder.trigger,
+            reminder = reminder,
             placeName = placeName,
             now = now,
         )
@@ -209,11 +208,11 @@ internal fun ReminderPhotoBackground(modifier: Modifier = Modifier) {
     )
 }
 
-/** Ícono junto al título: lista, nota por lugar (pin) o nota común. */
+/** Ícono junto al título: lista, nota solo por lugar (pin) o nota común. */
 @DrawableRes
 internal fun Reminder.typeIcon(): Int = when {
     type == ReminderType.Checklist -> R.drawable.ic_checklist
-    trigger is Trigger.AtPlace -> R.drawable.ic_location_on
+    alarms.isEmpty() && places.isNotEmpty() -> R.drawable.ic_location_on
     else -> R.drawable.ic_description
 }
 
@@ -229,7 +228,7 @@ private fun ReminderCardPreview() {
             SampleReminders.previewReminders(now).forEach { reminder ->
                 ReminderCard(
                     reminder = reminder,
-                    placeName = SampleReminders.placeNames[(reminder.trigger as? Trigger.AtPlace)?.placeId],
+                    placeName = SampleReminders.placeNames[reminder.places.firstOrNull()?.placeId],
                     now = now,
                     onClick = {},
                 )

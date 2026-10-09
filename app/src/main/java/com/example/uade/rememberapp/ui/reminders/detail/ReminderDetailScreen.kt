@@ -64,7 +64,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.ui.reminders.capture.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.capture.TimeShortcut
+import com.example.uade.rememberapp.ui.reminders.capture.components.ReminderDateDialog
+import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheet
+import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheetActions
 import com.example.uade.rememberapp.ui.reminders.components.ReminderPhotoBackground
 import com.example.uade.rememberapp.ui.reminders.components.formatReminderTime
 import com.example.uade.rememberapp.ui.reminders.components.isSameDay
@@ -109,6 +114,7 @@ fun ReminderDetailScreen(
         onDone = viewModel::onDone,
         onTitleChange = viewModel::onTitleChange,
         onTagsClick = viewModel::onTagsClick,
+        onTimeClick = viewModel::onTimeClick,
         onDescriptionChange = viewModel::onDescriptionChange,
     )
 
@@ -118,6 +124,35 @@ fun ReminderDetailScreen(
             onAssignedChange = viewModel::onTagsChanged,
             onDismiss = viewModel::onTagSheetDismiss,
         )
+    }
+
+    // "Establecer recordatorio": varios avisos por hora. Guardar los pasa al borrador (se
+    // persisten con ✓); Cancelar o cerrar el modal los descarta.
+    uiState.alarmsEditor?.let { editor ->
+        AlarmsSheet(
+            editor = editor,
+            now = now,
+            actions = AlarmsSheetActions(
+                onShortcut = viewModel::onAlarmShortcut,
+                onRepeat = viewModel::onAlarmRepeat,
+                onToggleExpanded = viewModel::onToggleAlarmExpanded,
+                onAdd = viewModel::onAddAlarm,
+                onClear = viewModel::onClearAlarms,
+                onCancel = viewModel::onCancelAlarms,
+                onSave = viewModel::onSaveAlarms,
+            ),
+        )
+
+        // "Elegir fecha…" de una tarjeta: el mismo calendario que la nota rápida, encima del modal.
+        editor.datePickerFor?.let { index ->
+            val draft = editor.items.getOrNull(index)
+            ReminderDateDialog(
+                initialDate = draft?.pickedDate,
+                initialTime = draft?.pickedTime,
+                onConfirm = viewModel::onAlarmDatePicked,
+                onDismiss = viewModel::onAlarmDatePickerDismiss,
+            )
+        }
     }
 }
 
@@ -179,6 +214,7 @@ private fun ReminderDetailContent(
     onDone: () -> Unit,
     onTitleChange: (String) -> Unit,
     onTagsClick: () -> Unit,
+    onTimeClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -203,6 +239,7 @@ private fun ReminderDetailContent(
                 now = now,
                 onTitleChange = onTitleChange,
                 onTagsClick = onTagsClick,
+                onTimeClick = onTimeClick,
                 onDescriptionChange = onDescriptionChange,
             )
 
@@ -277,6 +314,7 @@ private fun ReminderDetailBody(
     now: Instant,
     onTitleChange: (String) -> Unit,
     onTagsClick: () -> Unit,
+    onTimeClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -328,6 +366,7 @@ private fun ReminderDetailBody(
                 uiState = uiState,
                 now = now,
                 onTagsClick = onTagsClick,
+                onTimeClick = onTimeClick,
                 modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 12.dp),
             )
         }
@@ -446,6 +485,7 @@ private fun ReminderOptionsPanel(
     uiState: ReminderDetailUiState,
     now: Instant,
     onTagsClick: () -> Unit,
+    onTimeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -462,12 +502,13 @@ private fun ReminderOptionsPanel(
                 OptionCard(
                     icon = R.drawable.ic_alarm,
                     title = stringResource(R.string.reminder_detail_time),
-                    value = timeValue(uiState.trigger, now),
+                    value = timeValue(uiState.alarms, now),
+                    onClick = onTimeClick,
                 )
                 OptionCard(
                     icon = R.drawable.ic_location_on,
                     title = stringResource(R.string.reminder_detail_place),
-                    value = placeValue(uiState.trigger, uiState.placeName),
+                    value = placeValue(uiState.places, uiState.placeName),
                 )
             }
             OptionRow {
@@ -571,11 +612,16 @@ private fun RowScope.OptionCard(
     @DrawableRes icon: Int,
     title: String,
     value: String,
+    onClick: (() -> Unit)? = null,
 ) {
+    // Con onClick se puede tocar (abre su modal); sin él, por ahora solo muestra el valor.
+    val clickModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Surface(
         modifier = Modifier
             .weight(1f)
-            .fillMaxHeight(),
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(14.dp))
+            .then(clickModifier),
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
@@ -626,28 +672,44 @@ private fun OptionValue(text: String) {
     )
 }
 
-/** "Hoy 18:00 · No se repite", "Sáb 10:00 · No se repite" o "Sin fecha". */
+/**
+ * El próximo aviso: "Hoy 18:00 · No se repite", "Sáb 10:00 · No se repite", con varios
+ * "Hoy 18:00 +2", o "Sin fecha". Si ya pasaron todos, muestra el último.
+ */
 @Composable
-private fun timeValue(trigger: Trigger, now: Instant): String {
-    if (trigger !is Trigger.AtTime) return stringResource(R.string.reminder_detail_time_none)
+private fun timeValue(alarms: List<Instant>, now: Instant): String {
+    val next = alarms.filter { !it.isBefore(now) }.minOrNull() ?: alarms.maxOrNull()
+        ?: return stringResource(R.string.reminder_detail_time_none)
     val locale = rememberAppLocale()
-    val whenText = if (isSameDay(trigger.at, now)) {
-        val time = trigger.at.atZone(ZoneId.systemDefault())
-            .format(DateTimeFormatter.ofPattern("HH:mm", locale))
+    val whenText = if (isSameDay(next, now)) {
+        val time = next.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm", locale))
         stringResource(R.string.reminder_detail_time_today, time)
     } else {
-        formatReminderTime(trigger.at, now, locale)
+        formatReminderTime(next, now, locale)
     }
-    // TODO: la repetición todavía no se guarda: siempre "No se repite".
-    return stringResource(R.string.reminder_detail_time_value, whenText)
+    val extra = alarms.size - 1
+    return if (extra > 0) {
+        stringResource(R.string.reminder_detail_time_more, whenText, extra)
+    } else {
+        // TODO: la repetición todavía no se guarda: siempre "No se repite".
+        stringResource(R.string.reminder_detail_time_value, whenText)
+    }
 }
 
-/** "Al llegar a Casa", "Al llegar a un lugar" (lugar sin nombre) o "Sin ubicación". */
+/**
+ * El primer lugar: "Al llegar a Casa" (o "Al llegar a un lugar" si no se sabe el nombre), con
+ * varios "Al llegar a Casa +1", o "Sin ubicación".
+ */
 @Composable
-private fun placeValue(trigger: Trigger, placeName: String?): String = when {
-    trigger !is Trigger.AtPlace -> stringResource(R.string.reminder_detail_place_none)
-    placeName != null -> stringResource(R.string.reminder_detail_place_arrive, placeName)
-    else -> stringResource(R.string.reminder_detail_place_unknown)
+private fun placeValue(places: List<PlaceAlert>, placeName: String?): String {
+    if (places.isEmpty()) return stringResource(R.string.reminder_detail_place_none)
+    val first = if (placeName != null) {
+        stringResource(R.string.reminder_detail_place_arrive, placeName)
+    } else {
+        stringResource(R.string.reminder_detail_place_unknown)
+    }
+    val extra = places.size - 1
+    return if (extra > 0) stringResource(R.string.reminder_detail_place_more, first, extra) else first
 }
 
 /** Para las previews: la pantalla con un estado inventado y sin acciones. */
@@ -662,6 +724,7 @@ private fun DetailPreviewFrame(uiState: ReminderDetailUiState, now: Instant = In
             onDone = {},
             onTitleChange = {},
             onTagsClick = {},
+            onTimeClick = {},
             onDescriptionChange = {},
         )
     }
@@ -675,6 +738,7 @@ private fun loadedState(reminder: Reminder) = ReminderDetailUiState(
     description = reminder.description.orEmpty(),
     tagIds = reminder.tags.map { it.id }.toSet(),
     allTags = reminder.tags,
+    alarms = reminder.alarms.map { it.at },
 )
 
 @Preview(name = "Con foto, etiqueta y aviso", showBackground = true, heightDp = 900)

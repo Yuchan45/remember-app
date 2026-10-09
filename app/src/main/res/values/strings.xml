@@ -88,6 +88,8 @@
     <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
     <string name="reminders_trigger_on_arrival">Al llegar a %1$s</string>
     <string name="reminders_trigger_due_soon">Aviso próximo o vencido</string>
+    <!-- Hora del próximo aviso y cuántos más tiene, ej. "18:00 +2". %1$s = hora, %2$d = cantidad. -->
+    <string name="reminders_trigger_more_alarms">%1$s +%2$d</string>
     <string name="reminders_photo_description">Foto del recordatorio</string>
     <!-- Acciones al deslizar una card hacia la izquierda -->
     <string name="reminders_action_done">Hecho</string>
@@ -176,6 +178,18 @@
     <string name="reminder_detail_attachments_none">Sin adjuntos</string>
     <string name="reminder_detail_share_option">Compartir</string>
     <string name="reminder_detail_share_value">Crear link</string>
+    <!-- Detalle: modal "Establecer recordatorio" (varios avisos por hora). %1$d = número del aviso. -->
+    <string name="reminder_alarms_title">Establecer recordatorio</string>
+    <string name="reminder_alarms_item">Recordatorio %1$d</string>
+    <string name="reminder_alarms_item_empty">Sin elegir</string>
+    <string name="reminder_alarms_add">Añadir recordatorio</string>
+    <string name="reminder_alarms_clear">Borrar todo</string>
+    <string name="reminder_alarms_save">Guardar</string>
+    <string name="reminder_alarms_expand">Mostrar opciones</string>
+    <string name="reminder_alarms_collapse">Ocultar opciones</string>
+    <!-- Fila "Recordatorio" con varios avisos: el próximo y cuántos más, ej. "Hoy 18:00 +1". -->
+    <string name="reminder_detail_time_more">%1$s +%2$d</string>
+    <string name="reminder_detail_place_more">%1$s +%2$d</string>
 
     <!-- Archivo: recordatorios archivados y eliminados -->
     <string name="archive_title">Archivo</string>

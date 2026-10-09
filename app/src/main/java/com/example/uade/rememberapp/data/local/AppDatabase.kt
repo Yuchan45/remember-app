@@ -5,6 +5,8 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.uade.rememberapp.data.local.dao.ReminderDao
 import com.example.uade.rememberapp.data.local.dao.TagDao
+import com.example.uade.rememberapp.data.local.entity.AlarmEntity
+import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderTagCrossRef
 import com.example.uade.rememberapp.data.local.entity.TagEntity
@@ -19,14 +21,18 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
  * Versiones:
  * - 1: `reminders`.
  * - 2: `tags` y `reminder_tags` (etiquetas y a qué recordatorios están asignadas).
+ * - 3: varios avisos por recordatorio: `reminder_alarms` (horas) y `reminder_places` (lugares),
+ *   en lugar de las columnas de un solo aviso en `reminders`.
  */
 @Database(
     entities = [
         ReminderEntity::class,
         TagEntity::class,
         ReminderTagCrossRef::class,
+        AlarmEntity::class,
+        PlaceAlertEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

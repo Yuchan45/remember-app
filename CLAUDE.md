@@ -17,7 +17,7 @@ un pendiente (texto y/o foto) y elige cuándo vuelve: nunca, a una hora, o al ll
 ```
 app/src/main/java/com/example/uade/rememberapp/
 ├── domain/        Kotlin puro, sin imports de android.*
-│   ├── model/        Reminder, Place, Trigger (sealed)
+│   ├── model/        Reminder, Place, Tag, Alarm y PlaceAlert (avisos por hora y por lugar, varios por recordatorio)
 │   ├── repository/   interfaces (ReminderRepository, PlaceRepository)
 │   ├── scheduler/    interfaces (ReminderScheduler, GeofenceRegistrar)
 │   └── usecase/      un caso de uso por clase

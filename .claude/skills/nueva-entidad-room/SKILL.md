@@ -26,11 +26,8 @@ data class ReminderEntity(
 )
 ```
 - Tipos simples: `Instant` se guarda como `Long` (epoch millis) directamente en la entity. No hace falta un TypeConverter.
-- `Trigger` (sealed) se aplana en columnas:
-  - `triggerType: String` (`"NONE"`, `"AT_TIME"`, `"AT_PLACE"`)
-  - `triggerAtMillis: Long?`
-  - `triggerPlaceId: Long?`
-- FK a `places` con `onDelete = SET_NULL` e índice en `triggerPlaceId`.
+- Lo que en el dominio es una lista va en una tabla aparte con `reminderId` y clave foránea con `onDelete = CASCADE` (ver `AlarmEntity`, `PlaceAlertEntity`). Si la relación es de muchos a muchos (ej. etiquetas), con una tabla intermedia (ver `ReminderTagCrossRef`).
+- Para leer el modelo completo en una consulta: una clase con `@Embedded` + `@Relation` (ver `ReminderWithDetails`), y `@Transaction` en la consulta del DAO.
 
 ## 2. Mapper: `data/local/mapper/<Modelo>Mapper.kt`
 
@@ -39,7 +36,7 @@ Funciones de extensión puras, en los dos sentidos:
 fun ReminderEntity.toDomain(): Reminder = ...
 fun Reminder.toEntity(): ReminderEntity = ...
 ```
-Para `Trigger`, un `when` exhaustivo en los dos sentidos. Si `triggerType` es desconocido, devolver `Trigger.None`.
+Los enums se guardan por nombre; si al leer el valor no existe (ej. se renombró), usar un valor por defecto en vez de crashear (ver `enumOrDefault` en `ReminderMapper`).
 
 ## 3. DAO: `data/local/dao/<Modelo>Dao.kt`
 
@@ -71,4 +68,4 @@ No hace lógica de negocio (por ejemplo, programar alarmas); eso va en un caso d
 ## 7. Verificar
 
 - `./gradlew assembleDebug` (KSP genera el código de Room; los errores de queries aparecen acá).
-- Si hay tiempo, un test unitario del mapper en `app/src/test/` que cubra los tres casos de `Trigger`.
+- Si hay tiempo, un test unitario del mapper en `app/src/test/` (ida y vuelta, y valores desconocidos).

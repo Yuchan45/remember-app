@@ -1,7 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
 import com.example.uade.rememberapp.domain.model.Reminder
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.Alarm
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -15,7 +15,7 @@ class ReminderSectionsTest {
     private fun note(id: Long, at: String? = null, createdAt: String = "2026-09-29T00:00:00Z") = Reminder(
         id = id,
         title = "Nota $id",
-        trigger = at?.let { Trigger.AtTime(Instant.parse(it)) } ?: Trigger.None,
+        alarms = listOfNotNull(at?.let { Alarm(Instant.parse(it)) }),
         createdAt = Instant.parse(createdAt),
     )
 
@@ -46,6 +46,24 @@ class ReminderSectionsTest {
         )
         // Y en el orden de pantalla.
         assertEquals(ReminderSectionKey.entries.toList(), sections.map { it.key })
+    }
+
+    @Test
+    fun `con varios avisos la agrupa por el próximo que no pasó`() {
+        // Uno ya pasó (ayer) y el próximo es mañana: va a "Mañana", no a "Hoy".
+        val reminder = Reminder(
+            id = 1,
+            title = "Nota",
+            alarms = listOf(
+                Alarm(Instant.parse("2026-09-29T09:00:00Z")),
+                Alarm(Instant.parse("2026-10-01T09:00:00Z")),
+            ),
+            createdAt = now,
+        )
+
+        val sections = groupByDate(listOf(reminder), now, zone)
+
+        assertEquals(mapOf(ReminderSectionKey.Tomorrow to listOf(1L)), sections.ids())
     }
 
     @Test

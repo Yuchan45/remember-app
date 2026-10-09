@@ -9,7 +9,7 @@ import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Tag
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
@@ -165,7 +165,8 @@ class QuickCaptureViewModel(
             title = state.title.trim(),
             // Si una elegida se borró mientras tanto, ya no está en allTags y queda afuera.
             tags = allTags.value.filter { it.id in state.selectedTagIds },
-            trigger = at?.let { Trigger.AtTime(it.toInstant()) } ?: Trigger.None,
+            // La nota rápida elige una sola hora; varias se agregan desde el detalle.
+            alarms = listOfNotNull(at?.let { Alarm(it.toInstant()) }),
             createdAt = current.toInstant(),
         )
         viewModelScope.launch {

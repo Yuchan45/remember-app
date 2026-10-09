@@ -4,7 +4,10 @@ import java.time.Instant
 
 /**
  * Un pendiente capturado por el usuario. Puede ser una nota o una lista; fuera de los ítems
- * de la lista, los dos tipos comparten todo: título, descripción, foto, aviso y etiquetas.
+ * de la lista, los dos tipos comparten todo: título, descripción, foto, avisos y etiquetas.
+ *
+ * Los avisos pueden ser varios y combinarse: a ciertas horas ([alarms]) y/o al llegar o salir
+ * de ciertos lugares ([places]). Sin ninguno, el recordatorio no avisa.
  *
  * Tiene que tener al menos uno de [title], [description] o [photoPath].
  */
@@ -17,7 +20,8 @@ data class Reminder(
     /** Solo se usa en [ReminderType.Checklist]; en una nota queda vacía. */
     val items: List<ChecklistItem> = emptyList(),
     val tags: List<Tag> = emptyList(),
-    val trigger: Trigger = Trigger.None,
+    val alarms: List<Alarm> = emptyList(),
+    val places: List<PlaceAlert> = emptyList(),
     val isDone: Boolean = false,
     /** Dónde está: en la lista principal, archivado o en la papelera. */
     val status: ReminderStatus = ReminderStatus.Active,
