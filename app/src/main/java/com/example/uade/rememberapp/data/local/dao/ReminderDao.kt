@@ -32,6 +32,9 @@ interface ReminderDao {
     @Upsert
     suspend fun upsert(reminder: ReminderEntity): Long
 
+    @Query("SELECT * FROM reminders WHERE aiStatus = 'Pending'")
+    suspend fun getPendingAiReminders(): List<ReminderEntity>
+
     @Query("DELETE FROM reminders WHERE id = :id")
     suspend fun deleteById(id: Long)
 }

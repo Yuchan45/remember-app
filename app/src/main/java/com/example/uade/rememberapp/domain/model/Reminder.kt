@@ -14,6 +14,7 @@ data class Reminder(
     val title: String? = null,
     val description: String? = null,
     val photoPath: String? = null,
+    val audioPath: String? = null,
     /** Solo se usa en [ReminderType.Checklist]; en una nota queda vacía. */
     val items: List<ChecklistItem> = emptyList(),
     val tags: List<Tag> = emptyList(),
@@ -21,11 +22,12 @@ data class Reminder(
     val isDone: Boolean = false,
     /** Dónde está: en la lista principal, archivado o en la papelera. */
     val status: ReminderStatus = ReminderStatus.Active,
+    val aiStatus: AiProcessingStatus = AiProcessingStatus.None,
     val createdAt: Instant,
 ) {
     init {
-        require(!title.isNullOrBlank() || !description.isNullOrBlank() || photoPath != null) {
-            "Un recordatorio necesita título, descripción o foto"
+        require(!title.isNullOrBlank() || !description.isNullOrBlank() || photoPath != null || audioPath != null) {
+            "Un recordatorio necesita título, descripción, foto o audio"
         }
     }
 }

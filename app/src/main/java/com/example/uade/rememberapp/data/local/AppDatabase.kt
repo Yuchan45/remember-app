@@ -14,7 +14,7 @@ import com.example.uade.rememberapp.data.local.entity.ReminderEntity
  */
 @Database(
     entities = [ReminderEntity::class],
-    version = 1,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

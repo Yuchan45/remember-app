@@ -32,6 +32,15 @@ class ReminderMapperTest {
     }
 
     @Test
+    fun `ida y vuelta conserva el audioPath y aiStatus`() {
+        val original = reminder(Trigger.None).copy(
+            audioPath = "/data/user/0/app/files/audios/rec_1.m4a",
+            aiStatus = com.example.uade.rememberapp.domain.model.AiProcessingStatus.Pending,
+        )
+        assertEquals(original, original.toEntity().toDomain())
+    }
+
+    @Test
     fun `aplana el aviso por hora en sus columnas`() {
         val entity = reminder(Trigger.AtTime(Instant.ofEpochMilli(1_000))).toEntity()
 

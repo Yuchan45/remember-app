@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp.data.local.mapper
 
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
+import com.example.uade.rememberapp.domain.model.AiProcessingStatus
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.model.ReminderType
@@ -20,9 +21,11 @@ fun ReminderEntity.toDomain(): Reminder = Reminder(
     title = title,
     description = description,
     photoPath = photoPath,
+    audioPath = audioPath,
     trigger = toTrigger(),
     isDone = isDone,
     status = enumOrDefault(status, ReminderStatus.Active),
+    aiStatus = enumOrDefault(aiStatus, AiProcessingStatus.None),
     createdAt = Instant.ofEpochMilli(createdAtMillis),
 )
 
@@ -38,11 +41,13 @@ fun Reminder.toEntity(): ReminderEntity {
         title = title,
         description = description,
         photoPath = photoPath,
+        audioPath = audioPath,
         triggerType = triggerType,
         triggerAtMillis = atMillis,
         triggerPlaceId = placeId,
         isDone = isDone,
         status = status.name,
+        aiStatus = aiStatus.name,
         createdAtMillis = createdAt.toEpochMilli(),
     )
 }

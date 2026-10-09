@@ -17,3 +17,5 @@ local.properties
 # Claude Code (config personal)
 .claude/settings.local.json
 CLAUDE.local.md
+
+.agent_gemini

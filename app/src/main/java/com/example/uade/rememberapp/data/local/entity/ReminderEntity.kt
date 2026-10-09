@@ -25,10 +25,12 @@ data class ReminderEntity(
     val title: String?,
     val description: String?,
     val photoPath: String?,
+    val audioPath: String?,
     val triggerType: String,
     val triggerAtMillis: Long?,
     val triggerPlaceId: Long?,
     val isDone: Boolean,
     val status: String,
+    val aiStatus: String = "None",
     val createdAtMillis: Long,
 )
