@@ -172,4 +172,23 @@
     <string name="nav_archive">Archivo</string>
     <string name="nav_places">Lugares</string>
     <string name="nav_settings">Ajustes</string>
+
+    <!-- Captura por voz e IA Groq -->
+    <string name="voice_capture_recording">Grabando</string>
+    <string name="voice_capture_paused">Pausado</string>
+    <string name="voice_capture_transcription_header">Transcripción en vivo · Groq Whisper</string>
+    <string name="voice_capture_switch_ai">Transcribir con IA (Groq)</string>
+    <string name="voice_capture_switch_audio_only">Solo guardar audio</string>
+    <string name="voice_capture_listening">Escuchando…</string>
+    <string name="voice_capture_processing">Procesando con IA…</string>
+    <string name="voice_capture_footer_ai">Al detener, la IA revisa si dijiste más de un recordatorio.</string>
+    <string name="voice_capture_footer_audio_only">Al detener, el audio se guardará directamente como recordatorio.</string>
+    <string name="voice_capture_permission_required">Se necesita permiso de micrófono para grabar.</string>
+    <string name="voice_capture_grant_permission">Permitir</string>
+    <string name="voice_capture_discard">Descartar grabación</string>
+    <string name="voice_capture_stop">Detener y procesar</string>
+    <string name="voice_capture_pause">Pausar</string>
+    <string name="voice_capture_resume">Reanudar</string>
+    <string name="voice_capture_default_title">Nota de voz</string>
+    <string name="voice_capture_attached_note">Nota de voz adjunta</string>
 </resources>

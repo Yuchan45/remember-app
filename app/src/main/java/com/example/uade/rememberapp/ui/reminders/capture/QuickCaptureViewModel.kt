@@ -141,6 +141,24 @@ class QuickCaptureViewModel(
      *
      * TODO: guardar también etiquetas, lugar y repetición.
      */
+    /** Inicializa el modal con un audio grabado previamente. */
+    fun initFromAudio(audioPath: String) {
+        _uiState.update {
+            it.copy(
+                audioPath = audioPath,
+                title = it.title.ifBlank { "Nota de voz" },
+            )
+        }
+    }
+
+    fun onRemoveAudio() {
+        _uiState.update { it.copy(audioPath = null) }
+    }
+
+    /**
+     * "Guardar": arma la nota y la guarda en la base. Al terminar marca [QuickCaptureUiState.isSaved]
+     * para que el modal se cierre.
+     */
     fun onSave() {
         val state = _uiState.value
         if (!state.canSave) return
@@ -148,9 +166,13 @@ class QuickCaptureViewModel(
 
         val current = now()
         val at = resolveReminderTime(state.selectedTime, state.pickedDate, state.pickedTime, current)
+        val finalTitle = state.title.trim().ifBlank {
+            if (state.audioPath != null) "Nota de voz" else ""
+        }
         val reminder = Reminder(
             type = ReminderType.Note,
-            title = state.title.trim(),
+            title = finalTitle,
+            audioPath = state.audioPath,
             trigger = at?.let { Trigger.AtTime(it.toInstant()) } ?: Trigger.None,
             createdAt = current.toInstant(),
         )

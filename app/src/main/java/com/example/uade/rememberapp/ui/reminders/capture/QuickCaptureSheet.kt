@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,13 +31,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -87,11 +93,18 @@ private val SheetPadding = 16.dp
 @Composable
 fun QuickCaptureSheet(
     onDismiss: () -> Unit,
+    initialAudioPath: String? = null,
     viewModel: QuickCaptureViewModel = viewModel(factory = QuickCaptureViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(initialAudioPath) {
+        if (initialAudioPath != null) {
+            viewModel.initFromAudio(initialAudioPath)
+        }
+    }
 
     // Guardado: baja el modal con su animación y recién después lo saca (y reinicia el estado).
     LaunchedEffect(uiState.isSaved) {
@@ -153,6 +166,7 @@ fun QuickCaptureSheet(
                 onPhoto = viewModel::onPhotoClick,
                 onChecklist = viewModel::onChecklistClick,
                 onToggleFullScreen = viewModel::onFullScreenToggle,
+                onRemoveAudio = viewModel::onRemoveAudio,
                 onSave = viewModel::onSave,
             ),
             modifier = Modifier
@@ -260,6 +274,7 @@ data class QuickCaptureActions(
     val onPhoto: () -> Unit = {},
     val onChecklist: () -> Unit = {},
     val onToggleFullScreen: () -> Unit = {},
+    val onRemoveAudio: () -> Unit = {},
     val onSave: () -> Unit = {},
 )
 
@@ -302,6 +317,43 @@ fun QuickCaptureContent(
             onTitleChanged = actions.onTitleChanged,
             modifier = Modifier.padding(horizontal = SheetPadding),
         )
+
+        if (uiState.hasAudio) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.padding(horizontal = SheetPadding),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_mic),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.voice_capture_attached_note),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    IconButton(
+                        onClick = actions.onRemoveAudio,
+                        modifier = Modifier.size(20.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_close),
+                            contentDescription = stringResource(R.string.common_cancel),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+            }
+        }
 
         // Separa lo que se escribe (el título) de las opciones de abajo.
         FadedDivider(modifier = Modifier.padding(horizontal = SheetPadding))
