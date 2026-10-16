@@ -21,10 +21,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.ui.components.TagChip
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
 import com.example.uade.rememberapp.ui.theme.PhotoBackground
@@ -56,7 +59,8 @@ import java.time.Instant
  * ┃ Nota  → descripción            Lista → ☐ ítem / ☐ ítem / + N más
  * ┃ [● Etiqueta]              ⏰ 18:00 !
  * ```
- * - La barra de la izquierda (┃) toma el color de la primera etiqueta; sin etiquetas no se dibuja.
+ * - La barra de la izquierda (┃) toma el color de la etiqueta; con varias, un degradé de arriba
+ *   abajo entre sus colores (ver [accentBrush]). Sin etiquetas no se dibuja.
  * - Con foto, la foto va de fondo con un velo oscuro para que el texto se siga leyendo.
  *
  * No guarda estado: [now] entra por parámetro para que "hoy" y el "!" sean previsualizables.
@@ -69,7 +73,7 @@ fun ReminderCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val accentColor = reminder.tags.firstOrNull()?.let { Color(it.colorArgb) }
+    val accentBrush = remember(reminder.tags) { accentBrush(reminder.tags) }
     val hasPhoto = reminder.photoPath != null
 
     Surface(
@@ -83,12 +87,12 @@ fun ReminderCard(
                 ReminderPhotoBackground(photoPath = reminder.photoPath, modifier = Modifier.matchParentSize())
             }
             Row {
-                if (accentColor != null) {
+                if (accentBrush != null) {
                     Box(
                         modifier = Modifier
                             .width(4.dp)
                             .fillMaxHeight()
-                            .background(accentColor),
+                            .background(accentBrush),
                     )
                 }
                 ReminderCardContent(
@@ -232,6 +236,20 @@ internal fun ReminderPhotoBackground(
     }
 }
 
+/**
+ * El relleno de la barra de la izquierda: nada sin etiquetas, el color de la etiqueta si hay una,
+ * o un degradé vertical con los colores de todas, en el orden en que se muestran los chips (así
+ * arriba queda el de la primera, igual que antes).
+ */
+private fun accentBrush(tags: List<Tag>): Brush? {
+    val colors = tags.map { Color(it.colorArgb) }
+    return when (colors.size) {
+        0 -> null
+        1 -> SolidColor(colors.single())
+        else -> Brush.verticalGradient(colors)
+    }
+}
+
 /** Ícono junto al título: lista, nota solo por lugar (pin) o nota común. */
 @DrawableRes
 internal fun Reminder.typeIcon(): Int = when {
@@ -258,5 +276,28 @@ private fun ReminderCardPreview() {
                 )
             }
         }
+    }
+}
+
+@Preview(name = "Varias etiquetas (barra en degradé)", showBackground = true, backgroundColor = 0xFF0B141B)
+@Composable
+private fun ReminderCardManyTagsPreview() {
+    RememberAppTheme {
+        ReminderCard(
+            reminder = Reminder(
+                title = "Comprar para el asado",
+                description = "Carbón, chorizos y pan",
+                tags = listOf(
+                    Tag(id = 1, name = "Salud", colorArgb = 0xFF6FCF97),
+                    Tag(id = 2, name = "Casa", colorArgb = 0xFF56CCF2),
+                    Tag(id = 3, name = "Asado", colorArgb = 0xFF9B7BEA),
+                ),
+                createdAt = Instant.now(),
+            ),
+            placeName = null,
+            now = Instant.now(),
+            onClick = {},
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }
