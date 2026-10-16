@@ -3,7 +3,6 @@ package com.example.uade.rememberapp.domain.usecase
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.ProposedReminder
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.domain.model.Trigger
 import java.util.UUID
 
 /**
@@ -17,9 +16,9 @@ class MergeProposedRemindersUseCase {
 
         val activeProposals = proposals.filter { it.isSelected }.ifEmpty { proposals }
 
-        val firstWithTrigger = activeProposals.firstOrNull { it.trigger !is Trigger.None }
-        val trigger = firstWithTrigger?.trigger ?: Trigger.None
-        val displayTime = firstWithTrigger?.triggerDisplayTime
+        val firstWithAlarm = activeProposals.firstOrNull { it.alarms.isNotEmpty() }
+        val alarms = firstWithAlarm?.alarms ?: emptyList()
+        val displayTime = firstWithAlarm?.triggerDisplayTime
 
         val firstWithPlace = activeProposals.firstOrNull { !it.placeName.isNullOrBlank() }
         val placeName = firstWithPlace?.placeName
@@ -44,7 +43,7 @@ class MergeProposedRemindersUseCase {
             title = mergedTitle,
             type = ReminderType.Checklist,
             items = items,
-            trigger = trigger,
+            alarms = alarms,
             triggerDisplayTime = displayTime,
             placeName = placeName,
             priorityName = activeProposals.firstOrNull { !it.priorityName.isNullOrBlank() }?.priorityName,

@@ -7,12 +7,16 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+# Preferencias personales de Android Studio (dispositivo elegido, vista previa de Markdown)
+/.idea/deploymentTargetSelector.xml
+/.idea/markdown.xml
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+.agent_gemini
 
 # Claude Code (config personal)
 .claude/settings.local.json

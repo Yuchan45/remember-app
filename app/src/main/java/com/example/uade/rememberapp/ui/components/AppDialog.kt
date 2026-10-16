@@ -74,10 +74,12 @@ fun DialogFilledConfirmButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Button(
         onClick = onClick,
         modifier = modifier,
+        enabled = enabled,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,

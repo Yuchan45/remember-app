@@ -8,6 +8,6 @@ data class SimilarReminderMergeProposal(
     val existingReminder: Reminder,
     val newReminder: ProposedReminder,
     val mergedTitle: String,
-    val mergedTrigger: Trigger,
+    val mergedAlarms: List<Alarm>,
     val checklistItems: List<ChecklistItem>,
 )

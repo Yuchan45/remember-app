@@ -26,6 +26,27 @@ interface TagRepository {
     }
 }
 
+/**
+ * Valida un nombre de etiqueta contra las que ya existen ([existing]) y lo devuelve sin espacios
+ * de más. Lanza [InvalidTagNameException] si queda vacío, es muy largo o ya hay otra con el
+ * mismo nombre (sin importar mayúsculas). [excludingId] es la etiqueta que se está editando,
+ * para que no choque consigo misma.
+ *
+ * Es una regla de negocio: vive en el dominio y la usan todas las implementaciones de
+ * [TagRepository].
+ */
+fun validTagName(name: String, existing: List<Tag>, excludingId: Long? = null): String {
+    val clean = name.trim()
+    val reason = when {
+        clean.isEmpty() -> InvalidTagNameException.Reason.Empty
+        clean.length > TagRepository.MaxNameLength -> InvalidTagNameException.Reason.TooLong
+        existing.any { it.id != excludingId && it.name.equals(clean, ignoreCase = true) } ->
+            InvalidTagNameException.Reason.Duplicate
+        else -> return clean
+    }
+    throw InvalidTagNameException(reason)
+}
+
 /** Por qué no se aceptó un nombre de etiqueta. La UI elige el texto a mostrar según [reason]. */
 class InvalidTagNameException(val reason: Reason) : IllegalArgumentException(reason.name) {
     enum class Reason {

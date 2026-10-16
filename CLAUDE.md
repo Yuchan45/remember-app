@@ -17,7 +17,7 @@ un pendiente (texto y/o foto) y elige cuándo vuelve: nunca, a una hora, o al ll
 ```
 app/src/main/java/com/example/uade/rememberapp/
 ├── domain/        Kotlin puro, sin imports de android.*
-│   ├── model/        Reminder, Place, Trigger (sealed)
+│   ├── model/        Reminder, Place, Tag, Alarm y PlaceAlert (avisos por hora y por lugar, varios por recordatorio)
 │   ├── repository/   interfaces (ReminderRepository, PlaceRepository)
 │   ├── scheduler/    interfaces (ReminderScheduler, GeofenceRegistrar)
 │   └── usecase/      un caso de uso por clase
@@ -33,6 +33,7 @@ app/src/main/java/com/example/uade/rememberapp/
 │   ├── theme/        Color.kt (paleta del Figma), Theme.kt (siempre oscuro, sin dynamic color)
 │   └── <feature>/
 │       ├── components/                  compartidos entre pantallas de la feature (ej. ReminderCard)
+│       ├── model/                       modelos de UI compartidos por la feature: enums con ícono y texto (ej. TimeShortcut)
 │       ├── sample/                      datos mock para previews (y para el VM mientras no hay datos)
 │       └── <list|edit|detail>/          XScreen.kt + XViewModel.kt + XUiState.kt
 │           └── components/              piezas que solo usa esa pantalla (ej. HomeHeader)

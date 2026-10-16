@@ -1,4 +1,4 @@
-package com.example.uade.rememberapp.ui.reminders.capture
+package com.example.uade.rememberapp.ui.reminders.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

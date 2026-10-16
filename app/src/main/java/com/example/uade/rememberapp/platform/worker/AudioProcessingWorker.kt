@@ -6,7 +6,7 @@ import androidx.work.WorkerParameters
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.AiProcessingStatus
 import com.example.uade.rememberapp.domain.model.Reminder
-import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.platform.notification.NotificationHelper
 import java.time.Instant
 
 /**
@@ -49,7 +49,7 @@ class AudioProcessingWorker(
                             description = p.description,
                             type = p.type,
                             items = p.items,
-                            trigger = p.trigger,
+                            alarms = p.alarms,
                             aiStatus = AiProcessingStatus.Completed,
                         ),
                     )
@@ -63,7 +63,7 @@ class AudioProcessingWorker(
                             description = first.description,
                             type = first.type,
                             items = first.items,
-                            trigger = first.trigger,
+                            alarms = first.alarms,
                             aiStatus = AiProcessingStatus.Completed,
                         ),
                     )
@@ -76,7 +76,7 @@ class AudioProcessingWorker(
                             description = p.description,
                             type = p.type,
                             items = p.items,
-                            trigger = p.trigger,
+                            alarms = p.alarms,
                             audioPath = audioPath,
                             aiStatus = AiProcessingStatus.Completed,
                             createdAt = Instant.now(),
@@ -85,7 +85,8 @@ class AudioProcessingWorker(
                     }
                 }
 
-                container.notificationHelper.showSimpleNotification(
+                NotificationHelper.showSimpleNotification(
+                    context = applicationContext,
                     id = reminderId.toInt(),
                     title = "Nota de voz procesada",
                     text = "La IA extrajo ${proposals.size} recordatorio(s) de tu audio.",

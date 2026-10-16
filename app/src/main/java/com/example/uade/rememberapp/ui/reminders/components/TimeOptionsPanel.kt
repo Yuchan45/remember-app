@@ -1,4 +1,4 @@
-package com.example.uade.rememberapp.ui.reminders.capture.components
+package com.example.uade.rememberapp.ui.reminders.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,9 +15,9 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.components.OptionChip
 import com.example.uade.rememberapp.ui.components.OptionChipStyle
 import com.example.uade.rememberapp.ui.components.SectionLabel
-import com.example.uade.rememberapp.ui.reminders.capture.DefaultPickedTime
-import com.example.uade.rememberapp.ui.reminders.capture.RepeatOption
-import com.example.uade.rememberapp.ui.reminders.capture.TimeShortcut
+import com.example.uade.rememberapp.ui.reminders.model.DefaultPickedTime
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import java.time.LocalDate
 import java.time.LocalTime

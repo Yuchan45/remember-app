@@ -162,7 +162,7 @@ class ReviewProposedRemindersViewModel(
                 type = ReminderType.Checklist,
                 title = proposal.mergedTitle,
                 items = proposal.checklistItems,
-                trigger = proposal.mergedTrigger,
+                alarms = proposal.mergedAlarms,
                 aiStatus = AiProcessingStatus.Completed,
             )
             saveReminder(updatedExisting)
@@ -191,7 +191,7 @@ class ReviewProposedRemindersViewModel(
                 title = p.title,
                 description = p.description,
                 items = p.items,
-                trigger = p.trigger,
+                alarms = p.alarms,
                 aiStatus = AiProcessingStatus.Completed,
                 createdAt = Instant.now(),
             )

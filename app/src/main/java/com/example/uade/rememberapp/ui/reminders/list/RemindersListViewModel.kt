@@ -75,8 +75,6 @@ class RemindersListViewModel(
         }
     }
 
-    // TODO: navegar al detalle del recordatorio.
-    fun onReminderClick(id: Long) = Unit
 
     // Acciones que aparecen al deslizar una card hacia la izquierda.
     // TODO: marcarlo como hecho y archivarlo (con casos de uso, como la papelera).

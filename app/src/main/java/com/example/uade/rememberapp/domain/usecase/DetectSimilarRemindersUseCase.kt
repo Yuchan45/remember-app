@@ -5,7 +5,6 @@ import com.example.uade.rememberapp.domain.model.ProposedReminder
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.model.SimilarReminderMergeProposal
-import com.example.uade.rememberapp.domain.model.Trigger
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
 
@@ -19,16 +18,12 @@ class DetectSimilarRemindersUseCase {
         newProposal: ProposedReminder,
         existingReminders: List<Reminder>,
     ): SimilarReminderMergeProposal? {
-        val newTrigger = newProposal.trigger
-        if (newTrigger !is Trigger.AtTime) return null
+        val newAlarm = newProposal.alarms.firstOrNull() ?: return null
 
         val match = existingReminders.firstOrNull { existing ->
             existing.status == ReminderStatus.Active && !existing.isDone &&
-                existing.trigger is Trigger.AtTime &&
-                abs(ChronoUnit.HOURS.between(existing.trigger.at, newTrigger.at)) <= 3
+                existing.alarms.any { abs(ChronoUnit.HOURS.between(it.at, newAlarm.at)) <= 3 }
         } ?: return null
-
-        val existingTrigger = match.trigger as Trigger.AtTime
 
         val existingItems = if (match.items.isNotEmpty()) {
             match.items
@@ -49,7 +44,7 @@ class DetectSimilarRemindersUseCase {
             existingReminder = match,
             newReminder = newProposal,
             mergedTitle = mergedTitle,
-            mergedTrigger = existingTrigger,
+            mergedAlarms = match.alarms,
             checklistItems = combinedItems,
         )
     }

@@ -4,10 +4,10 @@ import com.example.uade.rememberapp.data.remote.dto.GroqChatRequest
 import com.example.uade.rememberapp.data.remote.dto.GroqMessage
 import com.example.uade.rememberapp.data.remote.dto.GroqReminderAnalysisDto
 import com.example.uade.rememberapp.domain.model.AiAnalysisResult
+import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.ProposedReminder
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.domain.repository.AiReminderService
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -130,7 +130,7 @@ class GroqReminderServiceImpl(
     private fun mapDtoToDomain(dto: GroqReminderAnalysisDto?, rawTranscript: String): AiAnalysisResult {
         val rawReminders = dto?.reminders ?: emptyList()
         val proposals = rawReminders.map { r ->
-            val trigger = parseTrigger(r.triggerType, r.triggerIso)
+            val alarms = parseAlarms(r.triggerType, r.triggerIso)
             val reminderType = if (r.type.equals("Checklist", ignoreCase = true) || r.items.isNotEmpty()) {
                 ReminderType.Checklist
             } else {
@@ -146,8 +146,8 @@ class GroqReminderServiceImpl(
                 description = r.description,
                 type = reminderType,
                 items = checklistItems,
-                trigger = trigger,
-                triggerDisplayTime = r.triggerDisplay ?: if (trigger is Trigger.None) "Sin fecha" else null,
+                alarms = alarms,
+                triggerDisplayTime = r.triggerDisplay ?: if (alarms.isEmpty()) "Sin fecha" else null,
                 placeName = r.placeName,
                 priorityName = r.priority,
                 listName = r.listName,
@@ -184,20 +184,20 @@ class GroqReminderServiceImpl(
         )
     }
 
-    private fun parseTrigger(triggerType: String?, triggerIso: String?): Trigger {
+    private fun parseAlarms(triggerType: String?, triggerIso: String?): List<Alarm> {
         if (triggerType.equals("TIME", ignoreCase = true) && !triggerIso.isNullOrBlank()) {
             return try {
                 val instant = OffsetDateTime.parse(triggerIso).toInstant()
-                Trigger.AtTime(instant)
+                listOf(Alarm(instant))
             } catch (e: DateTimeParseException) {
                 try {
-                    Trigger.AtTime(Instant.parse(triggerIso))
+                    listOf(Alarm(Instant.parse(triggerIso)))
                 } catch (e2: Exception) {
-                    Trigger.None
+                    emptyList()
                 }
             }
         }
-        return Trigger.None
+        return emptyList()
     }
 
     private fun buildSystemPrompt(referenceIso: String): String {
@@ -260,7 +260,7 @@ class GroqReminderServiceImpl(
                 title = "Avisarle al encargado",
                 type = ReminderType.Note,
                 triggerDisplayTime = "Viernes 09:00",
-                trigger = Trigger.None,
+                alarms = emptyList(),
                 isSeparateItem = true,
             )
             return AiAnalysisResult(

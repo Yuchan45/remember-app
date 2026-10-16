@@ -1,7 +1,7 @@
 package com.example.uade.rememberapp.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -9,28 +9,29 @@ import androidx.room.PrimaryKey
  * "plano" del modelo, pensado para SQLite:
  * - Los `Instant` van como epoch millis (`Long`).
  * - Los enums van por nombre (`String`), así reordenarlos no rompe los datos guardados.
- * - `Trigger` (sealed) se aplana en tres columnas: [triggerType] dice cuál es y las otras dos
- *   guardan su dato (la hora o el lugar); la que no aplica queda en null.
  *
- * TODO: guardar ítems de lista y etiquetas en tablas propias (con relación a esta).
- * TODO: FK de [triggerPlaceId] a `places` cuando exista esa tabla (onDelete = SET_NULL).
+ * Lo que puede ser una lista vive en tablas aparte, relacionadas por `reminderId`: las etiquetas
+ * (`reminder_tags`), los avisos por hora (`reminder_alarms`) y por lugar (`reminder_places`).
+ *
+ * TODO: guardar los ítems de lista en una tabla propia.
  */
-@Entity(
-    tableName = "reminders",
-    indices = [Index("triggerPlaceId")],
-)
+@Entity(tableName = "reminders")
 data class ReminderEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val type: String,
     val title: String?,
     val description: String?,
     val photoPath: String?,
-    val audioPath: String?,
-    val triggerType: String,
-    val triggerAtMillis: Long?,
-    val triggerPlaceId: Long?,
+    val audioPath: String? = null,
     val isDone: Boolean,
     val status: String,
+    @ColumnInfo(defaultValue = "None")
     val aiStatus: String = "None",
     val createdAtMillis: Long,
+    /**
+     * Por nombre (ver Importance). El valor por defecto tiene que coincidir con el de la
+     * migración 3 → 4 (`DEFAULT 'Default'`): Room compara las dos al abrir la base.
+     */
+    @ColumnInfo(defaultValue = "Default")
+    val importance: String = "Default",
 )

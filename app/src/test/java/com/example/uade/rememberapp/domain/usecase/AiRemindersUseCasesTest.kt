@@ -1,12 +1,12 @@
 package com.example.uade.rememberapp.domain.usecase
 
 import com.example.uade.rememberapp.domain.model.AiAnalysisResult
+import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.ProposedReminder
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.domain.repository.AiReminderService
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -25,7 +25,7 @@ class AiRemindersUseCasesTest {
         val p1 = ProposedReminder(
             title = "Recibir al técnico del aire",
             triggerDisplayTime = "Mañana 09:00",
-            trigger = Trigger.AtTime(Instant.parse("2026-10-09T09:00:00Z")),
+            alarms = listOf(Alarm(Instant.parse("2026-10-09T09:00:00Z"))),
             placeName = "Casa",
             priorityName = "Alta",
             isSelected = true,
@@ -43,7 +43,7 @@ class AiRemindersUseCasesTest {
         assertEquals(2, merged.items.size)
         assertEquals("Recibir al técnico del aire", merged.items[0].text)
         assertEquals("Comprar papas", merged.items[1].text)
-        assertEquals(p1.trigger, merged.trigger)
+        assertEquals(p1.alarms, merged.alarms)
         assertEquals("Casa", merged.placeName)
     }
 
@@ -55,14 +55,14 @@ class AiRemindersUseCasesTest {
         val existing = Reminder(
             id = 10,
             title = "Cepillar los dientes",
-            trigger = Trigger.AtTime(baseTime),
+            alarms = listOf(Alarm(baseTime)),
             status = ReminderStatus.Active,
             createdAt = baseTime.minusSeconds(3600),
         )
 
         val newProposal = ProposedReminder(
             title = "Cambiar las sábanas",
-            trigger = Trigger.AtTime(baseTime.plusSeconds(1800)), // 30 min despues
+            alarms = listOf(Alarm(baseTime.plusSeconds(1800))), // 30 min despues
             triggerDisplayTime = "Esta noche",
         )
 
@@ -82,14 +82,14 @@ class AiRemindersUseCasesTest {
         val existing = Reminder(
             id = 10,
             title = "Cepillar los dientes",
-            trigger = Trigger.AtTime(baseTime),
+            alarms = listOf(Alarm(baseTime)),
             status = ReminderStatus.Active,
             createdAt = baseTime.minusSeconds(3600),
         )
 
         val newProposal = ProposedReminder(
             title = "Cambiar las sábanas",
-            trigger = Trigger.AtTime(baseTime.plusSeconds(36000)), // 10 horas despues
+            alarms = listOf(Alarm(baseTime.plusSeconds(36000))), // 10 horas despues
         )
 
         val proposal = useCase(newProposal, listOf(existing))

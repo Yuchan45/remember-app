@@ -35,6 +35,7 @@ import com.example.uade.rememberapp.ui.archive.ArchiveScreen
 import com.example.uade.rememberapp.ui.components.CircleIconButton
 import com.example.uade.rememberapp.ui.components.CookieShape
 import com.example.uade.rememberapp.ui.places.list.PlacesListScreen
+import com.example.uade.rememberapp.ui.reminders.create.CreateReminderOption
 import com.example.uade.rememberapp.ui.reminders.create.CreateReminderSheet
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListScreen
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListViewModel
@@ -60,6 +61,8 @@ import kotlinx.coroutines.launch
 fun MainTabs(
     modifier: Modifier = Modifier,
     remindersViewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
+    onReminderClick: (id: Long) -> Unit = {},
+    onCreateNote: () -> Unit = {},
 ) {
     val remindersState by remindersViewModel.uiState.collectAsStateWithLifecycle()
     val destinations = AppDestination.entries
@@ -127,6 +130,7 @@ fun MainTabs(
             MainTabPage(
                 destination = destinations[page],
                 contentPadding = contentPadding,
+                onReminderClick = onReminderClick,
             )
         }
     }
@@ -135,7 +139,17 @@ fun MainTabs(
     // que poder abrir desde cualquiera.
     if (remindersState.isCreateMenuOpen) {
         CreateReminderSheet(
-            onOptionClick = remindersViewModel::onCreateOptionClick,
+            // Llega cuando el modal ya terminó de bajar: se saca y, si es "Nota", se navega.
+            // Navegar es cosa de la UI; el resto de los tipos todavía es maquetado y lo recibe
+            // el ViewModel.
+            onOptionClick = { option ->
+                remindersViewModel.onCreateMenuDismiss()
+                if (option == CreateReminderOption.Note) {
+                    onCreateNote()
+                } else {
+                    remindersViewModel.onCreateOptionClick(option)
+                }
+            },
             onDismiss = remindersViewModel::onCreateMenuDismiss,
         )
     }
@@ -179,9 +193,13 @@ private fun TrashedReminderSnackbar(
 private fun MainTabPage(
     destination: AppDestination,
     contentPadding: PaddingValues,
+    onReminderClick: (id: Long) -> Unit,
 ) {
     when (destination) {
-        AppDestination.Home -> RemindersListScreen(contentPadding = contentPadding)
+        AppDestination.Home -> RemindersListScreen(
+            contentPadding = contentPadding,
+            onReminderClick = onReminderClick,
+        )
         AppDestination.Archive -> ArchiveScreen(contentPadding = contentPadding)
         AppDestination.Places -> PlacesListScreen(contentPadding = contentPadding)
         AppDestination.Settings -> SettingsScreen(contentPadding = contentPadding)

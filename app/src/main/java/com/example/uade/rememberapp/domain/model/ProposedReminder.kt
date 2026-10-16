@@ -12,7 +12,7 @@ data class ProposedReminder(
     val description: String? = null,
     val type: ReminderType = ReminderType.Note,
     val items: List<ChecklistItem> = emptyList(),
-    val trigger: Trigger = Trigger.None,
+    val alarms: List<Alarm> = emptyList(),
     val triggerDisplayTime: String? = null,
     val placeName: String? = null,
     val priorityName: String? = null,

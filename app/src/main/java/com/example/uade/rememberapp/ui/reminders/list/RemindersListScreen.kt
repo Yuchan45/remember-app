@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.domain.model.Trigger
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
 import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
@@ -55,6 +54,7 @@ private val ScreenPadding = 16.dp
 fun RemindersListScreen(
     viewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
     contentPadding: PaddingValues = PaddingValues(),
+    onReminderClick: (id: Long) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // "Ahora" fijo mientras la pantalla está abierta: decide qué es "hoy" y cuándo mostrar el "!".
@@ -74,7 +74,7 @@ fun RemindersListScreen(
                 onGroupingClick = viewModel::onGroupingClick,
                 onSortClick = viewModel::onSortClick,
                 onSectionToggle = viewModel::onSectionToggle,
-                onReminderClick = viewModel::onReminderClick,
+                onReminderClick = onReminderClick,
                 onReminderDone = viewModel::onReminderDone,
                 onReminderArchive = viewModel::onReminderArchive,
                 onReminderTrash = viewModel::onReminderTrash,
@@ -241,7 +241,7 @@ private fun RemindersListContent(
                     ) { reminder ->
                         SwipeableReminderCard(
                             reminder = reminder,
-                            placeName = (reminder.trigger as? Trigger.AtPlace)
+                            placeName = reminder.places.firstOrNull()
                                 ?.let { uiState.placeNames[it.placeId] },
                             now = now,
                             onClick = { actions.onReminderClick(reminder.id) },

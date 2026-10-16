@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp
 
 import android.app.Application
+import com.example.uade.rememberapp.platform.notification.NotificationHelper
 
 /**
  * Punto de entrada del proceso. Acá vive el [AppContainer] (inyección de dependencias
@@ -13,5 +14,6 @@ class RememberApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        NotificationHelper.createNotificationChannel(this)
     }
 }

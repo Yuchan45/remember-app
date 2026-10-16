@@ -21,10 +21,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -36,12 +39,14 @@ import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.ui.components.TagChip
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
 import com.example.uade.rememberapp.ui.theme.PhotoBackground
 import com.example.uade.rememberapp.ui.theme.PhotoScrim
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
+import coil3.compose.AsyncImage
+import java.io.File
 import java.time.Instant
 
 /**
@@ -54,7 +59,8 @@ import java.time.Instant
  * ┃ Nota  → descripción            Lista → ☐ ítem / ☐ ítem / + N más
  * ┃ [● Etiqueta]              ⏰ 18:00 !
  * ```
- * - La barra de la izquierda (┃) toma el color de la primera etiqueta; sin etiquetas no se dibuja.
+ * - La barra de la izquierda (┃) toma el color de la etiqueta; con varias, un degradé de arriba
+ *   abajo entre sus colores (ver [accentBrush]). Sin etiquetas no se dibuja.
  * - Con foto, la foto va de fondo con un velo oscuro para que el texto se siga leyendo.
  *
  * No guarda estado: [now] entra por parámetro para que "hoy" y el "!" sean previsualizables.
@@ -67,7 +73,7 @@ fun ReminderCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val accentColor = reminder.tags.firstOrNull()?.let { Color(it.colorArgb) }
+    val accentBrush = remember(reminder.tags) { accentBrush(reminder.tags) }
     val hasPhoto = reminder.photoPath != null
 
     Surface(
@@ -78,15 +84,15 @@ fun ReminderCard(
     ) {
         Box(modifier = Modifier.height(IntrinsicSize.Min)) {
             if (hasPhoto) {
-                ReminderPhotoBackground(modifier = Modifier.matchParentSize())
+                ReminderPhotoBackground(photoPath = reminder.photoPath, modifier = Modifier.matchParentSize())
             }
             Row {
-                if (accentColor != null) {
+                if (accentBrush != null) {
                     Box(
                         modifier = Modifier
                             .width(4.dp)
                             .fillMaxHeight()
-                            .background(accentColor),
+                            .background(accentBrush),
                     )
                 }
                 ReminderCardContent(
@@ -154,7 +160,7 @@ private fun ReminderCardContent(
             )
         }
 
-        if (reminder.tags.isNotEmpty() || hasVisibleTrigger(reminder.trigger, placeName)) {
+        if (reminder.tags.isNotEmpty() || hasVisibleTrigger(reminder, placeName)) {
             Spacer(Modifier.weight(1f))
             ReminderCardFooter(reminder = reminder, placeName = placeName, now = now)
         }
@@ -183,7 +189,7 @@ private fun ReminderCardFooter(
             }
         }
         ReminderTriggerInfo(
-            trigger = reminder.trigger,
+            reminder = reminder,
             placeName = placeName,
             now = now,
         )
@@ -191,29 +197,64 @@ private fun ReminderCardFooter(
 }
 
 /**
- * Placeholder de la foto de fondo: un degradé marrón y, encima, un velo que oscurece el lado
- * del texto (la izquierda).
+ * La portada del recordatorio ([photoPath], ya recortada), cubriendo todo el espacio y centrada.
  *
- * TODO: cargar la foto real desde photoPath (con Coil) debajo del velo.
+ * Debajo va un degradé marrón: se ve mientras carga y si el archivo no se puede leer (ej. los
+ * datos de ejemplo de las previews). Con [scrim], encima va un velo que oscurece la izquierda
+ * para que el texto de la card se siga leyendo.
  */
 @Composable
-private fun ReminderPhotoBackground(modifier: Modifier = Modifier) {
+internal fun ReminderPhotoBackground(
+    photoPath: String?,
+    modifier: Modifier = Modifier,
+    scrim: Boolean = true,
+) {
     val description = stringResource(R.string.reminders_photo_description)
     Box(
         modifier = modifier
             .semantics { contentDescription = description }
             .background(
                 Brush.linearGradient(listOf(PhotoBackground.copy(alpha = 0.6f), PhotoBackground)),
+            ),
+    ) {
+        if (photoPath != null) {
+            AsyncImage(
+                // File y no el String: así Coil no intenta interpretarlo como URL.
+                model = File(photoPath),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
             )
-            .background(Brush.horizontalGradient(listOf(PhotoScrim, Color.Transparent))),
-    )
+        }
+        if (scrim) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Brush.horizontalGradient(listOf(PhotoScrim, Color.Transparent))),
+            )
+        }
+    }
 }
 
-/** Ícono junto al título: lista, nota por lugar (pin) o nota común. */
+/**
+ * El relleno de la barra de la izquierda: nada sin etiquetas, el color de la etiqueta si hay una,
+ * o un degradé vertical con los colores de todas, en el orden en que se muestran los chips (así
+ * arriba queda el de la primera, igual que antes).
+ */
+private fun accentBrush(tags: List<Tag>): Brush? {
+    val colors = tags.map { Color(it.colorArgb) }
+    return when (colors.size) {
+        0 -> null
+        1 -> SolidColor(colors.single())
+        else -> Brush.verticalGradient(colors)
+    }
+}
+
+/** Ícono junto al título: lista, nota solo por lugar (pin) o nota común. */
 @DrawableRes
-private fun Reminder.typeIcon(): Int = when {
+internal fun Reminder.typeIcon(): Int = when {
     type == ReminderType.Checklist -> R.drawable.ic_checklist
-    trigger is Trigger.AtPlace -> R.drawable.ic_location_on
+    alarms.isEmpty() && places.isNotEmpty() -> R.drawable.ic_location_on
     else -> R.drawable.ic_description
 }
 
@@ -229,11 +270,34 @@ private fun ReminderCardPreview() {
             SampleReminders.previewReminders(now).forEach { reminder ->
                 ReminderCard(
                     reminder = reminder,
-                    placeName = SampleReminders.placeNames[(reminder.trigger as? Trigger.AtPlace)?.placeId],
+                    placeName = SampleReminders.placeNames[reminder.places.firstOrNull()?.placeId],
                     now = now,
                     onClick = {},
                 )
             }
         }
+    }
+}
+
+@Preview(name = "Varias etiquetas (barra en degradé)", showBackground = true, backgroundColor = 0xFF0B141B)
+@Composable
+private fun ReminderCardManyTagsPreview() {
+    RememberAppTheme {
+        ReminderCard(
+            reminder = Reminder(
+                title = "Comprar para el asado",
+                description = "Carbón, chorizos y pan",
+                tags = listOf(
+                    Tag(id = 1, name = "Salud", colorArgb = 0xFF6FCF97),
+                    Tag(id = 2, name = "Casa", colorArgb = 0xFF56CCF2),
+                    Tag(id = 3, name = "Asado", colorArgb = 0xFF9B7BEA),
+                ),
+                createdAt = Instant.now(),
+            ),
+            placeName = null,
+            now = Instant.now(),
+            onClick = {},
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }

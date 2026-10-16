@@ -28,7 +28,7 @@ class CompleteReminderUseCase(
 
 ## Dónde va cada lógica
 
-- **Caso de uso**: reglas que coordinan más de una cosa. Ej.: al guardar un recordatorio con `Trigger.AtTime`, programar el aviso; con `Trigger.AtPlace`, asegurar la geofence del lugar; al cambiar el trigger, cancelar el anterior.
+- **Caso de uso**: reglas que coordinan más de una cosa. Ej.: al guardar un recordatorio, programar una alarma por cada `Alarm` y asegurar la geofence de cada `PlaceAlert`; al cambiar los avisos, cancelar los anteriores.
 - **ViewModel**: estado de pantalla y validaciones de formulario (campo vacío, etc.).
 - **Repositorio**: solo leer y escribir datos.
 
