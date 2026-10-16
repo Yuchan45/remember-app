@@ -21,7 +21,8 @@ enum class ArchiveTab(
 /**
  * Estado de la sección Archivo: qué pestaña se ve y los recordatorios de cada una.
  *
- * Las listas vienen del ViewModel (por ahora vacías); se filtran por [Reminder.status].
+ * Las listas vienen del ViewModel, filtradas por [Reminder.status], y se actualizan solas.
+ * TODO: [placeNames] queda vacío hasta que existan los lugares guardados (PlaceRepository).
  */
 data class ArchiveUiState(
     val isLoading: Boolean = false,

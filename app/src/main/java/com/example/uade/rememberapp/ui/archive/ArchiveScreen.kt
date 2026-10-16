@@ -37,7 +37,7 @@ import java.time.Instant
  */
 @Composable
 fun ArchiveScreen(
-    viewModel: ArchiveViewModel = viewModel(),
+    viewModel: ArchiveViewModel = viewModel(factory = ArchiveViewModel.Factory),
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
