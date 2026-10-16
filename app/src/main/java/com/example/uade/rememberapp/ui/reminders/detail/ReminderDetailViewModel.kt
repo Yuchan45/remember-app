@@ -8,13 +8,18 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.domain.model.CropRect
 import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.MessageChannel
 import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
+import com.example.uade.rememberapp.domain.usecase.SaveCoverUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.navigation.Routes
 import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
@@ -22,6 +27,7 @@ import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,6 +58,8 @@ class ReminderDetailViewModel(
     private val getReminder: GetReminderUseCase,
     private val saveReminder: SaveReminderUseCase,
     tagRepository: TagRepository,
+    private val importPhotos: ImportPhotosUseCase,
+    private val saveCover: SaveCoverUseCase,
     private val now: () -> Instant = Instant::now,
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
@@ -78,6 +86,8 @@ class ReminderDetailViewModel(
                         alarms = reminder?.alarms.orEmpty().map { alarm -> alarm.at }.sorted(),
                         importance = reminder?.importance ?: Importance.Default,
                         action = reminder?.action,
+                        photos = reminder?.photos.orEmpty(),
+                        photoPath = reminder?.photoPath,
                     )
                 }
             }
@@ -231,6 +241,116 @@ class ReminderDetailViewModel(
 
     private fun updateActionEditor(transform: (ActionEditor) -> ActionEditor) {
         _uiState.update { state -> state.copy(actionEditor = state.actionEditor?.let(transform)) }
+    }
+
+    // --- Modal "Imágenes" ---------------------------------------------------------------------
+    // Mismo patrón que los otros modales: trabaja sobre una copia (PhotosEditor) que "Guardar"
+    // pasa al borrador `photos` / `photoPath`; se persiste recién con ✓.
+    //
+    // Los archivos sí se crean al momento (copiar las fotos y recortar la portada tarda: no se
+    // puede dejar para el ✓). TODO: borrar los que queden sin usar (fotos quitadas, modal
+    // cancelado, portadas reemplazadas).
+
+    /** Tocar "Imagen" con fotos ya elegidas abre el modal (sin fotos, la pantalla abre el selector). */
+    fun onImageClick() {
+        _uiState.update { it.copy(photosEditor = PhotosEditor(photos = it.photos, coverPath = it.photoPath)) }
+    }
+
+    /**
+     * Volvió el selector de Android con [uris] (vacía = no eligió nada). Las copia dentro de la
+     * app, hasta completar 3, y abre el modal si todavía no estaba abierto.
+     */
+    fun onPhotosPicked(uris: List<String>) {
+        if (uris.isEmpty()) return
+        val state = _uiState.value
+        val editor = state.photosEditor ?: PhotosEditor(photos = state.photos, coverPath = state.photoPath)
+        _uiState.update { it.copy(photosEditor = editor.copy(isImporting = true)) }
+        viewModelScope.launch {
+            val imported = try {
+                importPhotos(uris, alreadyCount = editor.photos.size)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Una foto que no se pudo leer (ej. se borró de la galería): se ignora.
+                emptyList()
+            }
+            updatePhotosEditor { current ->
+                current.copy(
+                    photos = (current.photos + imported.map { ReminderPhoto(it) }).take(MAX_PHOTOS),
+                    isImporting = false,
+                )
+            }
+        }
+    }
+
+    /** ✕ en una miniatura: la quita. Si era la portada, la nota queda sin portada. */
+    fun onRemovePhoto(path: String) {
+        updatePhotosEditor { editor ->
+            val removed = editor.photos.firstOrNull { it.path == path }
+            editor.copy(
+                photos = editor.photos.filterNot { it.path == path },
+                coverPath = if (removed?.isCover == true) null else editor.coverPath,
+            )
+        }
+    }
+
+    /** Tocar una miniatura abre el recorte para usarla de portada. */
+    fun onPhotoClick(path: String) {
+        updatePhotosEditor { it.copy(cropping = path) }
+    }
+
+    /**
+     * "Guardar" en el recorte: guarda la porción elegida como portada y marca esa foto (y solo
+     * esa) como la portada.
+     */
+    fun onCropConfirm(crop: CropRect) {
+        val editor = _uiState.value.photosEditor ?: return
+        val source = editor.cropping ?: return
+        if (editor.isSavingCover) return
+        updatePhotosEditor { it.copy(isSavingCover = true) }
+        viewModelScope.launch {
+            val cover = try {
+                saveCover(source, crop)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            updatePhotosEditor { current ->
+                if (cover == null) {
+                    current.copy(cropping = null, isSavingCover = false)
+                } else {
+                    current.copy(
+                        photos = current.photos.map { it.copy(isCover = it.path == source) },
+                        coverPath = cover,
+                        cropping = null,
+                        isSavingCover = false,
+                    )
+                }
+            }
+        }
+    }
+
+    /** ✕ o "Cancelar" en el recorte: vuelve al modal sin cambiar la portada. */
+    fun onCropDismiss() {
+        updatePhotosEditor { it.copy(cropping = null) }
+    }
+
+    /** "Guardar" del modal: las fotos y la portada pasan al borrador. Se persisten con ✓. */
+    fun onSavePhotos() {
+        _uiState.update { state ->
+            val editor = state.photosEditor ?: return@update state
+            state.copy(photos = editor.photos, photoPath = editor.coverPath, photosEditor = null)
+        }
+    }
+
+    /** "Cancelar" (o cerrar el modal): deja las fotos como estaban. */
+    fun onCancelPhotos() {
+        _uiState.update { it.copy(photosEditor = null) }
+    }
+
+    private fun updatePhotosEditor(transform: (PhotosEditor) -> PhotosEditor) {
+        _uiState.update { state -> state.copy(photosEditor = state.photosEditor?.let(transform)) }
     }
 
     // --- Modal "Ubicación" --------------------------------------------------------------------
@@ -413,9 +533,11 @@ class ReminderDetailViewModel(
                 alarms = state.alarmsToSave,
                 importance = state.importance,
                 action = state.action,
+                photoPath = state.photoPath,
+                photos = state.photos,
                 createdAt = now(),
             )
-            reminder != null && (title != null || description != null || reminder.photoPath != null) ->
+            reminder != null && (title != null || description != null || state.photoPath != null) ->
                 // Los avisos por lugar quedan como estaban (copy los conserva).
                 reminder.copy(
                     title = title,
@@ -424,6 +546,8 @@ class ReminderDetailViewModel(
                     alarms = state.alarmsToSave,
                     importance = state.importance,
                     action = state.action,
+                    photoPath = state.photoPath,
+                    photos = state.photos,
                 )
             else -> null
         }
@@ -451,6 +575,8 @@ class ReminderDetailViewModel(
                     getReminder = app.container.getReminderUseCase,
                     saveReminder = app.container.saveReminderUseCase,
                     tagRepository = app.container.tagRepository,
+                    importPhotos = app.container.importPhotosUseCase,
+                    saveCover = app.container.saveCoverUseCase,
                 )
             }
         }

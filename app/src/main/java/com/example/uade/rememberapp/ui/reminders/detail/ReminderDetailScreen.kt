@@ -12,6 +12,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.AnimatedVisibility
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -62,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -77,6 +81,7 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
@@ -88,7 +93,10 @@ import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPan
 import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheet
 import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheetActions
-import com.example.uade.rememberapp.ui.reminders.components.ReminderPhotoBackground
+import com.example.uade.rememberapp.ui.reminders.detail.components.PhotoStack
+import com.example.uade.rememberapp.ui.reminders.detail.components.PhotosSheet
+import com.example.uade.rememberapp.ui.reminders.detail.components.PhotosSheetActions
+import com.example.uade.rememberapp.ui.components.ImageCropDialog
 import com.example.uade.rememberapp.ui.reminders.components.formatReminderTime
 import com.example.uade.rememberapp.ui.reminders.components.isSameDay
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
@@ -103,6 +111,9 @@ import java.time.format.DateTimeFormatter
 
 /** Margen lateral de la pantalla. */
 private val ScreenPadding = 16.dp
+
+/** Proporción de la portada: la misma del marco de recorte, así se ve tal cual se recortó. */
+private const val CoverAspectRatio = 16f / 9f
 
 /**
  * Detalle de un recordatorio: se abre al tocar una card de la Home.
@@ -124,6 +135,19 @@ fun ReminderDetailScreen(
         if (uiState.isSaved) onBack()
     }
 
+    // El selector de fotos de Android (Photo Picker): no pide permisos, porque la app solo recibe
+    // las fotos que el usuario elige. Devuelve hasta MAX_PHOTOS URIs (lista vacía si se cancela).
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_PHOTOS),
+    ) { uris -> viewModel.onPhotosPicked(uris.map { it.toString() }) }
+    val pickPhotos = {
+        photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+    // Sin fotos, "Imagen" va directo al selector; con fotos, abre el modal para elegir la portada.
+    val onImageClick = {
+        if (uiState.photos.isEmpty()) pickPhotos() else viewModel.onImageClick()
+    }
+
     ReminderDetailContent(
         uiState = uiState,
         now = now,
@@ -134,6 +158,7 @@ fun ReminderDetailScreen(
         onTagsClick = viewModel::onTagsClick,
         onTimeClick = viewModel::onTimeClick,
         onPlaceClick = viewModel::onPlaceClick,
+        onImageClick = onImageClick,
         onBehaviorClick = viewModel::onBehaviorClick,
         onActionClick = viewModel::onActionClick,
         onDescriptionChange = viewModel::onDescriptionChange,
@@ -163,6 +188,29 @@ fun ReminderDetailScreen(
                 onSave = viewModel::onSaveAction,
             ),
         )
+    }
+
+    // "Imágenes": hasta MAX_PHOTOS fotos; tocar una abre el recorte encima del modal para usarla de portada.
+    uiState.photosEditor?.let { editor ->
+        PhotosSheet(
+            editor = editor,
+            actions = PhotosSheetActions(
+                onAdd = pickPhotos,
+                onPhotoClick = viewModel::onPhotoClick,
+                onRemove = viewModel::onRemovePhoto,
+                onCancel = viewModel::onCancelPhotos,
+                onSave = viewModel::onSavePhotos,
+            ),
+        )
+
+        editor.cropping?.let { path ->
+            ImageCropDialog(
+                imagePath = path,
+                aspectRatio = CoverAspectRatio,
+                onConfirm = viewModel::onCropConfirm,
+                onDismiss = viewModel::onCropDismiss,
+            )
+        }
     }
 
     uiState.placeEditor?.let { editor ->
@@ -383,6 +431,7 @@ private fun ReminderDetailContent(
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
     onPlaceClick: () -> Unit,
+    onImageClick: () -> Unit,
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -411,6 +460,7 @@ private fun ReminderDetailContent(
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
                 onPlaceClick = onPlaceClick,
+                onImageClick = onImageClick,
                 onBehaviorClick = onBehaviorClick,
                 onActionClick = onActionClick,
                 onDescriptionChange = onDescriptionChange,
@@ -489,6 +539,7 @@ private fun ReminderDetailBody(
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
     onPlaceClick: () -> Unit,
+    onImageClick: () -> Unit,
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -515,14 +566,14 @@ private fun ReminderDetailBody(
             ) {
                 DetailHeader(typeIcon = uiState.typeIcon, title = uiState.title, onTitleChange = onTitleChange)
 
-                if (uiState.photoPath != null) {
-                    // TODO: cargar la foto real desde photoPath (con Coil); por ahora el mismo
-                    // placeholder que la card.
-                    ReminderPhotoBackground(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(160.dp)
-                            .clip(RoundedCornerShape(20.dp)),
+                val stackPhotos = uiState.stackPhotos
+                if (stackPhotos.isNotEmpty()) {
+                    // Hasta 5 fotos apiladas, la portada adelante (con la proporción del recorte)
+                    // y "+n" si hay más. Tocarlas abre el modal de imágenes.
+                    PhotoStack(
+                        photoPaths = stackPhotos,
+                        aspectRatio = CoverAspectRatio,
+                        onClick = onImageClick,
                     )
                 }
 
@@ -544,6 +595,7 @@ private fun ReminderDetailBody(
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
                 onPlaceClick = onPlaceClick,
+                onImageClick = onImageClick,
                 onBehaviorClick = onBehaviorClick,
                 onActionClick = onActionClick,
                 modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 12.dp),
@@ -666,6 +718,7 @@ private fun ReminderOptionsPanel(
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
     onPlaceClick: () -> Unit,
+    onImageClick: () -> Unit,
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -712,10 +765,8 @@ private fun ReminderOptionsPanel(
                 OptionCard(
                     icon = R.drawable.ic_image,
                     title = stringResource(R.string.reminder_detail_image),
-                    value = stringResource(
-                        if (uiState.photoPath != null) R.string.reminder_detail_image_cover
-                        else R.string.reminder_detail_image_none,
-                    ),
+                    value = imageValue(photoCount = uiState.photos.size, hasCover = uiState.photoPath != null),
+                    onClick = onImageClick,
                 )
                 OptionCard(
                     icon = R.drawable.ic_attach_file,
@@ -913,6 +964,16 @@ private fun placeValue(places: List<PlaceAlert>, placeName: String?): String {
     return if (extra > 0) stringResource(R.string.reminder_detail_place_more, first, extra) else first
 }
 
+/** "Sin imagen", "Portada · 3 fotos", o "2 fotos" si todavía no eligió portada. */
+@Composable
+private fun imageValue(photoCount: Int, hasCover: Boolean): String = when {
+    photoCount == 0 && !hasCover -> stringResource(R.string.reminder_detail_image_none)
+    // Una nota vieja puede tener portada sin fotos guardadas (de antes de que existieran).
+    photoCount == 0 -> stringResource(R.string.reminder_detail_image_cover)
+    hasCover -> pluralStringResource(R.plurals.reminder_detail_image_cover_count, photoCount, photoCount)
+    else -> pluralStringResource(R.plurals.reminder_detail_image_count, photoCount, photoCount)
+}
+
 /** Para las previews: la pantalla con un estado inventado y sin acciones. */
 @Composable
 private fun DetailPreviewFrame(uiState: ReminderDetailUiState, now: Instant = Instant.now()) {
@@ -927,6 +988,7 @@ private fun DetailPreviewFrame(uiState: ReminderDetailUiState, now: Instant = In
             onTagsClick = {},
             onTimeClick = {},
             onPlaceClick = {},
+            onImageClick = {},
             onBehaviorClick = {},
             onActionClick = {},
             onDescriptionChange = {},
@@ -945,6 +1007,8 @@ private fun loadedState(reminder: Reminder) = ReminderDetailUiState(
     alarms = reminder.alarms.map { it.at },
     importance = reminder.importance,
     action = reminder.action,
+    photos = reminder.photos,
+    photoPath = reminder.photoPath,
 )
 
 @Preview(name = "Con foto, etiqueta y aviso", showBackground = true, heightDp = 900)

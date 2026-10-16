@@ -4,11 +4,13 @@ import androidx.annotation.DrawableRes
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.MessageChannel
 import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
@@ -82,6 +84,16 @@ data class ReminderDetailUiState(
     /** El modal "Ubicación" mientras está abierto (null = cerrado). */
     val placeEditor: PlaceEditor? = null,
 
+    /** Las fotos elegidas (hasta MAX_PHOTOS), en el orden en que se eligieron; una puede ser la portada. */
+    val photos: List<ReminderPhoto> = emptyList(),
+    /** La portada ya recortada (se ve arriba de la descripción y en la card); null = sin portada. */
+    val photoPath: String? = null,
+    /**
+     * El modal "Imágenes" mientras está abierto (null = cerrado). Copia de trabajo: "Guardar" pasa
+     * sus fotos y su portada a [photos] y [photoPath]; "Cancelar" la descarta.
+     */
+    val photosEditor: PhotosEditor? = null,
+
     /** true cuando se guardó con ✓: la pantalla lo ve y se cierra. */
     val isSaved: Boolean = false,
 ) {
@@ -94,19 +106,21 @@ data class ReminderDetailUiState(
      * true si hay algo para guardar (el ✓ se pinta de verde). Compara como se guardaría: sin
      * espacios de los bordes y con "vacío" igual a null.
      *
-     * - Nota nueva: hace falta título o descripción (solo etiquetas o avisos no alcanza).
+     * - Nota nueva: hace falta título, descripción o portada (solo etiquetas o avisos no alcanza).
      * - Existente: cambió el título, la descripción, las etiquetas, los avisos por hora, la
-     *   importancia o la acción de notificación.
+     *   importancia, la acción de notificación o las fotos.
      */
     val hasUnsavedChanges: Boolean
         get() = when {
-            isNew -> cleanTitle != null || cleanDescription != null
+            isNew -> cleanTitle != null || cleanDescription != null || photoPath != null
             reminder != null -> cleanTitle != reminder.title ||
                 cleanDescription != reminder.description ||
                 tagIds != reminder.tags.map { it.id }.toSet() ||
                 alarms != reminder.alarms.map { it.at } ||
                 importance != reminder.importance ||
-                action != reminder.action
+                action != reminder.action ||
+                photos != reminder.photos ||
+                photoPath != reminder.photoPath
             else -> false
         }
 
@@ -121,7 +135,18 @@ data class ReminderDetailUiState(
 
     /** Los avisos por lugar se conservan como vienen (todavía no hay modal para editarlos). */
     val places: List<PlaceAlert> get() = reminder?.places.orEmpty()
-    val photoPath: String? get() = reminder?.photoPath
+
+    /**
+     * Las fotos en el orden en que se apilan arriba de la descripción: primero la portada ya
+     * recortada y después las demás (sin repetir la original de la portada). Sin portada, todas
+     * en el orden en que se eligieron.
+     */
+    val stackPhotos: List<String>
+        get() = if (photoPath != null) {
+            listOf(photoPath) + photos.filterNot { it.isCover }.map { it.path }
+        } else {
+            photos.map { it.path }
+        }
 
     @get:DrawableRes
     val typeIcon: Int get() = reminder?.typeIcon() ?: R.drawable.ic_description
@@ -198,3 +223,21 @@ data class PlaceEditor(
     val selectedPlaceId: Long? = null,
     val event: PlaceEvent = PlaceEvent.Arrive,
 )
+
+/**
+ * El modal "Imágenes": las fotos como quedan en el modal y la portada recortada.
+ *
+ * - [isImporting]: se están copiando fotos recién elegidas (se muestra "Cargando fotos…").
+ * - [cropping]: la foto que se está recortando (abre el recorte encima del modal); null = ninguna.
+ * - [isSavingCover]: se está guardando el recorte (evita guardarlo dos veces con doble toque).
+ */
+data class PhotosEditor(
+    val photos: List<ReminderPhoto> = emptyList(),
+    val coverPath: String? = null,
+    val isImporting: Boolean = false,
+    val cropping: String? = null,
+    val isSavingCover: Boolean = false,
+) {
+    /** Cuántas fotos más se pueden agregar. */
+    val freeSlots: Int get() = MAX_PHOTOS - photos.size
+}

@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -41,6 +42,8 @@ import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
 import com.example.uade.rememberapp.ui.theme.PhotoBackground
 import com.example.uade.rememberapp.ui.theme.PhotoScrim
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
+import coil3.compose.AsyncImage
+import java.io.File
 import java.time.Instant
 
 /**
@@ -77,7 +80,7 @@ fun ReminderCard(
     ) {
         Box(modifier = Modifier.height(IntrinsicSize.Min)) {
             if (hasPhoto) {
-                ReminderPhotoBackground(modifier = Modifier.matchParentSize())
+                ReminderPhotoBackground(photoPath = reminder.photoPath, modifier = Modifier.matchParentSize())
             }
             Row {
                 if (accentColor != null) {
@@ -190,22 +193,43 @@ private fun ReminderCardFooter(
 }
 
 /**
- * Placeholder de la foto de fondo: un degradé marrón y, encima, un velo que oscurece el lado
- * del texto (la izquierda).
+ * La portada del recordatorio ([photoPath], ya recortada), cubriendo todo el espacio y centrada.
  *
- * TODO: cargar la foto real desde photoPath (con Coil) debajo del velo.
+ * Debajo va un degradé marrón: se ve mientras carga y si el archivo no se puede leer (ej. los
+ * datos de ejemplo de las previews). Con [scrim], encima va un velo que oscurece la izquierda
+ * para que el texto de la card se siga leyendo.
  */
 @Composable
-internal fun ReminderPhotoBackground(modifier: Modifier = Modifier) {
+internal fun ReminderPhotoBackground(
+    photoPath: String?,
+    modifier: Modifier = Modifier,
+    scrim: Boolean = true,
+) {
     val description = stringResource(R.string.reminders_photo_description)
     Box(
         modifier = modifier
             .semantics { contentDescription = description }
             .background(
                 Brush.linearGradient(listOf(PhotoBackground.copy(alpha = 0.6f), PhotoBackground)),
+            ),
+    ) {
+        if (photoPath != null) {
+            AsyncImage(
+                // File y no el String: así Coil no intenta interpretarlo como URL.
+                model = File(photoPath),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
             )
-            .background(Brush.horizontalGradient(listOf(PhotoScrim, Color.Transparent))),
-    )
+        }
+        if (scrim) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Brush.horizontalGradient(listOf(PhotoScrim, Color.Transparent))),
+            )
+        }
+    }
 }
 
 /** Ícono junto al título: lista, nota solo por lugar (pin) o nota común. */

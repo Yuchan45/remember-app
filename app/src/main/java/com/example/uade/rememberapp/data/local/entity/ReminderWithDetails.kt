@@ -37,4 +37,6 @@ data class ReminderWithDetails(
     /** Hoy es como mucho una (índice único); se lee como lista porque así trae Room las relaciones. */
     @Relation(parentColumn = "id", entityColumn = "reminderId")
     val actions: List<ActionEntity> = emptyList(),
+    @Relation(parentColumn = "id", entityColumn = "reminderId")
+    val photos: List<PhotoEntity> = emptyList(),
 )

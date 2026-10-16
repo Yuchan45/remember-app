@@ -12,6 +12,7 @@ import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.model.Tag
 import org.junit.Assert.assertEquals
@@ -82,6 +83,28 @@ class ReminderMapperTest {
         )
 
         assertEquals(NotificationAction.Call("11 5555-5555"), row.toDomain().action)
+    }
+
+    @Test
+    fun `las fotos vuelven en el orden en que se eligieron y con su portada`() {
+        val photos = listOf(
+            ReminderPhoto("/fotos/a.jpg"),
+            ReminderPhoto("/fotos/b.jpg", isCover = true),
+            ReminderPhoto("/fotos/c.jpg"),
+        )
+        // Room puede devolver las filas en cualquier orden: se mezclan a propósito.
+        val rows = photos.mapIndexed { i, photo -> photo.toEntity(position = i, reminderId = 7) }.reversed()
+        val row = ReminderWithDetails(
+            reminder = reminder.copy(photoPath = "/fotos/portada.jpg").toEntity(),
+            tags = emptyList(),
+            alarms = emptyList(),
+            places = emptyList(),
+            photos = rows,
+        )
+
+        val domain = row.toDomain()
+        assertEquals(photos, domain.photos)
+        assertEquals("/fotos/portada.jpg", domain.photoPath)
     }
 
     @Test

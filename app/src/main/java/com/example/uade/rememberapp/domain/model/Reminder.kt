@@ -9,6 +9,9 @@ import java.time.Instant
  * Los avisos pueden ser varios y combinarse: a ciertas horas ([alarms]) y/o al llegar o salir
  * de ciertos lugares ([places]). Sin ninguno, el recordatorio no avisa.
  *
+ * Fotos: [photos] son las elegidas (hasta [MAX_PHOTOS]) y [photoPath] es la portada ya recortada,
+ * la que se muestra en la card y en el detalle.
+ *
  * Tiene que tener al menos uno de [title], [description] o [photoPath].
  */
 data class Reminder(
@@ -16,7 +19,9 @@ data class Reminder(
     val type: ReminderType = ReminderType.Note,
     val title: String? = null,
     val description: String? = null,
+    /** La portada recortada (de la foto de [photos] con isCover), o null si no tiene. */
     val photoPath: String? = null,
+    val photos: List<ReminderPhoto> = emptyList(),
     /** Solo se usa en [ReminderType.Checklist]; en una nota queda vacía. */
     val items: List<ChecklistItem> = emptyList(),
     val tags: List<Tag> = emptyList(),
@@ -36,6 +41,9 @@ data class Reminder(
         }
     }
 }
+
+/** Cuántas fotos puede tener un recordatorio. */
+const val MAX_PHOTOS = 15
 
 /** Qué tipo de recordatorio es. Cambia el formulario de creación y cómo se dibuja el cuerpo. */
 enum class ReminderType {

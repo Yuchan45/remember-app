@@ -211,6 +211,30 @@
     <!-- Fila "Recordatorio" con varios avisos: el próximo y cuántos más, ej. "Hoy 18:00 +1". -->
     <string name="reminder_detail_time_more">%1$s +%2$d</string>
     <string name="reminder_detail_place_more">%1$s +%2$d</string>
+    <!-- Fila "Imagen" con fotos: %1$d = cuántas. -->
+    <plurals name="reminder_detail_image_count">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="other">%1$d fotos</item>
+    </plurals>
+    <!-- %1$d = cuántas fotos tiene. -->
+    <plurals name="reminder_detail_image_cover_count">
+        <item quantity="one">Portada · %1$d foto</item>
+        <item quantity="other">Portada · %1$d fotos</item>
+    </plurals>
+    <!-- Detalle: fotos apiladas arriba de la descripción. %1$d = cuántas no se ven, ej. "+7". -->
+    <string name="reminder_detail_photos_more">+%1$d</string>
+    <!-- Detalle: modal "Imágenes" (hasta 15 fotos y cuál es la portada). %1$d = máximo de fotos. -->
+    <string name="reminder_photos_title">Imágenes</string>
+    <plurals name="reminder_photos_subtitle">
+        <item quantity="one">Elegí %1$d foto y tocala para usarla de portada.</item>
+        <item quantity="other">Elegí hasta %1$d fotos y tocá una para usarla de portada.</item>
+    </plurals>
+    <string name="reminder_photos_add">Agregar fotos</string>
+    <string name="reminder_photos_remove">Quitar foto</string>
+    <string name="reminder_photos_cover">Portada</string>
+    <string name="reminder_photos_loading">Cargando fotos…</string>
+    <!-- %1$d = número de la foto, ej. "Foto 2". -->
+    <string name="reminder_photos_item">Foto %1$d</string>
 
     <!-- Archivo: recordatorios archivados y eliminados -->
     <string name="archive_title">Archivo</string>
@@ -236,6 +260,11 @@
     <!-- Formato del título del calendario (DateTimeFormatter), ej. "septiembre de 2026". -->
     <string name="calendar_month_year_pattern">LLLL \'de\' yyyy</string>
     <string name="time_picker_title">Selecciona una hora</string>
+    <!-- Recorte de imagen (ImageCropDialog) -->
+    <string name="image_crop_close">Cerrar</string>
+    <string name="image_crop_zoom_in">Acercar</string>
+    <string name="image_crop_zoom_out">Alejar</string>
+    <string name="image_crop_save">Guardar</string>
 
     <!-- Barra de navegación inferior -->
     <string name="nav_home">Inicio</string>

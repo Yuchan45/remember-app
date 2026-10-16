@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp.data.local.mapper
 
 import com.example.uade.rememberapp.data.local.entity.ActionEntity
+import com.example.uade.rememberapp.data.local.entity.PhotoEntity
 import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderWithDetails
@@ -11,6 +12,7 @@ import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Tag
@@ -25,6 +27,7 @@ fun ReminderWithDetails.toDomain(): Reminder = reminder.toDomain(
     alarms = alarms.map { Alarm(Instant.ofEpochMilli(it.atMillis)) }.sortedBy { it.at },
     places = places.map { it.toDomain() },
     action = actions.firstOrNull()?.toDomain(),
+    photos = photos.sortedBy { it.position }.map { ReminderPhoto(path = it.path, isCover = it.isCover) },
 )
 
 /**
@@ -36,12 +39,14 @@ fun ReminderEntity.toDomain(
     alarms: List<Alarm> = emptyList(),
     places: List<PlaceAlert> = emptyList(),
     action: NotificationAction? = null,
+    photos: List<ReminderPhoto> = emptyList(),
 ): Reminder = Reminder(
     id = id,
     type = enumOrDefault(type, ReminderType.Note),
     title = title,
     description = description,
     photoPath = photoPath,
+    photos = photos,
     tags = tags,
     alarms = alarms,
     places = places,
@@ -70,6 +75,10 @@ fun PlaceAlertEntity.toDomain(): PlaceAlert =
 /** El [PlaceAlertEntity] de un aviso por lugar; el reminderId lo completa el DAO al guardar. */
 fun PlaceAlert.toEntity(reminderId: Long = 0): PlaceAlertEntity =
     PlaceAlertEntity(reminderId = reminderId, placeId = placeId, event = event.name)
+
+/** La fila de una foto; [position] es su lugar en la lista y el reminderId lo completa el DAO. */
+fun ReminderPhoto.toEntity(position: Int, reminderId: Long = 0): PhotoEntity =
+    PhotoEntity(reminderId = reminderId, path = path, position = position, isCover = isCover)
 
 /** Un valor guardado que ya no existe en el enum (ej. se renombró) cae en [default] en vez de crashear. */
 private inline fun <reified E : Enum<E>> enumOrDefault(name: String, default: E): E =

@@ -46,3 +46,27 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         )
     }
 }
+
+/**
+ * 5 → 6: `reminder_photos`, las fotos elegidas de cada recordatorio. Las notas que ya existían
+ * quedan sin fotos (su `photoPath`, si tenían, sigue siendo la portada).
+ *
+ * Igual que en MIGRATION_4_5, el SQL es el que genera Room para PhotoEntity.
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `reminder_photos` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`reminderId` INTEGER NOT NULL, " +
+                "`path` TEXT NOT NULL, " +
+                "`position` INTEGER NOT NULL, " +
+                "`isCover` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`reminderId`) REFERENCES `reminders`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_reminder_photos_reminderId` " +
+                "ON `reminder_photos` (`reminderId`)",
+        )
+    }
+}

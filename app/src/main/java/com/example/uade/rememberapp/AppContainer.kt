@@ -5,14 +5,19 @@ import androidx.room.Room
 import com.example.uade.rememberapp.data.local.AppDatabase
 import com.example.uade.rememberapp.data.local.MIGRATION_3_4
 import com.example.uade.rememberapp.data.local.MIGRATION_4_5
+import com.example.uade.rememberapp.data.local.MIGRATION_5_6
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
+import com.example.uade.rememberapp.data.storage.PhotoRepositoryImpl
+import com.example.uade.rememberapp.domain.repository.PhotoRepository
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.RestoreReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.SaveCoverUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.TrashReminderUseCase
 
@@ -34,7 +39,7 @@ class AppContainer(context: Context) {
     private val database: AppDatabase by lazy {
         Room.databaseBuilder(appContext, AppDatabase::class.java, "hey.db")
             // Los cambios con migración escrita conservan los datos.
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             // Si no hay migración (ej. desde la versión 1 o 2), borra y recrea la base. Sirve
             // mientras la app no esté publicada. TODO: escribir migraciones antes de publicar.
             .fallbackToDestructiveMigration(dropAllTables = true)
@@ -51,6 +56,11 @@ class AppContainer(context: Context) {
     val getReminderUseCase: GetReminderUseCase by lazy { GetReminderUseCase(reminderRepository) }
     val trashReminderUseCase: TrashReminderUseCase by lazy { TrashReminderUseCase(reminderRepository) }
     val restoreReminderUseCase: RestoreReminderUseCase by lazy { RestoreReminderUseCase(reminderRepository) }
+
+    val photoRepository: PhotoRepository by lazy { PhotoRepositoryImpl(appContext) }
+
+    val importPhotosUseCase: ImportPhotosUseCase by lazy { ImportPhotosUseCase(photoRepository) }
+    val saveCoverUseCase: SaveCoverUseCase by lazy { SaveCoverUseCase(photoRepository) }
 
     /** Arranca con las etiquetas de ejemplo que carga [SeedTagsCallback] al crear la base. */
     val tagRepository: TagRepository by lazy {
