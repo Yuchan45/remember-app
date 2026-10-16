@@ -38,7 +38,7 @@
     <string name="reminders_quick_capture_photo">Agregar foto</string>
 
     <!-- Captura rápida: modal para crear una nota -->
-    <string name="reminders_capture_title_hint">Crea un recordatorio rápido</string>
+    <string name="reminders_capture_title_hint">Crea una nota rápida</string>
     <string name="reminders_capture_section_when">Cuándo</string>
     <string name="reminders_capture_section_repeat">Repetir</string>
     <string name="reminders_capture_section_favorite_places">Lugares favoritos</string>
