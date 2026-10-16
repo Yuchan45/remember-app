@@ -1,5 +1,10 @@
 package com.example.uade.rememberapp.ui.reminders.detail
 
+import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationActionSheetActions
+import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationActionSheet
+import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
+import com.example.uade.rememberapp.domain.model.NotificationAction
+import com.example.uade.rememberapp.domain.model.MessageChannel
 import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
 import com.example.uade.rememberapp.ui.components.DialogDismissButton
 import androidx.compose.runtime.setValue
@@ -126,6 +131,7 @@ fun ReminderDetailScreen(
         onTagsClick = viewModel::onTagsClick,
         onTimeClick = viewModel::onTimeClick,
         onBehaviorClick = viewModel::onBehaviorClick,
+        onActionClick = viewModel::onActionClick,
         onDescriptionChange = viewModel::onDescriptionChange,
     )
 
@@ -135,6 +141,23 @@ fun ReminderDetailScreen(
             onAssignedChange = viewModel::onTagsChanged,
             onCancel = viewModel::onCancelTags,
             onSave = viewModel::onSaveTags,
+        )
+    }
+
+    uiState.actionEditor?.let { editor ->
+        NotificationActionSheet(
+            editor = editor,
+            currentKind = uiState.action?.let { NotificationActionKind.of(it) },
+            actions = NotificationActionSheetActions(
+                onKindSelected = viewModel::onActionKindSelected,
+                onBack = viewModel::onActionBack,
+                onChannel = viewModel::onActionChannel,
+                onTarget = viewModel::onActionTarget,
+                onText = viewModel::onActionText,
+                onRemove = viewModel::onRemoveAction,
+                onCancel = viewModel::onCancelAction,
+                onSave = viewModel::onSaveAction,
+            ),
         )
     }
 
@@ -300,6 +323,7 @@ private fun ReminderDetailContent(
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
     onBehaviorClick: () -> Unit,
+    onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -326,6 +350,7 @@ private fun ReminderDetailContent(
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
                 onBehaviorClick = onBehaviorClick,
+                onActionClick = onActionClick,
                 onDescriptionChange = onDescriptionChange,
             )
 
@@ -402,6 +427,7 @@ private fun ReminderDetailBody(
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
     onBehaviorClick: () -> Unit,
+    onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -455,6 +481,7 @@ private fun ReminderDetailBody(
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
                 onBehaviorClick = onBehaviorClick,
+                onActionClick = onActionClick,
                 modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 12.dp),
             )
         }
@@ -575,6 +602,7 @@ private fun ReminderOptionsPanel(
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
     onBehaviorClick: () -> Unit,
+    onActionClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -610,9 +638,8 @@ private fun ReminderOptionsPanel(
                 OptionCard(
                     icon = R.drawable.ic_bolt,
                     title = stringResource(R.string.reminder_detail_notification_action),
-                    // TODO: qué hacer al tocar la notificación (ej. "Llamar al número: …");
-                    // todavía no existe en el modelo.
-                    value = stringResource(R.string.reminder_detail_notification_action_none),
+                    value = actionValue(uiState.action),
+                    onClick = onActionClick,
                 )
             }
             OptionRow {
@@ -786,6 +813,25 @@ private fun timeValue(alarms: List<Instant>, now: Instant): String {
 }
 
 /**
+ * La acción de notificación en una línea: "Llamar: 11 5555-5555", "WhatsApp: 11 5555-5555",
+ * "Instagram: @usuario", "Correo: ana@mail.com" o "Sin acción".
+ */
+@Composable
+private fun actionValue(action: NotificationAction?): String = when (action) {
+    null -> stringResource(R.string.reminder_detail_notification_action_none)
+    is NotificationAction.Call -> stringResource(R.string.reminder_action_summary_call, action.phone)
+    is NotificationAction.Email -> stringResource(R.string.reminder_action_summary_email, action.to)
+    is NotificationAction.Message -> stringResource(
+        when (action.channel) {
+            MessageChannel.Sms -> R.string.reminder_action_summary_sms
+            MessageChannel.WhatsApp -> R.string.reminder_action_summary_whatsapp
+            MessageChannel.Instagram -> R.string.reminder_action_summary_instagram
+        },
+        action.to,
+    )
+}
+
+/**
  * El primer lugar: "Al llegar a Casa" (o "Al llegar a un lugar" si no se sabe el nombre), con
  * varios "Al llegar a Casa +1", o "Sin ubicación".
  */
@@ -815,6 +861,7 @@ private fun DetailPreviewFrame(uiState: ReminderDetailUiState, now: Instant = In
             onTagsClick = {},
             onTimeClick = {},
             onBehaviorClick = {},
+            onActionClick = {},
             onDescriptionChange = {},
         )
     }
@@ -830,6 +877,7 @@ private fun loadedState(reminder: Reminder) = ReminderDetailUiState(
     allTags = reminder.tags,
     alarms = reminder.alarms.map { it.at },
     importance = reminder.importance,
+    action = reminder.action,
 )
 
 @Preview(name = "Con foto, etiqueta y aviso", showBackground = true, heightDp = 900)

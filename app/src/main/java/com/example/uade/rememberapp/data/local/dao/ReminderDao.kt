@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import com.example.uade.rememberapp.data.local.entity.ActionEntity
 import com.example.uade.rememberapp.data.local.entity.AlarmEntity
 import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
@@ -45,7 +46,8 @@ abstract class ReminderDao {
 
     /**
      * Guarda el recordatorio y deja exactamente estas etiquetas ([tagIds]), avisos por hora
-     * ([alarmsAt], en epoch millis) y por lugar ([places]). Devuelve su id.
+     * ([alarmsAt], en epoch millis), avisos por lugar ([places]) y acción de notificación
+     * ([action], o ninguna si es null). Devuelve su id.
      *
      * `@Transaction`: o se hace todo o nada. Si algo falla a mitad de camino, no queda un
      * recordatorio guardado con sus listas a medio actualizar.
@@ -56,6 +58,7 @@ abstract class ReminderDao {
         tagIds: Collection<Long>,
         alarmsAt: List<Long>,
         places: List<PlaceAlertEntity>,
+        action: ActionEntity? = null,
     ): Long {
         val newId = upsert(reminder)
         // @Upsert devuelve -1 cuando actualiza una fila existente: el id es el que ya tenía.
@@ -67,6 +70,8 @@ abstract class ReminderDao {
         insertAlarms(alarmsAt.map { AlarmEntity(reminderId = id, atMillis = it) })
         deletePlacesOf(id)
         insertPlaces(places.map { it.copy(id = 0, reminderId = id) })
+        deleteActionOf(id)
+        action?.let { insertAction(it.copy(id = 0, reminderId = id)) }
         return id
     }
 
@@ -100,6 +105,12 @@ abstract class ReminderDao {
 
     @Insert
     protected abstract suspend fun insertPlaces(places: List<PlaceAlertEntity>)
+
+    @Query("DELETE FROM reminder_actions WHERE reminderId = :reminderId")
+    protected abstract suspend fun deleteActionOf(reminderId: Long)
+
+    @Insert
+    protected abstract suspend fun insertAction(action: ActionEntity)
 
     /** Sus etiquetas, avisos y lugares se borran solos (CASCADE). */
     @Query("DELETE FROM reminders WHERE id = :id")

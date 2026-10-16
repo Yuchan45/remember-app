@@ -34,6 +34,7 @@ class ReminderRepositoryImpl(
             // Sin repetidos: dos avisos a la misma hora son uno solo.
             alarmsAt = reminder.alarms.map { it.at.toEpochMilli() }.distinct(),
             places = reminder.places.map { it.toEntity() },
+            action = reminder.action?.toEntity(),
         )
 
     override suspend fun delete(id: Long) = dao.deleteById(id)

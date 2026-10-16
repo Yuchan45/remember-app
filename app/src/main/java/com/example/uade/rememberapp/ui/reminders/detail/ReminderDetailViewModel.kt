@@ -9,12 +9,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.MessageChannel
+import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.navigation.Routes
+import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
@@ -73,6 +76,7 @@ class ReminderDetailViewModel(
                         tagIds = reminder?.tags.orEmpty().map { tag -> tag.id }.toSet(),
                         alarms = reminder?.alarms.orEmpty().map { alarm -> alarm.at }.sorted(),
                         importance = reminder?.importance ?: Importance.Default,
+                        action = reminder?.action,
                     )
                 }
             }
@@ -131,6 +135,101 @@ class ReminderDetailViewModel(
     /** "Cancelar" (o cerrar el modal): deja la importancia como estaba. */
     fun onCancelImportance() {
         _uiState.update { it.copy(importanceEditor = null) }
+    }
+
+    // --- Modal "Acción de notificación" ------------------------------------------------------
+    // Dos pasos (lista → datos). Mismo patrón que los otros modales: trabaja sobre una copia que
+    // "Guardar" pasa al borrador `action`; se persiste recién con ✓.
+
+    /**
+     * Tocar "Acción de notificación": sin acción, abre la lista; con una, abre directo sus datos
+     * (es lo más probable que se quiera cambiar).
+     */
+    fun onActionClick() {
+        _uiState.update { state ->
+            val editor = when (val action = state.action) {
+                null -> ActionEditor()
+                is NotificationAction.Call -> ActionEditor(
+                    step = ActionEditorStep.Form,
+                    kind = NotificationActionKind.Call,
+                    target = action.phone,
+                )
+                is NotificationAction.Message -> ActionEditor(
+                    step = ActionEditorStep.Form,
+                    kind = NotificationActionKind.Message,
+                    channel = action.channel,
+                    target = action.to,
+                    text = action.text.orEmpty(),
+                )
+                is NotificationAction.Email -> ActionEditor(
+                    step = ActionEditorStep.Form,
+                    kind = NotificationActionKind.Email,
+                    target = action.to,
+                    text = action.subject.orEmpty(),
+                )
+            }
+            state.copy(actionEditor = editor.copy(hadAction = state.action != null))
+        }
+    }
+
+    /** Elegir una acción de la lista pasa a sus datos. Si es otra, arranca con los campos vacíos. */
+    fun onActionKindSelected(kind: NotificationActionKind) {
+        updateActionEditor { editor ->
+            if (editor.kind == kind) {
+                editor.copy(step = ActionEditorStep.Form)
+            } else {
+                ActionEditor(step = ActionEditorStep.Form, kind = kind, hadAction = editor.hadAction)
+            }
+        }
+    }
+
+    /** ← en los datos: vuelve a la lista (sin perder lo escrito, por si vuelve a la misma). */
+    fun onActionBack() {
+        updateActionEditor { it.copy(step = ActionEditorStep.List) }
+    }
+
+    fun onActionChannel(channel: MessageChannel) {
+        updateActionEditor { it.copy(channel = channel) }
+    }
+
+    /** Instagram se guarda sin "@" (la UI lo muestra como prefijo). */
+    fun onActionTarget(target: String) {
+        updateActionEditor { it.copy(target = target.removePrefix("@")) }
+    }
+
+    fun onActionText(text: String) {
+        updateActionEditor { it.copy(text = text) }
+    }
+
+    /** "Guardar": arma la acción con lo escrito y la pasa al borrador. Sin destinatario no hace nada. */
+    fun onSaveAction() {
+        _uiState.update { state ->
+            val editor = state.actionEditor ?: return@update state
+            if (!editor.canSave) return@update state
+            val target = editor.target.trim()
+            val text = editor.text.trim().ifEmpty { null }
+            val action = when (editor.kind) {
+                NotificationActionKind.Call -> NotificationAction.Call(phone = target)
+                NotificationActionKind.Message -> NotificationAction.Message(editor.channel, to = target, text = text)
+                NotificationActionKind.Email -> NotificationAction.Email(to = target, subject = text)
+                null -> return@update state
+            }
+            state.copy(action = action, actionEditor = null)
+        }
+    }
+
+    /** "Quitar acción": el recordatorio queda sin acción (se persiste con ✓). */
+    fun onRemoveAction() {
+        _uiState.update { it.copy(action = null, actionEditor = null) }
+    }
+
+    /** "Cancelar" (o cerrar el modal): deja la acción como estaba. */
+    fun onCancelAction() {
+        _uiState.update { it.copy(actionEditor = null) }
+    }
+
+    private fun updateActionEditor(transform: (ActionEditor) -> ActionEditor) {
+        _uiState.update { state -> state.copy(actionEditor = state.actionEditor?.let(transform)) }
     }
 
     // --- Modal "Establecer recordatorio" -------------------------------------------------------
@@ -282,6 +381,7 @@ class ReminderDetailViewModel(
                 tags = state.tags,
                 alarms = state.alarmsToSave,
                 importance = state.importance,
+                action = state.action,
                 createdAt = now(),
             )
             reminder != null && (title != null || description != null || reminder.photoPath != null) ->
@@ -292,6 +392,7 @@ class ReminderDetailViewModel(
                     tags = state.tags,
                     alarms = state.alarmsToSave,
                     importance = state.importance,
+                    action = state.action,
                 )
             else -> null
         }

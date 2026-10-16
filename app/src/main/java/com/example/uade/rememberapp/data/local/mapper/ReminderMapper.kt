@@ -1,10 +1,13 @@
 package com.example.uade.rememberapp.data.local.mapper
 
+import com.example.uade.rememberapp.data.local.entity.ActionEntity
 import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderWithDetails
 import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.MessageChannel
+import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
@@ -21,6 +24,7 @@ fun ReminderWithDetails.toDomain(): Reminder = reminder.toDomain(
     tags = tags.map { it.toDomain() },
     alarms = alarms.map { Alarm(Instant.ofEpochMilli(it.atMillis)) }.sortedBy { it.at },
     places = places.map { it.toDomain() },
+    action = actions.firstOrNull()?.toDomain(),
 )
 
 /**
@@ -31,6 +35,7 @@ fun ReminderEntity.toDomain(
     tags: List<Tag> = emptyList(),
     alarms: List<Alarm> = emptyList(),
     places: List<PlaceAlert> = emptyList(),
+    action: NotificationAction? = null,
 ): Reminder = Reminder(
     id = id,
     type = enumOrDefault(type, ReminderType.Note),
@@ -40,6 +45,7 @@ fun ReminderEntity.toDomain(
     tags = tags,
     alarms = alarms,
     places = places,
+    action = action,
     isDone = isDone,
     status = enumOrDefault(status, ReminderStatus.Active),
     importance = enumOrDefault(importance, Importance.Default),
@@ -68,3 +74,32 @@ fun PlaceAlert.toEntity(reminderId: Long = 0): PlaceAlertEntity =
 /** Un valor guardado que ya no existe en el enum (ej. se renombró) cae en [default] en vez de crashear. */
 private inline fun <reified E : Enum<E>> enumOrDefault(name: String, default: E): E =
     enumValues<E>().firstOrNull { it.name == name } ?: default
+
+// La acción de notificación (sealed) se guarda en una fila de `reminder_actions`: [ActionEntity.type]
+// dice cuál es y las demás columnas guardan sus datos.
+
+private const val ActionCall = "Call"
+private const val ActionMessage = "Message"
+private const val ActionEmail = "Email"
+
+/** La fila de una acción; el reminderId lo completa el DAO al guardar. */
+fun NotificationAction.toEntity(reminderId: Long = 0): ActionEntity = when (this) {
+    is NotificationAction.Call ->
+        ActionEntity(reminderId = reminderId, type = ActionCall, channel = null, target = phone, text = null)
+    is NotificationAction.Message ->
+        ActionEntity(reminderId = reminderId, type = ActionMessage, channel = channel.name, target = to, text = text)
+    is NotificationAction.Email ->
+        ActionEntity(reminderId = reminderId, type = ActionEmail, channel = null, target = to, text = subject)
+}
+
+/** La acción de una fila, o null si el tipo no se conoce (ej. se renombró). */
+fun ActionEntity.toDomain(): NotificationAction? = when (type) {
+    ActionCall -> NotificationAction.Call(phone = target)
+    ActionMessage -> NotificationAction.Message(
+        channel = enumOrDefault(channel.orEmpty(), MessageChannel.Sms),
+        to = target,
+        text = text,
+    )
+    ActionEmail -> NotificationAction.Email(to = target, subject = text)
+    else -> null
+}

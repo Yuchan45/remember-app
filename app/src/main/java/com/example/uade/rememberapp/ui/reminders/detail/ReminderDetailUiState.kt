@@ -4,12 +4,15 @@ import androidx.annotation.DrawableRes
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.MessageChannel
+import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.components.typeIcon
+import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -63,6 +66,11 @@ data class ReminderDetailUiState(
      */
     val importanceEditor: Importance? = null,
 
+    /** La acción rápida de la notificación (fila "Acción de notificación"); null = sin acción. */
+    val action: NotificationAction? = null,
+    /** El modal "Acción de notificación" mientras está abierto (null = cerrado). */
+    val actionEditor: ActionEditor? = null,
+
     /** true cuando se guardó con ✓: la pantalla lo ve y se cierra. */
     val isSaved: Boolean = false,
 ) {
@@ -76,8 +84,8 @@ data class ReminderDetailUiState(
      * espacios de los bordes y con "vacío" igual a null.
      *
      * - Nota nueva: hace falta título o descripción (solo etiquetas o avisos no alcanza).
-     * - Existente: cambió el título, la descripción, las etiquetas, los avisos por hora o la
-     *   importancia.
+     * - Existente: cambió el título, la descripción, las etiquetas, los avisos por hora, la
+     *   importancia o la acción de notificación.
      */
     val hasUnsavedChanges: Boolean
         get() = when {
@@ -86,7 +94,8 @@ data class ReminderDetailUiState(
                 cleanDescription != reminder.description ||
                 tagIds != reminder.tags.map { it.id }.toSet() ||
                 alarms != reminder.alarms.map { it.at } ||
-                importance != reminder.importance
+                importance != reminder.importance ||
+                action != reminder.action
             else -> false
         }
 
@@ -141,3 +150,29 @@ data class AlarmDraft(
     /** TODO: la repetición todavía no se guarda en el recordatorio; por ahora solo se marca. */
     val selectedRepeat: RepeatOption = RepeatOption.None,
 )
+
+/**
+ * El modal "Acción de notificación", que tiene dos pasos:
+ *
+ * - [ActionEditorStep.List]: la lista de acciones ("Llamar al número", "Enviar mensaje"…).
+ * - [ActionEditorStep.Form]: los datos de la acción elegida ([kind]): el canal (solo mensajes),
+ *   el destinatario ([target]) y el texto o asunto opcional ([text]).
+ *
+ * [hadAction] es si el recordatorio ya tenía una acción al abrir el modal (para "Quitar acción").
+ */
+data class ActionEditor(
+    val step: ActionEditorStep = ActionEditorStep.List,
+    val kind: NotificationActionKind? = null,
+    val channel: MessageChannel = MessageChannel.WhatsApp,
+    val target: String = "",
+    val text: String = "",
+    val hadAction: Boolean = false,
+) {
+    /** Hace falta un destinatario para guardar. */
+    val canSave: Boolean get() = kind != null && target.isNotBlank()
+}
+
+enum class ActionEditorStep {
+    List,
+    Form,
+}

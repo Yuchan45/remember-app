@@ -23,6 +23,8 @@ data class Reminder(
     val alarms: List<Alarm> = emptyList(),
     val places: List<PlaceAlert> = emptyList(),
     val importance: Importance = Importance.Default,
+    /** La acción rápida de la notificación, si tiene (ej. llamar a un número). */
+    val action: NotificationAction? = null,
     val isDone: Boolean = false,
     /** Dónde está: en la lista principal, archivado o en la papelera. */
     val status: ReminderStatus = ReminderStatus.Active,

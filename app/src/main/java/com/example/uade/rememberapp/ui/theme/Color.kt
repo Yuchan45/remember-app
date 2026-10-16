@@ -58,3 +58,7 @@ val SwipeActionContent = Color(0xFFFFFFFF)
 
 /** El ✓ de guardar cuando hay cambios sin guardar. */
 val UnsavedChangesGreen = Color(0xFF6FCF97)
+
+// Colores de marca de los canales de "Enviar mensaje" (acción de notificación).
+val WhatsAppGreen = Color(0xFF25D366)
+val InstagramPink = Color(0xFFE4405F)

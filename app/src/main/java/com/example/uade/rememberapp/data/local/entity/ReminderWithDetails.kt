@@ -34,4 +34,7 @@ data class ReminderWithDetails(
     val alarms: List<AlarmEntity>,
     @Relation(parentColumn = "id", entityColumn = "reminderId")
     val places: List<PlaceAlertEntity>,
+    /** Hoy es como mucho una (índice único); se lee como lista porque así trae Room las relaciones. */
+    @Relation(parentColumn = "id", entityColumn = "reminderId")
+    val actions: List<ActionEntity> = emptyList(),
 )

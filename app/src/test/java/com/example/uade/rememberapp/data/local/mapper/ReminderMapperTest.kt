@@ -1,11 +1,14 @@
 package com.example.uade.rememberapp.data.local.mapper
 
+import com.example.uade.rememberapp.data.local.entity.ActionEntity
 import com.example.uade.rememberapp.data.local.entity.AlarmEntity
 import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderWithDetails
 import com.example.uade.rememberapp.data.local.entity.TagEntity
 import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.MessageChannel
+import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
@@ -54,6 +57,40 @@ class ReminderMapperTest {
     fun `un aviso por lugar va y vuelve igual`() {
         val alert = PlaceAlert(placeId = 3, event = PlaceAlertEvent.Leave)
         assertEquals(alert, alert.toEntity(reminderId = 7).toDomain())
+    }
+
+    @Test
+    fun `cada acción de notificación va a su fila y vuelve igual`() {
+        listOf(
+            NotificationAction.Call(phone = "11 5555-5555"),
+            NotificationAction.Message(MessageChannel.WhatsApp, to = "11 5555-5555", text = "Llego tarde"),
+            NotificationAction.Message(MessageChannel.Instagram, to = "ana"),
+            NotificationAction.Email(to = "ana@mail.com", subject = "Turno"),
+        ).forEach { action ->
+            assertEquals(action, action.toEntity(reminderId = 7).toDomain())
+        }
+    }
+
+    @Test
+    fun `la acción llega al recordatorio desde el resultado de Room`() {
+        val row = ReminderWithDetails(
+            reminder = reminder.toEntity(),
+            tags = emptyList(),
+            alarms = emptyList(),
+            places = emptyList(),
+            actions = listOf(NotificationAction.Call("11 5555-5555").toEntity(reminderId = 7)),
+        )
+
+        assertEquals(NotificationAction.Call("11 5555-5555"), row.toDomain().action)
+    }
+
+    @Test
+    fun `una acción de tipo desconocido se ignora y un canal desconocido pasa a SMS`() {
+        val unknownType = ActionEntity(reminderId = 7, type = "Fax", channel = null, target = "123", text = null)
+        val unknownChannel = ActionEntity(reminderId = 7, type = "Message", channel = "Telegram", target = "123", text = null)
+
+        assertEquals(null, unknownType.toDomain())
+        assertEquals(MessageChannel.Sms, (unknownChannel.toDomain() as NotificationAction.Message).channel)
     }
 
     @Test
