@@ -412,6 +412,8 @@ private fun CapturePanelContent(
             importance = uiState.selectedImportance,
             onVisibilitySelect = actions.onVisibilitySelected,
             onImportanceSelect = actions.onImportanceSelected,
+            // Chips en vez de la lista con radios: el modal crece con su contenido.
+            compact = true,
             modifier = Modifier.padding(horizontal = SheetPadding),
         )
 
@@ -502,7 +504,7 @@ private fun QuickCaptureContentPlacePreview() {
     QuickCaptureContentPreviewFrame(SampleQuickCapture.placePanelState())
 }
 
-@Preview(name = "Panel de comportamiento", heightDp = 1100)
+@Preview(name = "Panel de comportamiento", heightDp = 700)
 @Composable
 private fun QuickCaptureContentBehaviorPreview() {
     QuickCaptureContentPreviewFrame(
