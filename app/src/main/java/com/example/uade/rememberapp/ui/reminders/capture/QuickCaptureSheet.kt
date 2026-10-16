@@ -69,7 +69,7 @@ import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureTriggerRow
 import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
-import com.example.uade.rememberapp.ui.reminders.capture.components.PlaceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.components.TimeOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture

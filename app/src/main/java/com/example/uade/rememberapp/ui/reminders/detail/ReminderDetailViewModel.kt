@@ -18,6 +18,7 @@ import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.navigation.Routes
 import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
@@ -230,6 +231,36 @@ class ReminderDetailViewModel(
 
     private fun updateActionEditor(transform: (ActionEditor) -> ActionEditor) {
         _uiState.update { state -> state.copy(actionEditor = state.actionEditor?.let(transform)) }
+    }
+
+    // --- Modal "Ubicación" --------------------------------------------------------------------
+    // TODO: por ahora solo se puede marcar un lugar y el momento; "Guardar" cierra sin cambiar
+    // los avisos por lugar (falta PlaceRepository y la geofence).
+
+    /** Tocar "Ubicación" abre el modal sin nada marcado (avisando al llegar). */
+    fun onPlaceClick() {
+        _uiState.update { it.copy(placeEditor = PlaceEditor()) }
+    }
+
+    /** Tocar un lugar lo marca; tocar el marcado lo desmarca. */
+    fun onPlaceSelected(placeId: Long) {
+        updatePlaceEditor { it.copy(selectedPlaceId = if (it.selectedPlaceId == placeId) null else placeId) }
+    }
+
+    fun onPlaceEventSelected(event: PlaceEvent) {
+        updatePlaceEditor { it.copy(event = event) }
+    }
+
+    /** TODO: abrir el buscador de direcciones. */
+    fun onSearchAddress() = Unit
+
+    /** "Cancelar", "Guardar" o cerrar el modal: por ahora todos solo lo cierran. */
+    fun onClosePlace() {
+        _uiState.update { it.copy(placeEditor = null) }
+    }
+
+    private fun updatePlaceEditor(transform: (PlaceEditor) -> PlaceEditor) {
+        _uiState.update { state -> state.copy(placeEditor = state.placeEditor?.let(transform)) }
     }
 
     // --- Modal "Establecer recordatorio" -------------------------------------------------------

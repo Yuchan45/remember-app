@@ -1,4 +1,4 @@
-package com.example.uade.rememberapp.ui.reminders.capture.components
+package com.example.uade.rememberapp.ui.reminders.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

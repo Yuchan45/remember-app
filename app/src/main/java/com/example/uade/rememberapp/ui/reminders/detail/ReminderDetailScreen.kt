@@ -77,7 +77,10 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
@@ -130,6 +133,7 @@ fun ReminderDetailScreen(
         onTitleChange = viewModel::onTitleChange,
         onTagsClick = viewModel::onTagsClick,
         onTimeClick = viewModel::onTimeClick,
+        onPlaceClick = viewModel::onPlaceClick,
         onBehaviorClick = viewModel::onBehaviorClick,
         onActionClick = viewModel::onActionClick,
         onDescriptionChange = viewModel::onDescriptionChange,
@@ -158,6 +162,17 @@ fun ReminderDetailScreen(
                 onCancel = viewModel::onCancelAction,
                 onSave = viewModel::onSaveAction,
             ),
+        )
+    }
+
+    uiState.placeEditor?.let { editor ->
+        PlaceSheet(
+            places = uiState.favoritePlaces,
+            editor = editor,
+            onPlaceClick = viewModel::onPlaceSelected,
+            onSearchAddress = viewModel::onSearchAddress,
+            onEventClick = viewModel::onPlaceEventSelected,
+            onClose = viewModel::onClosePlace,
         )
     }
 
@@ -234,6 +249,51 @@ private fun ImportanceSheet(
             ) {
                 DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onCancel)
                 DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onSave)
+            }
+        }
+    }
+}
+
+/**
+ * Modal "Ubicación": el mismo panel que en la nota rápida (lugares favoritos y "Al llegar / Al
+ * salir"), con "Cancelar / Guardar" como los otros modales del detalle.
+ * TODO: por ahora solo se marca; "Guardar" cierra igual que "Cancelar".
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlaceSheet(
+    places: List<Place>,
+    editor: PlaceEditor,
+    onPlaceClick: (Long) -> Unit,
+    onSearchAddress: () -> Unit,
+    onEventClick: (PlaceEvent) -> Unit,
+    onClose: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            PlaceOptionsPanel(
+                places = places,
+                selectedPlaceId = editor.selectedPlaceId,
+                events = PlaceEvent.entries,
+                selectedEvent = editor.event,
+                onPlaceClick = onPlaceClick,
+                onSearchAddress = onSearchAddress,
+                onEventClick = onEventClick,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onClose)
+                DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onClose)
             }
         }
     }
@@ -322,6 +382,7 @@ private fun ReminderDetailContent(
     onTitleChange: (String) -> Unit,
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
+    onPlaceClick: () -> Unit,
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -349,6 +410,7 @@ private fun ReminderDetailContent(
                 onTitleChange = onTitleChange,
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
+                onPlaceClick = onPlaceClick,
                 onBehaviorClick = onBehaviorClick,
                 onActionClick = onActionClick,
                 onDescriptionChange = onDescriptionChange,
@@ -426,6 +488,7 @@ private fun ReminderDetailBody(
     onTitleChange: (String) -> Unit,
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
+    onPlaceClick: () -> Unit,
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -480,6 +543,7 @@ private fun ReminderDetailBody(
                 now = now,
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
+                onPlaceClick = onPlaceClick,
                 onBehaviorClick = onBehaviorClick,
                 onActionClick = onActionClick,
                 modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 12.dp),
@@ -601,6 +665,7 @@ private fun ReminderOptionsPanel(
     now: Instant,
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
+    onPlaceClick: () -> Unit,
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -626,6 +691,7 @@ private fun ReminderOptionsPanel(
                     icon = R.drawable.ic_location_on,
                     title = stringResource(R.string.reminder_detail_place),
                     value = placeValue(uiState.places, uiState.placeName),
+                    onClick = onPlaceClick,
                 )
             }
             OptionRow {
@@ -860,6 +926,7 @@ private fun DetailPreviewFrame(uiState: ReminderDetailUiState, now: Instant = In
             onTitleChange = {},
             onTagsClick = {},
             onTimeClick = {},
+            onPlaceClick = {},
             onBehaviorClick = {},
             onActionClick = {},
             onDescriptionChange = {},

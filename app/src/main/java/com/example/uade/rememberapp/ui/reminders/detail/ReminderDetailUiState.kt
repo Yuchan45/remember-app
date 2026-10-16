@@ -6,6 +6,7 @@ import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MessageChannel
 import com.example.uade.rememberapp.domain.model.NotificationAction
+import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
@@ -13,6 +14,8 @@ import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.components.typeIcon
 import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -70,6 +73,14 @@ data class ReminderDetailUiState(
     val action: NotificationAction? = null,
     /** El modal "Acción de notificación" mientras está abierto (null = cerrado). */
     val actionEditor: ActionEditor? = null,
+
+    /**
+     * Los lugares favoritos que se ofrecen en el modal "Ubicación".
+     * TODO: tomarlos de PlaceRepository cuando existan los lugares guardados.
+     */
+    val favoritePlaces: List<Place> = SampleQuickCapture.favoritePlaces,
+    /** El modal "Ubicación" mientras está abierto (null = cerrado). */
+    val placeEditor: PlaceEditor? = null,
 
     /** true cuando se guardó con ✓: la pantalla lo ve y se cierra. */
     val isSaved: Boolean = false,
@@ -176,3 +187,14 @@ enum class ActionEditorStep {
     List,
     Form,
 }
+
+/**
+ * El modal "Ubicación": el lugar marcado ([selectedPlaceId], null = ninguno) y si avisa al llegar
+ * o al salir ([event]).
+ *
+ * TODO: por ahora solo se marca; "Guardar" no cambia los avisos por lugar del recordatorio.
+ */
+data class PlaceEditor(
+    val selectedPlaceId: Long? = null,
+    val event: PlaceEvent = PlaceEvent.Arrive,
+)
