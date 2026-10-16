@@ -58,12 +58,17 @@ data class RemindersListUiState(
     val sort: ReminderSort = ReminderSort.Upcoming,
     val isGridLayout: Boolean = false,
     val sections: List<ReminderSection> = emptyList(),
-    /** Nombre de cada lugar por id, para mostrar "Al llegar a Casa" (el Trigger solo guarda el id). */
+    /** Nombre de cada lugar por id, para mostrar "Al llegar a Casa" (PlaceAlert solo guarda el id). */
     val placeNames: Map<Long, String> = emptyMap(),
     /** Si el modal de captura rápida está abierto. Lo abre la barra "Toma una nota rápida…". */
     val isQuickCaptureOpen: Boolean = false,
     /** Si el menú "Crear" está abierto. Lo abre el botón "+" de la barra inferior. */
     val isCreateMenuOpen: Boolean = false,
+    /**
+     * El último recordatorio mandado a la papelera, mientras se muestra el aviso para deshacerlo.
+     * Mientras no sea null, MainTabs muestra el snackbar "1 movido a la papelera · Deshacer".
+     */
+    val trashedReminderId: Long? = null,
 ) {
     val isEmpty: Boolean get() = !isLoading && sections.all { it.reminders.isEmpty() }
 }

@@ -3,10 +3,11 @@ package com.example.uade.rememberapp.ui.reminders.sample
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceKind
 import com.example.uade.rememberapp.ui.reminders.capture.CapturePanel
-import com.example.uade.rememberapp.ui.reminders.capture.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureUiState
-import com.example.uade.rememberapp.ui.reminders.capture.RepeatOption
-import com.example.uade.rememberapp.ui.reminders.capture.TimeShortcut
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 
 /**
  * Opciones de ejemplo del modal de captura rápida, mientras no hay base de datos. Las usan
@@ -28,6 +29,7 @@ object SampleQuickCapture {
         repeatOptions = RepeatOption.entries,
         favoritePlaces = favoritePlaces,
         placeEvents = PlaceEvent.entries,
+        importanceOptions = ReminderImportance.entries,
     )
 
     /** Para previews: panel de hora abierto, con "Mañana 9:00" elegido. */

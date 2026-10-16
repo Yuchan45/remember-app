@@ -74,15 +74,18 @@ private const val UndoWindowMillis = 5_000L
  * Esta función es la "con estado": consigue el ViewModel, lo inicializa con [initialAssigned]
  * cada vez que aparece y dibuja [TagPickerContent]. Asignar y quitar se aplica al momento: cada
  * cambio de las asignadas (tocar, crear, borrar, deshacer) se avisa por [onAssignedChange].
+ * [onCreatorExpandedChange] avisa cuando el editor (crear/editar) se despliega o se pliega.
  */
 @Composable
 fun TagPickerPanel(
     initialAssigned: Set<Long>,
     onAssignedChange: (Set<Long>) -> Unit,
     modifier: Modifier = Modifier,
+    onCreatorExpandedChange: (Boolean) -> Unit = {},
     viewModel: TagPickerViewModel = viewModel(factory = TagPickerViewModel.Factory),
 ) {
     val currentOnAssignedChange by rememberUpdatedState(onAssignedChange)
+    val currentOnCreatorExpandedChange by rememberUpdatedState(onCreatorExpandedChange)
     LaunchedEffect(viewModel) {
         viewModel.start(initialAssigned)
         // drop(1): la primera es la inicial, que quien abrió el panel ya conoce.
@@ -93,6 +96,11 @@ fun TagPickerPanel(
             .collect { currentOnAssignedChange(it) }
     }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // Quien contiene el panel puede necesitar saberlo, ej. para ocultar sus propios botones
+    // mientras el editor muestra los suyos.
+    LaunchedEffect(uiState.isCreatorExpanded) {
+        currentOnCreatorExpandedChange(uiState.isCreatorExpanded)
+    }
 
     TagPickerContent(
         uiState = uiState,

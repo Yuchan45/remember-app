@@ -23,13 +23,13 @@ Las implementaciones se crean en el `AppContainer` y se exponen con el tipo de l
 - La notificación abre la app con un `PendingIntent` a `MainActivity` que lleva el `reminderId` como extra. `PendingIntent` siempre con `FLAG_IMMUTABLE`.
 - Usar `reminderId.toInt()` como id de la notificación, así un aviso repetido reemplaza al anterior.
 
-## Alarmas por hora (`Trigger.AtTime`)
+## Alarmas por hora (`Reminder.alarms`)
 
 - `AlarmManager.setExactAndAllowWhileIdle(RTC_WAKEUP, ...)` necesita `SCHEDULE_EXACT_ALARM` (API 31+). Verificar `canScheduleExactAlarms()`; si da `false`, usar `setAndAllowWhileIdle` (inexacta) como alternativa, o llevar al usuario a la configuración. **Preguntar al usuario qué prefiere** antes de pedir `USE_EXACT_ALARM`.
 - El `PendingIntent` de la alarma usa `requestCode = reminderId.toInt()`, para poder cancelarla con los mismos datos.
 - Las alarmas se pierden al reiniciar el teléfono: `BootReceiver` (`RECEIVE_BOOT_COMPLETED`) reprograma todos los recordatorios pendientes con `AtTime` en el futuro.
 
-## Geofences (`Trigger.AtPlace`)
+## Geofences (`Reminder.places`)
 
 - Requiere agregar `play-services-location` al catálogo de versiones. Preguntar antes de agregar la dependencia.
 - Permisos: `ACCESS_FINE_LOCATION` primero y **después, en un paso aparte**, `ACCESS_BACKGROUND_LOCATION` (Android 11+ no deja pedir los dos juntos; el segundo lleva al usuario a Configuración). Explicarle en la UI por qué hace falta.

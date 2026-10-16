@@ -1,7 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.edit
 
 import androidx.lifecycle.ViewModel
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.Alarm
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 data class ReminderEditUiState(
     val text: String = "",
     val photoPath: String? = null,
-    val trigger: Trigger = Trigger.None,
+    val alarms: List<Alarm> = emptyList(),
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val isSaved: Boolean = false,
@@ -23,7 +23,7 @@ class ReminderEditViewModel : ViewModel() {
 
     fun onTextChanged(text: String) = Unit
 
-    fun onTriggerChanged(trigger: Trigger) = Unit
+    fun onAlarmsChanged(alarms: List<Alarm>) = Unit
 
     fun onPhotoTaken(path: String?) = Unit
 

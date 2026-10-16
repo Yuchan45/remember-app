@@ -1,15 +1,16 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
 import com.example.uade.rememberapp.domain.model.Reminder
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.nextAlarm
 import java.time.Instant
 import java.time.ZoneId
 
 /**
- * Arma las secciones de la Home agrupando por fecha del aviso:
+ * Arma las secciones de la Home agrupando por la fecha del próximo aviso por hora (si ya pasaron
+ * todos, el último; ver nextAlarm):
  * - Hoy: avisos de hoy, y también los vencidos de días anteriores (para que no se pierdan).
  * - Mañana / Próximos: avisos de mañana / de más adelante.
- * - Sin fecha: sin aviso por hora (sin aviso o por lugar).
+ * - Sin fecha: sin avisos por hora (sin avisos o solo por lugar).
  *
  * Dentro de cada sección, los que tienen hora van del más próximo al más lejano; los sin
  * fecha, del más nuevo al más viejo. Las secciones vacías no se muestran.
@@ -25,7 +26,7 @@ internal fun groupByDate(
     val tomorrow = today.plusDays(1)
 
     val byKey = reminders.groupBy { reminder ->
-        val at = (reminder.trigger as? Trigger.AtTime)?.at
+        val at = reminder.nextAlarm(now)?.at
         if (at == null) {
             ReminderSectionKey.NoDate
         } else {
@@ -44,7 +45,7 @@ internal fun groupByDate(
         val sorted = if (key == ReminderSectionKey.NoDate) {
             items.sortedByDescending { it.createdAt }
         } else {
-            items.sortedBy { (it.trigger as Trigger.AtTime).at }
+            items.sortedBy { checkNotNull(it.nextAlarm(now)).at }
         }
         ReminderSection(key = key, reminders = sorted)
     }

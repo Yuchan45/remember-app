@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import java.time.Instant
 import com.example.uade.rememberapp.MainActivity
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
@@ -42,7 +43,12 @@ object NotificationHelper {
         notificationManager.createNotificationChannel(channel)
     }
 
-    fun showReminderNotification(context: Context, reminder: Reminder) {
+    /**
+     * Muestra la notificación del aviso que sonó a las [alarmAt]. Va con el recordatorio para que
+     * "Posponer" sepa qué aviso reemplazar. Hay una sola notificación por recordatorio: si suena
+     * otro aviso del mismo, reemplaza a la anterior.
+     */
+    fun showReminderNotification(context: Context, reminder: Reminder, alarmAt: Instant) {
         createNotificationChannel(context)
 
         // Acción al tocar la notificación: abre la app directamente en el recordatorio
@@ -72,6 +78,7 @@ object NotificationHelper {
         // Acción: "Posponer"
         val snoozeIntent = Intent(context, ReminderActionReceiver::class.java).apply {
             action = ReminderActionReceiver.ACTION_SNOOZE
+            putExtra(ReminderActionReceiver.EXTRA_ALARM_AT, alarmAt.toEpochMilli())
             putExtra(ReminderActionReceiver.EXTRA_REMINDER_ID, reminder.id)
         }
         val snoozePendingIntent = PendingIntent.getBroadcast(

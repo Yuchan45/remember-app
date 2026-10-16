@@ -7,6 +7,9 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+# Preferencias personales de Android Studio (dispositivo elegido, vista previa de Markdown)
+/.idea/deploymentTargetSelector.xml
+/.idea/markdown.xml
 .DS_Store
 /build
 /captures

@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.map
 /**
  * [ReminderRepository] guardado con Room. Solo traduce entre el dominio y las filas (con el
  * mapper); las reglas de negocio (ej. programar la alarma al guardar) van en los casos de uso.
+ *
+ * Las etiquetas y los avisos de cada recordatorio se leen y se guardan junto con él: el dominio
+ * ve un `Reminder` con sus listas y no sabe que en la base son varias tablas más.
  */
 class ReminderRepositoryImpl(
     private val dao: ReminderDao,
@@ -24,11 +27,16 @@ class ReminderRepositoryImpl(
 
     override suspend fun getById(id: Long): Reminder? = dao.getById(id)?.toDomain()
 
-    override suspend fun save(reminder: Reminder): Long {
-        val newId = dao.upsert(reminder.toEntity())
-        // @Upsert devuelve -1 cuando actualiza una fila existente: el id es el que ya tenía.
-        return if (reminder.id != 0L) reminder.id else newId
-    }
+    override suspend fun save(reminder: Reminder): Long =
+        dao.saveWithDetails(
+            reminder = reminder.toEntity(),
+            tagIds = reminder.tags.map { it.id },
+            // Sin repetidos: dos avisos a la misma hora son uno solo.
+            alarms = reminder.alarms.distinctBy { it.at }.map { it.toEntity() },
+            places = reminder.places.map { it.toEntity() },
+            action = reminder.action?.toEntity(),
+            photos = reminder.photos.mapIndexed { i, photo -> photo.toEntity(position = i) },
+        )
 
     override suspend fun delete(id: Long) = dao.deleteById(id)
 }

@@ -8,6 +8,7 @@ import com.example.uade.rememberapp.RememberApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 /**
  * [BroadcastReceiver] que atiende los botones de acción ("Hecho" y "Posponer") de la notificación.
@@ -34,8 +35,15 @@ class ReminderActionReceiver : BroadcastReceiver() {
                         app.container.markReminderDoneUseCase(reminderId)
                     }
                     ACTION_SNOOZE -> {
-                        // Pospone por defecto 15 minutos
-                        app.container.snoozeReminderUseCase(reminderId, minutes = 15)
+                        // Pospone 15 minutos a partir del aviso que sonó (reemplaza a ese y a los anteriores).
+                        val alarmAtMillis = intent.getLongExtra(EXTRA_ALARM_AT, -1L)
+                        if (alarmAtMillis != -1L) {
+                            app.container.snoozeReminderUseCase(
+                                reminderId,
+                                firedAt = Instant.ofEpochMilli(alarmAtMillis),
+                                minutes = 15,
+                            )
+                        }
                     }
                 }
             } finally {
@@ -48,5 +56,8 @@ class ReminderActionReceiver : BroadcastReceiver() {
         const val ACTION_MARK_DONE = "com.example.uade.rememberapp.ACTION_MARK_DONE"
         const val ACTION_SNOOZE = "com.example.uade.rememberapp.ACTION_SNOOZE"
         const val EXTRA_REMINDER_ID = "extra_reminder_id"
+
+        /** La hora del aviso que sonó, en epoch millis (solo para "Posponer"). */
+        const val EXTRA_ALARM_AT = "extra_alarm_at"
     }
 }
