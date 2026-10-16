@@ -77,7 +77,7 @@ private fun ArchiveContent(
     ) {
         Text(
             text = stringResource(R.string.archive_title),
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = 16.dp),
