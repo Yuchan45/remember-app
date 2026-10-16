@@ -1,5 +1,9 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -12,6 +16,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -60,9 +68,10 @@ import com.example.uade.rememberapp.ui.tags.TagPickerPanel
 import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureTriggerRow
-import com.example.uade.rememberapp.ui.reminders.capture.components.PlaceOptionsPanel
-import com.example.uade.rememberapp.ui.reminders.capture.components.ReminderDateDialog
-import com.example.uade.rememberapp.ui.reminders.capture.components.TimeOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
+import com.example.uade.rememberapp.ui.reminders.components.TimeOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import kotlinx.coroutines.launch
@@ -98,6 +107,7 @@ fun QuickCaptureSheet(
     }
     val density = LocalDensity.current
     val maxStretchPx = with(density) { HandleMaxStretch.toPx() }
+    val pullToExpandPx = with(density) { HandlePullToExpand.toPx() }
 
     // Cuánto se "estira" el contenido (en px) al tirar de la manija hacia arriba: el efecto de
     // que el modal no puede crecer más. Vuelve a 0 con un rebote al soltar.
@@ -123,8 +133,10 @@ fun QuickCaptureSheet(
                 val pull = (-dy).coerceAtLeast(0f)
                 scope.launch { stretch.snapTo(rubberBand(pull, maxStretchPx)) }
             },
-            onRelease = {
-                // El modal no tiene una "segunda extensión": al soltar solo vuelve a su lugar.
+            onRelease = { dy, isVertical ->
+                // Un tirón hacia arriba suficiente extiende el modal abriendo "Fecha y hora"
+                // (el ViewModel decide si corresponde). Siempre vuelve a su lugar con un rebote.
+                if (isVertical && -dy >= pullToExpandPx) viewModel.onDragHandlePulledUp()
                 scope.launch {
                     stretch.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
                 }
@@ -139,6 +151,7 @@ fun QuickCaptureSheet(
                 onRepeatSelected = viewModel::onRepeatSelected,
                 onPlaceSelected = viewModel::onPlaceSelected,
                 onPlaceEventSelected = viewModel::onPlaceEventSelected,
+                onImportanceSelected = viewModel::onImportanceSelected,
                 onSearchAddress = viewModel::onSearchAddress,
                 onVoice = viewModel::onVoiceClick,
                 onPhoto = viewModel::onPhotoClick,
@@ -177,6 +190,9 @@ fun QuickCaptureSheet(
 /** Lo máximo que se puede estirar el contenido al tirar de la manija. */
 private val HandleMaxStretch = 32.dp
 
+/** Cuánto hay que tirar de la manija hacia arriba para extender el modal (evita abrir con un roce). */
+private val HandlePullToExpand = 48.dp
+
 /**
  * Resistencia tipo "banda elástica": al principio sigue al dedo y después cada vez cuesta más,
  * sin pasar nunca de [max].
@@ -187,26 +203,50 @@ private fun rubberBand(pull: Float, max: Float): Float = max * (1f - exp(-pull /
  * La manija "—" de arriba del modal.
  *
  * - Arrastrarla hacia abajo cierra el modal (lo maneja el ModalBottomSheet).
- * - Arrastrarla hacia arriba avisa el recorrido por [onDrag] (para el estiramiento) y el fin
- *   del gesto por [onRelease]. No abre nada: el modal no crece más.
+ * - Arrastrarla hacia arriba avisa el recorrido por [onDrag] (para el estiramiento) y, al
+ *   soltar, el recorrido total por [onRelease] (para decidir si se extiende el modal).
  *
- * Ocupa todo el ancho para que sea fácil de agarrar. El gesto solo se observa, así el arrastre
- * hacia abajo del modal sigue funcionando.
+ * Ocupa todo el ancho para que sea fácil de agarrar. El gesto se observa sin quitárselo al
+ * modal, salvo el movimiento hacia arriba (ver [consumeUpwardDrag]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun QuickCaptureDragHandle(
     onDrag: (dy: Float) -> Unit,
-    onRelease: () -> Unit,
+    onRelease: (dy: Float, isVertical: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .observeVerticalDrag(onDrag = onDrag, onRelease = { _, _ -> onRelease() }),
+            .observeVerticalDrag(onDrag = onDrag, onRelease = onRelease)
+            .consumeUpwardDrag(),
         contentAlignment = Alignment.Center,
     ) {
         BottomSheetDefaults.DragHandle()
+    }
+}
+
+/**
+ * Se queda con el movimiento hacia arriba para que no le llegue al ModalBottomSheet.
+ *
+ * El modal ya está arriba del todo y no puede subir más, pero si recibe el arrastre, al soltar
+ * corre su animación de "asentarse" y mientras dura ignora los cambios de tamaño: el panel de
+ * Fecha y hora aparecía primero y el modal se extendía después, a los saltos. Sin el arrastre,
+ * el modal crece junto con el contenido, igual que al tocar el chip.
+ *
+ * El movimiento hacia abajo no se toca, así arrastrar la manija hacia abajo sigue cerrando el
+ * modal. Se consume en la pasada Main, que va de hijo a padre: la manija lo ve antes que el modal.
+ */
+private fun Modifier.consumeUpwardDrag(): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false)
+        do {
+            val event = awaitPointerEvent()
+            event.changes.forEach { change ->
+                if (change.positionChange().y < 0f) change.consume()
+            }
+        } while (event.changes.any { it.pressed })
     }
 }
 
@@ -218,6 +258,7 @@ data class QuickCaptureActions(
     val onRepeatSelected: (RepeatOption) -> Unit = {},
     val onPlaceSelected: (placeId: Long) -> Unit = {},
     val onPlaceEventSelected: (PlaceEvent) -> Unit = {},
+    val onImportanceSelected: (ReminderImportance) -> Unit = {},
     val onSearchAddress: () -> Unit = {},
     val onVoice: () -> Unit = {},
     val onPhoto: () -> Unit = {},
@@ -231,9 +272,9 @@ data class QuickCaptureActions(
  * ```
  * Llamar al plomero|
  * ───────────────────────────────────── (separador fino)
- * ┌ panel de hora o de lugar (solo si hay uno abierto) ┐
+ * ┌ panel del chip tocado (solo si hay uno abierto) ┐
  * ───────────────────────────────────── (separador, solo con un panel abierto)
- * [🕒 Fecha y hora] [📍 Ubicación] [🏷 Etiqueta]
+ * [🕒 Fecha y hora] [📍] [🏷] [🔔]          (solo el chip elegido muestra el texto)
  * 🎤 🖼 ☑ ⤢                             Guardar
  * ```
  * Al abrirse no pide el foco: el teclado aparece recién cuando el usuario toca el título.
@@ -311,6 +352,7 @@ fun QuickCaptureContent(
             placeEvent = uiState.selectedPlaceEvent,
             onPanelClick = actions.onPanelToggle,
             tagCount = uiState.selectedTagIds.size,
+            importance = uiState.selectedImportance,
             contentPadding = PaddingValues(horizontal = SheetPadding),
         )
 
@@ -360,6 +402,13 @@ private fun CapturePanelContent(
         )
 
         CapturePanel.Tags -> tagsPanel()
+
+        CapturePanel.Importance -> ImportanceOptionsPanel(
+            options = uiState.importanceOptions,
+            selected = uiState.selectedImportance,
+            onSelect = actions.onImportanceSelected,
+            modifier = Modifier.padding(horizontal = SheetPadding),
+        )
 
         null -> Box(Modifier.fillMaxWidth())
     }
@@ -446,6 +495,18 @@ private fun QuickCaptureContentTimePreview() {
 @Composable
 private fun QuickCaptureContentPlacePreview() {
     QuickCaptureContentPreviewFrame(SampleQuickCapture.placePanelState())
+}
+
+@Preview(name = "Panel de importancia", heightDp = 900)
+@Composable
+private fun QuickCaptureContentImportancePreview() {
+    QuickCaptureContentPreviewFrame(
+        SampleQuickCapture.uiState().copy(
+            title = "Tomar la medicación",
+            expandedPanel = CapturePanel.Importance,
+            selectedImportance = ReminderImportance.Critical,
+        ),
+    )
 }
 
 @Preview(name = "Pantalla completa", heightDp = 800)

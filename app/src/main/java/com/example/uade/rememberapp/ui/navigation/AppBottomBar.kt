@@ -34,8 +34,7 @@ import com.example.uade.rememberapp.ui.theme.NavBarSelected
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
 /**
- * Destinos principales de la app. El orden es el de la barra y también el de las páginas:
- * deslizar a la izquierda pasa al siguiente.
+ * Destinos principales de la app. El orden es el de la barra y también el de las páginas.
  */
 enum class AppDestination(
     @get:DrawableRes val icon: Int,

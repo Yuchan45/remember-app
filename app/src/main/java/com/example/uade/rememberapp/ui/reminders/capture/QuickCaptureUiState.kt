@@ -1,8 +1,9 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
-import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
-import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.domain.model.Place
 import java.time.LocalDate
 import java.time.LocalTime
@@ -12,40 +13,7 @@ enum class CapturePanel {
     Time,
     Place,
     Tags,
-}
-
-/**
- * Atajos para elegir cuándo avisar.
- *
- * TODO: los textos ("Hoy 21:00", "Sáb 10:00") son fijos; calcularlos según la hora actual
- * (ej. no ofrecer "Hoy 21:00" si ya pasaron las 21).
- */
-enum class TimeShortcut(
-    @get:DrawableRes val icon: Int,
-    @get:StringRes val label: Int,
-) {
-    InOneHour(R.drawable.ic_timer, R.string.reminders_capture_time_in_one_hour),
-    Tonight(R.drawable.ic_bedtime, R.string.reminders_capture_time_tonight),
-    TomorrowMorning(R.drawable.ic_light_mode, R.string.reminders_capture_time_tomorrow_morning),
-    Weekend(R.drawable.ic_weekend, R.string.reminders_capture_time_weekend),
-    PickDate(R.drawable.ic_calendar_month, R.string.reminders_capture_time_pick_date),
-}
-
-/** Cada cuánto se repite el aviso por hora. */
-enum class RepeatOption(@get:StringRes val label: Int) {
-    None(R.string.reminders_capture_repeat_none),
-    Daily(R.string.reminders_capture_repeat_daily),
-    Weekdays(R.string.reminders_capture_repeat_weekdays),
-    Weekly(R.string.reminders_capture_repeat_weekly),
-}
-
-/** Si el aviso por lugar salta al llegar o al salir. */
-enum class PlaceEvent(
-    @get:DrawableRes val icon: Int,
-    @get:StringRes val label: Int,
-) {
-    Arrive(R.drawable.ic_login, R.string.reminders_capture_place_arrive),
-    Leave(R.drawable.ic_logout, R.string.reminders_capture_place_leave),
+    Importance,
 }
 
 /**
@@ -67,19 +35,22 @@ data class QuickCaptureUiState(
     val repeatOptions: List<RepeatOption> = emptyList(),
     val favoritePlaces: List<Place> = emptyList(),
     val placeEvents: List<PlaceEvent> = emptyList(),
+    val importanceOptions: List<ReminderImportance> = emptyList(),
 
     // Lo que eligió el usuario.
     val selectedTime: TimeShortcut? = null,
     val selectedRepeat: RepeatOption = RepeatOption.None,
     val selectedPlaceId: Long? = null,
     val selectedPlaceEvent: PlaceEvent = PlaceEvent.Arrive,
+    /** Siempre hay una elegida; arranca en la predeterminada. */
+    val selectedImportance: ReminderImportance = ReminderImportance.Default,
 
     // "Elegir fecha…": el día y la hora (opcional) elegidos en el diálogo del calendario.
     val pickedDate: LocalDate? = null,
     val pickedTime: LocalTime? = null,
     val isDatePickerOpen: Boolean = false,
 
-    // Etiquetas elegidas en el panel de etiquetas. TODO: guardarlas en el Reminder al crear.
+    // Etiquetas elegidas en el panel de etiquetas; se guardan con la nota.
     val selectedTagIds: Set<Long> = emptySet(),
 
     /** true mientras se guarda: evita guardar dos veces con un doble toque. */

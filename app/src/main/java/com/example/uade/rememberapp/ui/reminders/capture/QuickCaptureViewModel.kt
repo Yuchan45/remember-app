@@ -1,5 +1,10 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
+import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -8,12 +13,16 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.domain.model.Trigger
+import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -30,12 +39,20 @@ import java.time.ZonedDateTime
  */
 class QuickCaptureViewModel(
     private val saveReminder: SaveReminderUseCase,
+    tagRepository: TagRepository,
     private val now: () -> ZonedDateTime = { ZonedDateTime.now() },
 ) : ViewModel() {
 
     // TODO: reemplazar las opciones de ejemplo por datos reales.
     private val _uiState = MutableStateFlow(SampleQuickCapture.uiState())
     val uiState: StateFlow<QuickCaptureUiState> = _uiState.asStateFlow()
+
+    /**
+     * Todas las etiquetas, al día. El estado solo guarda los ids elegidos; al guardar hace falta
+     * el Tag completo para armar el Reminder.
+     */
+    private val allTags: StateFlow<List<Tag>> =
+        tagRepository.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun onTitleChanged(title: String) {
         _uiState.update { it.copy(title = title) }
@@ -45,6 +62,21 @@ class QuickCaptureViewModel(
     fun onPanelToggle(panel: CapturePanel) {
         _uiState.update { state ->
             state.copy(expandedPanel = if (state.expandedPanel == panel) null else panel)
+        }
+    }
+
+    /**
+     * Se tiró de la manija hacia arriba: si el modal está en su tamaño chico (sin panel abierto
+     * y sin pantalla completa), se "extiende" abriendo el panel de Fecha y hora. Si ya está
+     * extendido no hace nada (la manija solo se estira y rebota).
+     */
+    fun onDragHandlePulledUp() {
+        _uiState.update { state ->
+            if (state.expandedPanel == null && !state.isFullScreen) {
+                state.copy(expandedPanel = CapturePanel.Time)
+            } else {
+                state
+            }
         }
     }
 
@@ -88,6 +120,14 @@ class QuickCaptureViewModel(
     fun onPlaceSelected(placeId: Long) = Unit
     fun onPlaceEventSelected(event: PlaceEvent) = Unit
 
+    /**
+     * Elige la importancia. Tocar la ya elegida no la deselecciona: siempre tiene que haber una.
+     * Se guarda en el recordatorio. TODO: usarla para el aviso (canal de notificación).
+     */
+    fun onImportanceSelected(importance: ReminderImportance) {
+        _uiState.update { it.copy(selectedImportance = importance) }
+    }
+
     // TODO: abrir el buscador de direcciones (mapa).
     fun onSearchAddress() = Unit
 
@@ -95,7 +135,7 @@ class QuickCaptureViewModel(
 
     /**
      * El panel de etiquetas cambió las asignadas (se aplica al momento, sin cerrar el panel).
-     * TODO: guardarlas en el recordatorio al crear la nota.
+     * Se guardan en el recordatorio al tocar "Guardar".
      */
     fun onTagsChanged(ids: Set<Long>) {
         _uiState.update { it.copy(selectedTagIds = ids) }
@@ -116,7 +156,7 @@ class QuickCaptureViewModel(
      * para que el modal se cierre. Con el título vacío no hace nada (el botón ya se ve
      * deshabilitado).
      *
-     * TODO: guardar también etiquetas, lugar y repetición.
+     * TODO: guardar también lugar y repetición.
      */
     fun onSave() {
         val state = _uiState.value
@@ -128,7 +168,11 @@ class QuickCaptureViewModel(
         val reminder = Reminder(
             type = ReminderType.Note,
             title = state.title.trim(),
-            trigger = at?.let { Trigger.AtTime(it.toInstant()) } ?: Trigger.None,
+            // Si una elegida se borró mientras tanto, ya no está en allTags y queda afuera.
+            tags = allTags.value.filter { it.id in state.selectedTagIds },
+            // La nota rápida elige una sola hora; varias se agregan desde el detalle.
+            alarms = listOfNotNull(at?.let { Alarm(it.toInstant()) }),
+            importance = state.selectedImportance.importance,
             createdAt = current.toInstant(),
         )
         viewModelScope.launch {
@@ -142,7 +186,10 @@ class QuickCaptureViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as RememberApp
-                QuickCaptureViewModel(app.container.saveReminderUseCase)
+                QuickCaptureViewModel(
+                    saveReminder = app.container.saveReminderUseCase,
+                    tagRepository = app.container.tagRepository,
+                )
             }
         }
     }

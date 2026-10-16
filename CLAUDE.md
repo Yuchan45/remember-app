@@ -5,7 +5,7 @@ un pendiente (texto y/o foto) y elige cuándo vuelve: nunca, a una hora, o al ll
 
 ## Stack
 - Kotlin + Jetpack Compose + Material3. Una sola Activity (`MainActivity`).
-- Navegación: `ui/navigation/AppNavHost.kt` es la raíz (NavHost). Su destino `Routes.MAIN` es `MainTabs`: las 4 pantallas principales como páginas de un `HorizontalPager` (se deslizan de costado) con `AppBottomBar` encima. Las pantallas que se abren encima (detalles) van como rutas en `Routes.kt`.
+- Navegación: `ui/navigation/AppNavHost.kt` es la raíz (NavHost). Su destino `Routes.MAIN` es `MainTabs`: las 4 pantallas principales como páginas de un `HorizontalPager` (sin deslizar con el dedo: se cambia solo con la barra) con `AppBottomBar` encima. Las pantallas que se abren encima (detalles) van como rutas en `Routes.kt`.
 - ViewModel + `StateFlow` + `collectAsStateWithLifecycle`.
 - Persistencia con Room (KSP genera el código). `data/local/AppDatabase.kt` lista las tablas; al cambiar columnas, subir `version` (por ahora borra y recrea la base: `fallbackToDestructiveMigration`).
 - DI manual: `AppContainer(context)` crea base, repositorios y casos de uso `by lazy`; los ViewModels con dependencias exponen un `Factory` que los toma de `(application as RememberApp).container`.
@@ -17,7 +17,7 @@ un pendiente (texto y/o foto) y elige cuándo vuelve: nunca, a una hora, o al ll
 ```
 app/src/main/java/com/example/uade/rememberapp/
 ├── domain/        Kotlin puro, sin imports de android.*
-│   ├── model/        Reminder, Place, Trigger (sealed)
+│   ├── model/        Reminder, Place, Tag, Alarm y PlaceAlert (avisos por hora y por lugar, varios por recordatorio)
 │   ├── repository/   interfaces (ReminderRepository, PlaceRepository)
 │   ├── scheduler/    interfaces (ReminderScheduler, GeofenceRegistrar)
 │   └── usecase/      un caso de uso por clase
@@ -33,6 +33,7 @@ app/src/main/java/com/example/uade/rememberapp/
 │   ├── theme/        Color.kt (paleta del Figma), Theme.kt (siempre oscuro, sin dynamic color)
 │   └── <feature>/
 │       ├── components/                  compartidos entre pantallas de la feature (ej. ReminderCard)
+│       ├── model/                       modelos de UI compartidos por la feature: enums con ícono y texto (ej. TimeShortcut)
 │       ├── sample/                      datos mock para previews (y para el VM mientras no hay datos)
 │       └── <list|edit|detail>/          XScreen.kt + XViewModel.kt + XUiState.kt
 │           └── components/              piezas que solo usa esa pantalla (ej. HomeHeader)
