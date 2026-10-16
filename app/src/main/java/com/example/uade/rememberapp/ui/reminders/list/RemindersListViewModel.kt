@@ -32,7 +32,7 @@ class RemindersListViewModel(
     private val now: () -> Instant = Instant::now,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(RemindersListUiState(userName = "Yu", isLoading = true))
+    private val _uiState = MutableStateFlow(RemindersListUiState(isLoading = true))
     val uiState: StateFlow<RemindersListUiState> = _uiState.asStateFlow()
 
     init {

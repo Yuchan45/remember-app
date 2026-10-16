@@ -52,7 +52,6 @@ data class ReminderSection(
  */
 data class RemindersListUiState(
     val isLoading: Boolean = false,
-    val userName: String = "",
     val typeFilter: ReminderTypeFilter = ReminderTypeFilter.All,
     val grouping: ReminderGrouping = ReminderGrouping.Date,
     val sort: ReminderSort = ReminderSort.Upcoming,

@@ -33,6 +33,7 @@ fun CircleIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
+    iconSize: Dp = 22.dp,
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     shape: Shape = CircleShape,
@@ -48,7 +49,7 @@ fun CircleIconButton(
             Icon(
                 painter = painterResource(icon),
                 contentDescription = contentDescription,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(iconSize),
             )
         }
     }

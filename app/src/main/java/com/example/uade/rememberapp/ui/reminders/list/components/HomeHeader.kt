@@ -1,7 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.list.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,10 +18,9 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.components.CircleIconButton
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
-/** Encabezado de la Home: saludo, título y los botones de vista, colapsar y buscar. */
+/** Encabezado de la Home: título y los botones de vista, colapsar y buscar. */
 @Composable
 fun HomeHeader(
-    userName: String,
     onToggleLayout: () -> Unit,
     onCollapseAll: () -> Unit,
     onSearch: () -> Unit,
@@ -31,37 +30,31 @@ fun HomeHeader(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.reminders_home_greeting, userName),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = stringResource(R.string.reminders_list_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CircleIconButton(
-                icon = R.drawable.ic_grid_view,
-                contentDescription = stringResource(R.string.reminders_home_action_toggle_layout),
-                onClick = onToggleLayout,
-            )
-            CircleIconButton(
-                icon = R.drawable.ic_unfold_less,
-                contentDescription = stringResource(R.string.reminders_home_action_collapse_all),
-                onClick = onCollapseAll,
-            )
-            CircleIconButton(
-                icon = R.drawable.ic_search,
-                contentDescription = stringResource(R.string.reminders_home_action_search),
-                onClick = onSearch,
-            )
+        Text(
+            text = stringResource(R.string.reminders_list_title),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HeaderButton(R.drawable.ic_grid_view, stringResource(R.string.reminders_home_action_toggle_layout), onToggleLayout)
+            HeaderButton(R.drawable.ic_unfold_less, stringResource(R.string.reminders_home_action_collapse_all), onCollapseAll)
+            HeaderButton(R.drawable.ic_search, stringResource(R.string.reminders_home_action_search), onSearch)
         }
     }
+}
+
+/** Botones del encabezado: más chicos que el [CircleIconButton] por defecto, para no competir con el título. */
+@Composable
+private fun HeaderButton(@DrawableRes icon: Int, contentDescription: String, onClick: () -> Unit) {
+    CircleIconButton(
+        icon = icon,
+        contentDescription = contentDescription,
+        onClick = onClick,
+        size = 38.dp,
+        iconSize = 19.dp,
+    )
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0B141B)
@@ -69,7 +62,6 @@ fun HomeHeader(
 private fun HomeHeaderPreview() {
     RememberAppTheme {
         HomeHeader(
-            userName = "Yu",
             onToggleLayout = {},
             onCollapseAll = {},
             onSearch = {},

@@ -33,7 +33,6 @@ object SampleReminders {
 
     /** El estado inicial de la Home, igual a la captura del Figma. */
     fun uiState(now: Instant = Instant.now()): RemindersListUiState = RemindersListUiState(
-        userName = "Yu",
         sections = listOf(
             ReminderSection(
                 key = ReminderSectionKey.Today,

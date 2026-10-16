@@ -2,8 +2,6 @@
     <string name="app_name">Hey!</string>
 
     <!-- Home / lista de recordatorios: header -->
-    <!-- %1$s = nombre del usuario. -->
-    <string name="reminders_home_greeting">Hola, %1$s</string>
     <string name="reminders_list_title">Recordatorios</string>
     <string name="reminders_home_action_toggle_layout">Cambiar vista</string>
     <string name="reminders_home_action_collapse_all">Colapsar todo</string>
