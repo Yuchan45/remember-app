@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,32 +43,35 @@ fun QuickCaptureBar(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        shadowElevation = 6.dp,
+        // Sombra chica: ahora va sobre el panel desenfocado de la barra inferior (ver MainTabs).
+        shadowElevation = 2.dp,
     ) {
         Row(
             // Sin el "+", el texto arranca con el mismo margen que la píldora de la barra.
-            modifier = Modifier.padding(start = 20.dp, top = 6.dp, end = 6.dp, bottom = 6.dp),
+            modifier = Modifier.padding(start = 18.dp, top = 2.dp, end = 4.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = stringResource(R.string.reminders_quick_capture_hint),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = onVoice) {
+            IconButton(onClick = onVoice, modifier = Modifier.size(40.dp)) {
                 Icon(
                     painter = painterResource(R.drawable.ic_mic),
                     contentDescription = stringResource(R.string.reminders_quick_capture_voice),
+                    modifier = Modifier.size(20.dp),
                 )
             }
-            IconButton(onClick = onAddPhoto) {
+            IconButton(onClick = onAddPhoto, modifier = Modifier.size(40.dp)) {
                 Icon(
                     painter = painterResource(R.drawable.ic_add_photo_alternate),
                     contentDescription = stringResource(R.string.reminders_quick_capture_photo),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }

@@ -89,21 +89,21 @@ private fun BottomBarItem(
     val contentColor = if (selected) NavBarOnSelected else NavBarContent
     Row(
         modifier = modifier
-            .height(48.dp)
+            .height(42.dp)
             .clip(RoundedCornerShape(50))
             .background(if (selected) NavBarSelected else Color.Transparent)
             .selectable(selected = selected, onClick = onClick, role = Role.Tab)
-            .padding(horizontal = if (selected) 18.dp else 14.dp)
+            .padding(horizontal = if (selected) 16.dp else 12.dp)
             .animateContentSize(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(
             painter = painterResource(destination.icon),
             // Si no está elegido no hay texto visible, así que el ícono lleva la descripción.
             contentDescription = if (selected) null else stringResource(destination.label),
             tint = contentColor,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(20.dp),
         )
         if (selected) {
             Text(

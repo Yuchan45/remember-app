@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,7 +39,6 @@ import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutsi
 import com.example.uade.rememberapp.ui.reminders.components.SwipeRevealGroupState
 import com.example.uade.rememberapp.ui.reminders.components.rememberSwipeRevealGroupState
 import com.example.uade.rememberapp.ui.reminders.list.components.HomeHeader
-import com.example.uade.rememberapp.ui.reminders.list.components.QuickCaptureBar
 import com.example.uade.rememberapp.ui.reminders.list.components.ReminderFilterBar
 import com.example.uade.rememberapp.ui.reminders.list.components.ReminderSectionHeader
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
@@ -89,9 +86,6 @@ fun RemindersListScreen(
             onReminderDone = viewModel::onReminderDone,
             onReminderArchive = viewModel::onReminderArchive,
             onReminderTrash = viewModel::onReminderTrash,
-            onQuickCaptureClick = viewModel::onQuickCaptureClick,
-            onVoiceCapture = viewModel::onVoiceCaptureClick,
-            onPhotoCapture = viewModel::onPhotoCaptureClick,
         ),
     )
 
@@ -116,17 +110,14 @@ data class RemindersListActions(
     val onReminderDone: (id: Long) -> Unit = {},
     val onReminderArchive: (id: Long) -> Unit = {},
     val onReminderTrash: (id: Long) -> Unit = {},
-    val onQuickCaptureClick: () -> Unit = {},
-    val onVoiceCapture: () -> Unit = {},
-    val onPhotoCapture: () -> Unit = {},
 )
 
 /**
  * Recibe el estado ya resuelto y devuelve UI. Regla: no toca el ViewModel ni el dominio;
  * todo lo que necesite entra por parámetros, y lo que el usuario hace sale por [actions].
  *
- * [contentPadding] es el espacio que ocupan la barra de estado y la barra de navegación de la
- * app (ver AppNavHost). La barra de captura se apoya justo encima de la de navegación.
+ * [contentPadding] es el espacio que ocupan la barra de estado y la barra inferior de la app
+ * ("Nota rápida…" y la navegación, ver MainTabs).
  */
 @Composable
 private fun RemindersListContent(
@@ -138,66 +129,47 @@ private fun RemindersListContent(
 ) {
     // Qué card está deslizada mostrando sus acciones (una a la vez). Es estado visual: vive acá.
     val revealGroup = rememberSwipeRevealGroupState()
+    val layoutDirection = LocalLayoutDirection.current
+    val startPadding = contentPadding.calculateStartPadding(layoutDirection)
+    val endPadding = contentPadding.calculateEndPadding(layoutDirection)
 
-    Scaffold(
+    Column(
         modifier = modifier
             .fillMaxSize()
             // Tocar en cualquier lado que no sea la card abierta la cierra.
             .closeSwipeOnTapOutside(revealGroup)
             .appBackground(),
-        // Transparente para que se vea el degradé de fondo.
-        containerColor = Color.Transparent,
-        // Los insets del sistema ya vienen en contentPadding; si no, se sumarían dos veces.
-        contentWindowInsets = WindowInsets(0),
-        bottomBar = {
-            QuickCaptureBar(
-                onClick = actions.onQuickCaptureClick,
-                onVoice = actions.onVoiceCapture,
-                onAddPhoto = actions.onPhotoCapture,
-                modifier = Modifier.padding(
-                    start = ScreenPadding,
-                    end = ScreenPadding,
-                    bottom = contentPadding.calculateBottomPadding() + 12.dp,
-                ),
-            )
-        },
-    ) { innerPadding ->
-        val layoutDirection = LocalLayoutDirection.current
-        val startPadding = innerPadding.calculateStartPadding(layoutDirection)
-        val endPadding = innerPadding.calculateEndPadding(layoutDirection)
+    ) {
+        // El encabezado va afuera de la lista: queda fijo arriba y la lista se desplaza
+        // debajo (se recorta en su borde superior). Los filtros sí son parte de la lista.
+        HomeHeader(
+            onToggleLayout = actions.onToggleLayout,
+            onCollapseAll = actions.onCollapseAll,
+            onSearch = actions.onSearch,
+            modifier = Modifier
+                .padding(top = contentPadding.calculateTopPadding() + 8.dp, bottom = 8.dp)
+                .padding(start = startPadding, end = endPadding)
+                .padding(horizontal = ScreenPadding),
+        )
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            // El encabezado va afuera de la lista: queda fijo arriba y la lista se desplaza
-            // debajo (se recorta en su borde superior). Los filtros sí son parte de la lista.
-            HomeHeader(
-                onToggleLayout = actions.onToggleLayout,
-                onCollapseAll = actions.onCollapseAll,
-                onSearch = actions.onSearch,
-                modifier = Modifier
-                    .padding(top = contentPadding.calculateTopPadding() + 8.dp, bottom = 8.dp)
-                    .padding(start = startPadding, end = endPadding)
-                    .padding(horizontal = ScreenPadding),
-            )
-
-            // innerPadding.bottom = alto de la barra de captura (que ya incluye la de navegación).
-            // Se usa como contentPadding y no como padding, así la lista pasa por detrás de las
-            // barras y el último ítem igual queda visible al final del scroll.
-            RemindersList(
-                uiState = uiState,
-                now = now,
-                actions = actions,
-                revealGroup = revealGroup,
-                contentPadding = PaddingValues(
-                    top = 4.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 16.dp,
-                    start = startPadding,
-                    end = endPadding,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            )
-        }
+        // contentPadding.bottom = alto de la barra inferior de la app. Se usa como contentPadding
+        // y no como padding, así la lista pasa por detrás de la barra (se ve desenfocada) y el
+        // último ítem igual queda visible al final del scroll.
+        RemindersList(
+            uiState = uiState,
+            now = now,
+            actions = actions,
+            revealGroup = revealGroup,
+            contentPadding = PaddingValues(
+                top = 4.dp,
+                bottom = contentPadding.calculateBottomPadding() + 16.dp,
+                start = startPadding,
+                end = endPadding,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+        )
     }
 }
 

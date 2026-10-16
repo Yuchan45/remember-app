@@ -1,13 +1,21 @@
 package com.example.uade.rememberapp.ui.navigation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +47,14 @@ import com.example.uade.rememberapp.ui.reminders.create.CreateReminderOption
 import com.example.uade.rememberapp.ui.reminders.create.CreateReminderSheet
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListScreen
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListViewModel
+import com.example.uade.rememberapp.ui.reminders.list.components.QuickCaptureBar
 import com.example.uade.rememberapp.ui.settings.SettingsScreen
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 
 /**
@@ -77,6 +92,9 @@ fun MainTabs(
         scope.launch { pagerState.animateScrollToPage(AppDestination.Home.ordinal) }
     }
 
+    // Une el contenido de las páginas (la fuente) con el panel desenfocado de la barra inferior.
+    val hazeState = rememberHazeState()
+
     val snackbarHostState = remember { SnackbarHostState() }
     TrashedReminderSnackbar(
         trashedReminderId = remindersState.trashedReminderId,
@@ -92,37 +110,25 @@ fun MainTabs(
         // El Scaffold lo ubica justo encima de la barra inferior.
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            // Barra y "+" juntos, centrados como grupo (no repartidos a los extremos).
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppBottomBar(
-                    selected = selected,
-                    onSelected = { destination ->
-                        scope.launch { pagerState.animateScrollToPage(destination.ordinal) }
-                    },
-                )
-                CircleIconButton(
-                    icon = R.drawable.ic_add,
-                    contentDescription = stringResource(R.string.reminders_quick_capture_new),
-                    onClick = remindersViewModel::onNewReminderClick,
-                    // Mismo alto que la barra (48dp de destino + 4dp de margen arriba y abajo).
-                    size = 56.dp,
-                    shape = CookieShape,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
+            MainBottomBar(
+                selected = selected,
+                hazeState = hazeState,
+                onSelected = { destination ->
+                    scope.launch { pagerState.animateScrollToPage(destination.ordinal) }
+                },
+                onNewReminder = remindersViewModel::onNewReminderClick,
+                onQuickCapture = remindersViewModel::onQuickCaptureClick,
+                onVoiceCapture = remindersViewModel::onVoiceCaptureClick,
+                onPhotoCapture = remindersViewModel::onPhotoCaptureClick,
+            )
         },
     ) { contentPadding ->
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize(),
+            // Lo que se dibuja acá es lo que se ve desenfocado detrás de la barra inferior.
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(hazeState),
             // Solo se cambia de pestaña con la barra: deslizar de costado no hace nada.
             userScrollEnabled = false,
             key = { destinations[it].name },
@@ -152,6 +158,89 @@ fun MainTabs(
             },
             onDismiss = remindersViewModel::onCreateMenuDismiss,
         )
+    }
+}
+
+/**
+ * La barra inferior de todas las pestañas:
+ * ```
+ * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   ← desenfoque que se intensifica hacia abajo
+ * ( Nota rápida…               🎤  🖼 )   ← solo en Inicio
+ *  ( ◉ Inicio  ▣  📍  ⚙ )   (+)
+ * ═════════ barra de Android ═════════   ← el desenfoque sigue por debajo
+ * ```
+ * El fondo es UN panel con el contenido de detrás desenfocado ([hazeEffect], fuente en el
+ * pager). Llega hasta el borde inferior de la pantalla, así que la barra de Android (inicio,
+ * atrás, apps abiertas), que es transparente, queda encima del mismo desenfoque y se ve como
+ * parte de la barra. El desenfoque es gradual (más suave arriba) para que no haya un corte
+ * marcado con la lista.
+ *
+ * El desenfoque real existe desde Android 12; antes, Haze usa un fondo translúcido del mismo tono.
+ */
+@Composable
+private fun MainBottomBar(
+    selected: AppDestination,
+    hazeState: HazeState,
+    onSelected: (AppDestination) -> Unit,
+    onNewReminder: () -> Unit,
+    onQuickCapture: () -> Unit,
+    onVoiceCapture: () -> Unit,
+    onPhotoCapture: () -> Unit,
+) {
+    val background = MaterialTheme.colorScheme.background
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .hazeEffect(state = hazeState) {
+                blurRadius = 24.dp
+                tints = listOf(HazeTint(background.copy(alpha = 0.55f)))
+                // Sin blur (Android 11 o menos): un fondo más opaco para que el texto se lea igual.
+                fallbackTint = HazeTint(background.copy(alpha = 0.9f))
+                // Arriba casi nada de desenfoque y abajo todo: se funde con la lista.
+                progressive = HazeProgressive.verticalGradient(startIntensity = 0f, endIntensity = 1f)
+            }
+            .padding(top = 12.dp)
+            .navigationBarsPadding()
+            .padding(bottom = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // IntrinsicSize.Max: la columna toma el ancho de su hijo más ancho (la fila de
+        // navegación con el "+") y "Nota rápida…", con fillMaxWidth, ocupa ese mismo ancho.
+        Column(
+            modifier = Modifier.width(IntrinsicSize.Max),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // "Nota rápida…" es de Inicio: al cambiar de pestaña aparece y desaparece con la barra.
+            AnimatedVisibility(
+                visible = selected == AppDestination.Home,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                QuickCaptureBar(
+                    onClick = onQuickCapture,
+                    onVoice = onVoiceCapture,
+                    onAddPhoto = onPhotoCapture,
+                )
+            }
+
+            // Barra y "+" juntos; el grupo queda centrado por la columna de afuera.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AppBottomBar(selected = selected, onSelected = onSelected)
+                CircleIconButton(
+                    icon = R.drawable.ic_add,
+                    contentDescription = stringResource(R.string.reminders_quick_capture_new),
+                    onClick = onNewReminder,
+                    // Mismo alto que la barra (42dp de destino + 4dp de margen arriba y abajo).
+                    size = 50.dp,
+                    shape = CookieShape,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
     }
 }
 
