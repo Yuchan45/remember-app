@@ -80,6 +80,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.domain.model.Visibility
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.Place
@@ -87,9 +88,10 @@ import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.ReminderVisibility
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
-import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.BehaviorOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheet
 import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheetActions
@@ -224,12 +226,13 @@ fun ReminderDetailScreen(
         )
     }
 
-    uiState.importanceEditor?.let { selected ->
-        ImportanceSheet(
-            selected = selected,
-            onSelect = viewModel::onImportanceSelected,
-            onCancel = viewModel::onCancelImportance,
-            onSave = viewModel::onSaveImportance,
+    uiState.behaviorEditor?.let { editor ->
+        BehaviorSheet(
+            editor = editor,
+            onVisibilitySelect = viewModel::onBehaviorVisibilitySelected,
+            onImportanceSelect = viewModel::onBehaviorImportanceSelected,
+            onCancel = viewModel::onCancelBehavior,
+            onDone = viewModel::onSaveBehavior,
         )
     }
 
@@ -264,17 +267,18 @@ fun ReminderDetailScreen(
 }
 
 /**
- * Modal "Cómo avisar": el mismo panel de importancia que en la nota rápida (un nivel a la vez,
- * con su descripción), con "Cancelar / Guardar" como los otros modales del detalle. Guardar pasa
- * el nivel al borrador; se persiste con ✓.
+ * Modal "Comportamiento": título, subtítulo y el mismo panel que en la nota rápida (visibilidad e
+ * importancia), con "Cancelar / Hecho". "Hecho" pasa lo marcado al borrador; se persiste con ✓.
+ * Las opciones se desplazan si no entran en pantalla; los botones quedan siempre a la vista.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ImportanceSheet(
-    selected: Importance,
-    onSelect: (Importance) -> Unit,
+private fun BehaviorSheet(
+    editor: BehaviorEditor,
+    onVisibilitySelect: (Visibility) -> Unit,
+    onImportanceSelect: (Importance) -> Unit,
     onCancel: () -> Unit,
-    onSave: () -> Unit,
+    onDone: () -> Unit,
 ) {
     ModalBottomSheet(
         onDismissRequest = onCancel,
@@ -285,10 +289,27 @@ private fun ImportanceSheet(
             modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ImportanceOptionsPanel(
-                options = ReminderImportance.entries,
-                selected = ReminderImportance.of(selected),
-                onSelect = { onSelect(it.importance) },
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.reminders_behavior_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.reminders_behavior_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            BehaviorOptionsPanel(
+                visibility = ReminderVisibility.of(editor.visibility),
+                importance = ReminderImportance.of(editor.importance),
+                onVisibilitySelect = { onVisibilitySelect(it.visibility) },
+                onImportanceSelect = { onImportanceSelect(it.importance) },
+                // weight(1f, fill = false): ocupa lo que necesita, y si no entra se desplaza.
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -296,7 +317,7 @@ private fun ImportanceSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onCancel)
-                DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onSave)
+                DialogFilledConfirmButton(text = stringResource(R.string.reminders_behavior_done), onClick = onDone)
             }
         }
     }
@@ -751,7 +772,11 @@ private fun ReminderOptionsPanel(
                 OptionCard(
                     icon = R.drawable.ic_visibility,
                     title = stringResource(R.string.reminder_detail_behavior),
-                    value = stringResource(ReminderImportance.of(uiState.importance).label),
+                    value = stringResource(
+                        R.string.reminder_detail_behavior_value,
+                        stringResource(ReminderVisibility.of(uiState.visibility).label),
+                        stringResource(ReminderImportance.of(uiState.importance).label),
+                    ),
                     onClick = onBehaviorClick,
                 )
                 OptionCard(
@@ -1006,6 +1031,7 @@ private fun loadedState(reminder: Reminder) = ReminderDetailUiState(
     allTags = reminder.tags,
     alarms = reminder.alarms.map { it.at },
     importance = reminder.importance,
+    visibility = reminder.visibility,
     action = reminder.action,
     photos = reminder.photos,
     photoPath = reminder.photoPath,

@@ -16,6 +16,7 @@ import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.model.Visibility
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
@@ -85,6 +86,7 @@ class ReminderDetailViewModel(
                         tagIds = reminder?.tags.orEmpty().map { tag -> tag.id }.toSet(),
                         alarms = reminder?.alarms.orEmpty().map { alarm -> alarm.at }.sorted(),
                         importance = reminder?.importance ?: Importance.Default,
+                        visibility = reminder?.visibility ?: Visibility.Default,
                         action = reminder?.action,
                         photos = reminder?.photos.orEmpty(),
                         photoPath = reminder?.photoPath,
@@ -123,29 +125,39 @@ class ReminderDetailViewModel(
         _uiState.update { it.copy(tagsEditor = null) }
     }
 
-    // --- Modal "Cómo avisar" (importancia) ---------------------------------------------------
-    // Mismo patrón que los otros modales: trabaja sobre una copia que "Guardar" pasa al borrador.
+    // --- Modal "Comportamiento" (visibilidad e importancia) -----------------------------------
+    // Mismo patrón que los otros modales: trabaja sobre una copia que "Hecho" pasa al borrador.
 
-    /** Tocar "Comportamiento" abre el modal con el nivel actual marcado. */
+    /** Tocar "Comportamiento" abre el modal con la visibilidad y la importancia actuales marcadas. */
     fun onBehaviorClick() {
-        _uiState.update { it.copy(importanceEditor = it.importance) }
+        _uiState.update { it.copy(behaviorEditor = BehaviorEditor(visibility = it.visibility, importance = it.importance)) }
     }
 
-    /** Elegir un nivel en el modal: solo cambia la copia del modal (siempre hay uno marcado). */
-    fun onImportanceSelected(importance: Importance) {
-        _uiState.update { state -> state.importanceEditor?.let { state.copy(importanceEditor = importance) } ?: state }
+    /** Elegir una visibilidad en el modal: solo cambia la copia del modal. */
+    fun onBehaviorVisibilitySelected(visibility: Visibility) {
+        updateBehaviorEditor { it.copy(visibility = visibility) }
     }
 
-    /** "Guardar": el nivel marcado pasa al borrador. Se persiste recién con ✓. */
-    fun onSaveImportance() {
+    /** Elegir una importancia en el modal: solo cambia la copia del modal. */
+    fun onBehaviorImportanceSelected(importance: Importance) {
+        updateBehaviorEditor { it.copy(importance = importance) }
+    }
+
+    /** "Hecho": lo marcado pasa al borrador. Se persiste recién con ✓. */
+    fun onSaveBehavior() {
         _uiState.update { state ->
-            state.importanceEditor?.let { state.copy(importance = it, importanceEditor = null) } ?: state
+            val editor = state.behaviorEditor ?: return@update state
+            state.copy(visibility = editor.visibility, importance = editor.importance, behaviorEditor = null)
         }
     }
 
-    /** "Cancelar" (o cerrar el modal): deja la importancia como estaba. */
-    fun onCancelImportance() {
-        _uiState.update { it.copy(importanceEditor = null) }
+    /** "Cancelar" (o cerrar el modal): deja todo como estaba. */
+    fun onCancelBehavior() {
+        _uiState.update { it.copy(behaviorEditor = null) }
+    }
+
+    private fun updateBehaviorEditor(transform: (BehaviorEditor) -> BehaviorEditor) {
+        _uiState.update { state -> state.copy(behaviorEditor = state.behaviorEditor?.let(transform)) }
     }
 
     // --- Modal "Acción de notificación" ------------------------------------------------------
@@ -532,6 +544,7 @@ class ReminderDetailViewModel(
                 tags = state.tags,
                 alarms = state.alarmsToSave,
                 importance = state.importance,
+                visibility = state.visibility,
                 action = state.action,
                 photoPath = state.photoPath,
                 photos = state.photos,
@@ -545,6 +558,7 @@ class ReminderDetailViewModel(
                     tags = state.tags,
                     alarms = state.alarmsToSave,
                     importance = state.importance,
+                    visibility = state.visibility,
                     action = state.action,
                     photoPath = state.photoPath,
                     photos = state.photos,

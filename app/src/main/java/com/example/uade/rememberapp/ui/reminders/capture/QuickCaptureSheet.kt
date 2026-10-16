@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.ReminderVisibility
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
@@ -68,7 +69,7 @@ import com.example.uade.rememberapp.ui.tags.TagPickerPanel
 import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureTriggerRow
-import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.BehaviorOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.components.TimeOptionsPanel
@@ -152,6 +153,7 @@ fun QuickCaptureSheet(
                 onPlaceSelected = viewModel::onPlaceSelected,
                 onPlaceEventSelected = viewModel::onPlaceEventSelected,
                 onImportanceSelected = viewModel::onImportanceSelected,
+                onVisibilitySelected = viewModel::onVisibilitySelected,
                 onSearchAddress = viewModel::onSearchAddress,
                 onVoice = viewModel::onVoiceClick,
                 onPhoto = viewModel::onPhotoClick,
@@ -259,6 +261,7 @@ data class QuickCaptureActions(
     val onPlaceSelected: (placeId: Long) -> Unit = {},
     val onPlaceEventSelected: (PlaceEvent) -> Unit = {},
     val onImportanceSelected: (ReminderImportance) -> Unit = {},
+    val onVisibilitySelected: (ReminderVisibility) -> Unit = {},
     val onSearchAddress: () -> Unit = {},
     val onVoice: () -> Unit = {},
     val onPhoto: () -> Unit = {},
@@ -353,6 +356,7 @@ fun QuickCaptureContent(
             onPanelClick = actions.onPanelToggle,
             tagCount = uiState.selectedTagIds.size,
             importance = uiState.selectedImportance,
+            visibility = uiState.selectedVisibility,
             contentPadding = PaddingValues(horizontal = SheetPadding),
         )
 
@@ -403,10 +407,11 @@ private fun CapturePanelContent(
 
         CapturePanel.Tags -> tagsPanel()
 
-        CapturePanel.Importance -> ImportanceOptionsPanel(
-            options = uiState.importanceOptions,
-            selected = uiState.selectedImportance,
-            onSelect = actions.onImportanceSelected,
+        CapturePanel.Behavior -> BehaviorOptionsPanel(
+            visibility = uiState.selectedVisibility,
+            importance = uiState.selectedImportance,
+            onVisibilitySelect = actions.onVisibilitySelected,
+            onImportanceSelect = actions.onImportanceSelected,
             modifier = Modifier.padding(horizontal = SheetPadding),
         )
 
@@ -497,14 +502,15 @@ private fun QuickCaptureContentPlacePreview() {
     QuickCaptureContentPreviewFrame(SampleQuickCapture.placePanelState())
 }
 
-@Preview(name = "Panel de importancia", heightDp = 900)
+@Preview(name = "Panel de comportamiento", heightDp = 1100)
 @Composable
-private fun QuickCaptureContentImportancePreview() {
+private fun QuickCaptureContentBehaviorPreview() {
     QuickCaptureContentPreviewFrame(
         SampleQuickCapture.uiState().copy(
             title = "Tomar la medicación",
-            expandedPanel = CapturePanel.Importance,
+            expandedPanel = CapturePanel.Behavior,
             selectedImportance = ReminderImportance.Critical,
+            selectedVisibility = ReminderVisibility.Private,
         ),
     )
 }

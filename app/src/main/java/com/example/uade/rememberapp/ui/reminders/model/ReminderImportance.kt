@@ -11,6 +11,7 @@ import com.example.uade.rememberapp.domain.model.Importance
  * dominio con [importance].
  *
  * TODO: la importancia se guarda pero todavía no cambia el aviso (canal de notificación).
+ * El ícono lo usa el chip "Comportamiento" de la nota rápida.
  */
 enum class ReminderImportance(
     val importance: Importance,
@@ -21,26 +22,26 @@ enum class ReminderImportance(
     Low(
         Importance.Low,
         R.drawable.ic_notifications_off,
-        R.string.reminders_capture_importance_low,
-        R.string.reminders_capture_importance_low_desc,
+        R.string.reminders_behavior_importance_low,
+        R.string.reminders_behavior_importance_low_desc,
     ),
     Default(
         Importance.Default,
         R.drawable.ic_notifications,
-        R.string.reminders_capture_importance_default,
-        R.string.reminders_capture_importance_default_desc,
+        R.string.reminders_behavior_importance_default,
+        R.string.reminders_behavior_importance_default_desc,
     ),
     High(
         Importance.High,
         R.drawable.ic_notifications_active,
-        R.string.reminders_capture_importance_high,
-        R.string.reminders_capture_importance_high_desc,
+        R.string.reminders_behavior_importance_high,
+        R.string.reminders_behavior_importance_high_desc,
     ),
     Critical(
         Importance.Critical,
         R.drawable.ic_alarm,
-        R.string.reminders_capture_importance_critical,
-        R.string.reminders_capture_importance_critical_desc,
+        R.string.reminders_behavior_importance_critical,
+        R.string.reminders_behavior_importance_critical_desc,
     ),
     ;
 

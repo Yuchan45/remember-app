@@ -12,6 +12,7 @@ import java.time.Instant
 import com.example.uade.rememberapp.MainActivity
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.Visibility
 import com.example.uade.rememberapp.platform.receiver.ReminderActionReceiver
 
 /**
@@ -113,6 +114,7 @@ object NotificationHelper {
                 context.getString(R.string.notification_action_snooze),
                 snoozePendingIntent,
             )
+            .applyVisibility(context, reminder.visibility, title)
 
         val notificationManager = NotificationManagerCompat.from(context)
         try {
@@ -120,5 +122,28 @@ object NotificationHelper {
         } catch (_: SecurityException) {
             // En Android 13+, si el usuario denegó POST_NOTIFICATIONS
         }
+    }
+
+    /**
+     * Qué se ve con el teléfono bloqueado, según la [Visibility] del recordatorio:
+     * - Default → todo (VISIBILITY_PUBLIC).
+     * - Private → VISIBILITY_PRIVATE con una "versión pública" que tiene solo el título: Android
+     *   muestra esa versión en la pantalla bloqueada en lugar de la completa.
+     * - Secret → nada (VISIBILITY_SECRET).
+     */
+    private fun NotificationCompat.Builder.applyVisibility(
+        context: Context,
+        visibility: Visibility,
+        title: String,
+    ): NotificationCompat.Builder = when (visibility) {
+        Visibility.Default -> setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        Visibility.Private -> setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setPublicVersion(
+            NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_alarm)
+                .setContentTitle(title)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .build(),
+        )
+        Visibility.Secret -> setVisibility(NotificationCompat.VISIBILITY_SECRET)
     }
 }

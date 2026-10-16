@@ -28,6 +28,8 @@ data class Reminder(
     val alarms: List<Alarm> = emptyList(),
     val places: List<PlaceAlert> = emptyList(),
     val importance: Importance = Importance.Default,
+    /** Cuánto muestra la notificación con el teléfono bloqueado. */
+    val visibility: Visibility = Visibility.Default,
     /** La acción rápida de la notificación, si tiene (ej. llamar a un número). */
     val action: NotificationAction? = null,
     val isDone: Boolean = false,

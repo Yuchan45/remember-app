@@ -31,4 +31,7 @@ data class ReminderEntity(
      */
     @ColumnInfo(defaultValue = "Default")
     val importance: String = "Default",
+    /** Por nombre (ver Visibility). El default coincide con el de la migración 7 → 8. */
+    @ColumnInfo(defaultValue = "Default")
+    val visibility: String = "Default",
 )

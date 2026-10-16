@@ -2,6 +2,7 @@ package com.example.uade.rememberapp.ui.reminders.capture
 
 import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.ReminderVisibility
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
@@ -128,6 +129,14 @@ class QuickCaptureViewModel(
         _uiState.update { it.copy(selectedImportance = importance) }
     }
 
+    /**
+     * Elige la visibilidad (qué muestra la notificación bloqueada). Igual que la importancia,
+     * siempre hay una elegida. Se guarda en el recordatorio y la notificación la respeta.
+     */
+    fun onVisibilitySelected(visibility: ReminderVisibility) {
+        _uiState.update { it.copy(selectedVisibility = visibility) }
+    }
+
     // TODO: abrir el buscador de direcciones (mapa).
     fun onSearchAddress() = Unit
 
@@ -173,6 +182,7 @@ class QuickCaptureViewModel(
             // La nota rápida elige una sola hora; varias se agregan desde el detalle.
             alarms = listOfNotNull(at?.let { Alarm(it.toInstant()) }),
             importance = state.selectedImportance.importance,
+            visibility = state.selectedVisibility.visibility,
             createdAt = current.toInstant(),
         )
         viewModelScope.launch {

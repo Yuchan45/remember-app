@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.ReminderVisibility
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
@@ -13,7 +14,8 @@ enum class CapturePanel {
     Time,
     Place,
     Tags,
-    Importance,
+    /** Visibilidad e importancia (chip "Comportamiento"). */
+    Behavior,
 }
 
 /**
@@ -35,7 +37,6 @@ data class QuickCaptureUiState(
     val repeatOptions: List<RepeatOption> = emptyList(),
     val favoritePlaces: List<Place> = emptyList(),
     val placeEvents: List<PlaceEvent> = emptyList(),
-    val importanceOptions: List<ReminderImportance> = emptyList(),
 
     // Lo que eligió el usuario.
     val selectedTime: TimeShortcut? = null,
@@ -44,6 +45,8 @@ data class QuickCaptureUiState(
     val selectedPlaceEvent: PlaceEvent = PlaceEvent.Arrive,
     /** Siempre hay una elegida; arranca en la predeterminada. */
     val selectedImportance: ReminderImportance = ReminderImportance.Default,
+    /** Siempre hay una elegida; arranca en la predeterminada. */
+    val selectedVisibility: ReminderVisibility = ReminderVisibility.Default,
 
     // "Elegir fecha…": el día y la hora (opcional) elegidos en el diálogo del calendario.
     val pickedDate: LocalDate? = null,

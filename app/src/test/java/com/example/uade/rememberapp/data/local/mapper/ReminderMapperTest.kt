@@ -15,6 +15,7 @@ import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.domain.model.Visibility
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -132,12 +133,23 @@ class ReminderMapperTest {
     }
 
     @Test
-    fun `un evento de lugar, un estado o una importancia desconocidos no rompen la lectura`() {
+    fun `un evento de lugar, un estado, una importancia o una visibilidad desconocidos no rompen la lectura`() {
         val place = PlaceAlertEntity(reminderId = 7, placeId = 3, event = "OTRO").toDomain()
-        val domain = reminder.toEntity().copy(status = "Viejo", importance = "Urgente").toDomain()
+        val domain = reminder.toEntity()
+            .copy(status = "Viejo", importance = "Urgente", visibility = "Oculta")
+            .toDomain()
 
         assertEquals(PlaceAlertEvent.Arrive, place.event)
         assertEquals(ReminderStatus.Active, domain.status)
         assertEquals(Importance.Default, domain.importance)
+        assertEquals(Visibility.Default, domain.visibility)
+    }
+
+    @Test
+    fun `la visibilidad se guarda por nombre y vuelve igual`() {
+        val secret = reminder.copy(visibility = Visibility.Secret)
+
+        assertEquals("Secret", secret.toEntity().visibility)
+        assertEquals(secret, secret.toEntity().toDomain())
     }
 }

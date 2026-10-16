@@ -80,3 +80,14 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         db.execSQL("ALTER TABLE `reminder_alarms` ADD COLUMN `isSnooze` INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * 7 → 8: la visibilidad de cada recordatorio (qué muestra la notificación con el teléfono
+ * bloqueado). Las notas que ya existían quedan en "Default" (se ve todo, como hasta ahora).
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // El DEFAULT tiene que ser el mismo que el @ColumnInfo(defaultValue) de ReminderEntity.visibility.
+        db.execSQL("ALTER TABLE reminders ADD COLUMN visibility TEXT NOT NULL DEFAULT 'Default'")
+    }
+}

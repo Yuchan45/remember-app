@@ -18,6 +18,7 @@ import com.example.uade.rememberapp.ui.components.OptionChip
 import com.example.uade.rememberapp.ui.reminders.capture.CapturePanel
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.ReminderVisibility
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
@@ -47,6 +48,7 @@ fun CaptureTriggerRow(
     modifier: Modifier = Modifier,
     tagCount: Int = 0,
     importance: ReminderImportance = ReminderImportance.Default,
+    visibility: ReminderVisibility = ReminderVisibility.Default,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val placeText = when {
@@ -60,11 +62,19 @@ fun CaptureTriggerRow(
     } else {
         stringResource(R.string.reminders_capture_trigger_tag)
     }
+    // "Comportamiento" mientras todo es lo predeterminado; si no, lo que cambió ("Alta",
+    // "Privado" o "Alta · Privado").
     val isDefaultImportance = importance == ReminderImportance.Default
-    val importanceText = if (isDefaultImportance) {
-        stringResource(R.string.reminders_capture_trigger_importance)
-    } else {
-        stringResource(importance.label)
+    val isDefaultVisibility = visibility == ReminderVisibility.Default
+    val behaviorText = when {
+        isDefaultImportance && isDefaultVisibility -> stringResource(R.string.reminders_capture_trigger_behavior)
+        isDefaultVisibility -> stringResource(importance.label)
+        isDefaultImportance -> stringResource(visibility.label)
+        else -> stringResource(
+            R.string.reminders_capture_trigger_behavior_both,
+            stringResource(importance.label),
+            stringResource(visibility.label),
+        )
     }
 
     LazyRow(
@@ -98,10 +108,10 @@ fun CaptureTriggerRow(
         }
         item {
             TriggerChip(
-                text = importanceText,
+                text = behaviorText,
                 icon = importance.icon,
-                selected = !isDefaultImportance || expandedPanel == CapturePanel.Importance,
-                onClick = { onPanelClick(CapturePanel.Importance) },
+                selected = !isDefaultImportance || !isDefaultVisibility || expandedPanel == CapturePanel.Behavior,
+                onClick = { onPanelClick(CapturePanel.Behavior) },
             )
         }
     }

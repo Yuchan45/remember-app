@@ -12,6 +12,7 @@ import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.domain.model.Visibility
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.components.typeIcon
@@ -65,11 +66,13 @@ data class ReminderDetailUiState(
 
     /** Qué tan insistente es el aviso (fila "Comportamiento"). */
     val importance: Importance = Importance.Default,
+    /** Qué muestra la notificación con el teléfono bloqueado (fila "Comportamiento"). */
+    val visibility: Visibility = Visibility.Default,
     /**
-     * El modal "Cómo avisar" mientras está abierto (null = cerrado): el nivel marcado en el modal.
-     * "Guardar" lo pasa a [importance] y "Cancelar" lo descarta.
+     * El modal "Comportamiento" mientras está abierto (null = cerrado): lo marcado en el modal.
+     * "Hecho" lo pasa a [visibility] e [importance]; "Cancelar" lo descarta.
      */
-    val importanceEditor: Importance? = null,
+    val behaviorEditor: BehaviorEditor? = null,
 
     /** La acción rápida de la notificación (fila "Acción de notificación"); null = sin acción. */
     val action: NotificationAction? = null,
@@ -108,7 +111,7 @@ data class ReminderDetailUiState(
      *
      * - Nota nueva: hace falta título, descripción o portada (solo etiquetas o avisos no alcanza).
      * - Existente: cambió el título, la descripción, las etiquetas, los avisos por hora, la
-     *   importancia, la acción de notificación o las fotos.
+     *   importancia, la visibilidad, la acción de notificación o las fotos.
      */
     val hasUnsavedChanges: Boolean
         get() = when {
@@ -118,6 +121,7 @@ data class ReminderDetailUiState(
                 tagIds != reminder.tags.map { it.id }.toSet() ||
                 alarms != reminder.alarms.map { it.at } ||
                 importance != reminder.importance ||
+                visibility != reminder.visibility ||
                 action != reminder.action ||
                 photos != reminder.photos ||
                 photoPath != reminder.photoPath
@@ -245,3 +249,9 @@ data class PhotosEditor(
     /** Cuántas fotos más se pueden agregar. */
     val freeSlots: Int get() = MAX_PHOTOS - photos.size
 }
+
+/** El modal "Comportamiento": la visibilidad y la importancia marcadas (siempre hay una de cada). */
+data class BehaviorEditor(
+    val visibility: Visibility = Visibility.Default,
+    val importance: Importance = Importance.Default,
+)

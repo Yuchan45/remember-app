@@ -64,16 +64,9 @@
     <string name="reminders_capture_trigger_arrive_at">Al llegar a %1$s</string>
     <string name="reminders_capture_trigger_leave_from">Al salir de %1$s</string>
     <string name="reminders_capture_trigger_tag">Etiqueta</string>
-    <string name="reminders_capture_trigger_importance">Importancia</string>
-    <string name="reminders_capture_section_importance">Cómo avisar</string>
-    <string name="reminders_capture_importance_low">Baja</string>
-    <string name="reminders_capture_importance_low_desc">Silenciosa: sin sonido, vibración ni ícono en la barra de estado</string>
-    <string name="reminders_capture_importance_default">Predeterminada</string>
-    <string name="reminders_capture_importance_default_desc">Con sonido y vibración</string>
-    <string name="reminders_capture_importance_high">Alta</string>
-    <string name="reminders_capture_importance_high_desc">Aparece en pantalla como alerta emergente</string>
-    <string name="reminders_capture_importance_critical">Crítica</string>
-    <string name="reminders_capture_importance_critical_desc">Suena como alarma aunque el teléfono esté en silencio, y repite cada 15 min hasta marcarla hecha</string>
+    <!-- Chip "Comportamiento" con algo cambiado, ej. "Alta · Privado". %1$s y %2$s = importancia y visibilidad. -->
+    <string name="reminders_capture_trigger_behavior">Comportamiento</string>
+    <string name="reminders_capture_trigger_behavior_both">%1$s · %2$s</string>
     <string name="reminders_capture_tool_checklist">Convertir en lista</string>
     <string name="reminders_capture_tool_expand">Abrir en pantalla completa</string>
     <string name="reminders_capture_tool_collapse">Salir de pantalla completa</string>
@@ -250,6 +243,32 @@
     <!-- Ajustes (template) -->
     <string name="settings_title">Ajustes</string>
     <string name="settings_placeholder">Acá van a estar las preferencias de la app.</string>
+
+    <!-- Comportamiento: visibilidad e importancia (nota rápida y detalle) -->
+    <string name="reminders_behavior_title">Comportamiento</string>
+    <string name="reminders_behavior_subtitle">Cómo aparece y se comporta la notificación de esta nota</string>
+    <string name="reminders_behavior_done">Hecho</string>
+    <string name="reminders_behavior_help">Más información</string>
+    <string name="reminders_behavior_section_visibility">Visibilidad</string>
+    <string name="reminders_behavior_visibility_help">Qué se ve de la notificación con el teléfono bloqueado. Con el teléfono desbloqueado siempre se ve completa.</string>
+    <string name="reminders_behavior_visibility_default">Predeterminado</string>
+    <string name="reminders_behavior_visibility_default_desc">Mostrar título y contenido.</string>
+    <string name="reminders_behavior_visibility_private">Privado</string>
+    <string name="reminders_behavior_visibility_private_desc">Mostrar título, ocultar contenido.</string>
+    <string name="reminders_behavior_visibility_secret">Secreto</string>
+    <string name="reminders_behavior_visibility_secret_desc">Redactar toda la información. No mostrar en widgets.</string>
+    <string name="reminders_behavior_section_importance">Importancia</string>
+    <string name="reminders_behavior_importance_help">Qué tan insistente es el aviso: si suena, vibra, aparece en pantalla o se repite hasta que lo marques como hecho.</string>
+    <string name="reminders_behavior_importance_low">Baja</string>
+    <string name="reminders_behavior_importance_low_desc">Silencioso. Sin icono en la barra de estado ni vibración.</string>
+    <string name="reminders_behavior_importance_default">Predeterminado</string>
+    <string name="reminders_behavior_importance_default_desc">Sonido y vibración estándar.</string>
+    <string name="reminders_behavior_importance_high">Alta</string>
+    <string name="reminders_behavior_importance_high_desc">Aparece en pantalla como una alerta emergente. Se trata como una alarma.</string>
+    <string name="reminders_behavior_importance_critical">Crítico</string>
+    <string name="reminders_behavior_importance_critical_desc">Suena como una alarma, incluso en silencio, y vuelve a sonar cada 15 minutos hasta que se marque como hecho.</string>
+    <!-- Fila "Comportamiento" del detalle. %1$s = visibilidad, %2$s = importancia. -->
+    <string name="reminder_detail_behavior_value">Visibilidad: %1$s • Importancia: %2$s</string>
 
     <!-- Comunes: diálogos, calendario y reloj (ui/components) -->
     <string name="common_cancel">Cancelar</string>

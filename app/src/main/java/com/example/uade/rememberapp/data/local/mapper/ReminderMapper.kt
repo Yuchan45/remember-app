@@ -17,6 +17,7 @@ import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.domain.model.Visibility
 import java.time.Instant
 
 // Traducción entre el modelo del dominio y las filas de Room. Vive en `data` para que el dominio
@@ -55,6 +56,7 @@ fun ReminderEntity.toDomain(
     isDone = isDone,
     status = enumOrDefault(status, ReminderStatus.Active),
     importance = enumOrDefault(importance, Importance.Default),
+    visibility = enumOrDefault(visibility, Visibility.Default),
     createdAt = Instant.ofEpochMilli(createdAtMillis),
 )
 
@@ -68,6 +70,7 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     status = status.name,
     createdAtMillis = createdAt.toEpochMilli(),
     importance = importance.name,
+    visibility = visibility.name,
 )
 
 fun AlarmEntity.toDomain(): Alarm = Alarm(at = Instant.ofEpochMilli(atMillis), isSnooze = isSnooze)
