@@ -16,6 +16,7 @@ import com.example.uade.rememberapp.domain.usecase.ProcessVoiceWithAiUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.platform.audio.AudioRecorder
 import com.example.uade.rememberapp.platform.worker.WorkManagerScheduler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.Instant
 
@@ -135,30 +137,39 @@ class VoiceCaptureViewModel(
 
     fun onStopAndSave() {
         recordingJob?.cancel()
-        val file = audioRecorder.stop() ?: currentAudioFile
+        _uiState.update { it.copy(isProcessing = true) }
 
-        if (file == null || !file.exists()) {
-            _uiState.update { it.copy(errorMessage = "Grabación vacía o no guardada") }
-            return
-        }
-
-        val state = _uiState.value
-
-        if (!state.isTranscribeWithAiEnabled) {
-            // Con switch apagado: emitimos la ruta para abrir la ventana de configuración (horario, lugar, etiquetas)
-            _uiState.update {
-                it.copy(
-                    isRecording = false,
-                    isPaused = false,
-                    completedAudioPathForConfig = file.absolutePath,
-                )
+        viewModelScope.launch {
+            val file = withContext(Dispatchers.IO) {
+                audioRecorder.stop() ?: currentAudioFile
             }
-        } else {
-            // Con switch encendido: flujo de IA con Groq
-            if (!isNetworkAvailable()) {
-                // Sin conexión: guardado Offline First en Room como "Pending" y encolado en WorkManager
-                viewModelScope.launch {
-                    _uiState.update { it.copy(isProcessing = true) }
+
+            if (file == null || !file.exists() || file.length() == 0L) {
+                _uiState.update {
+                    it.copy(
+                        isProcessing = false,
+                        errorMessage = "La grabación fue demasiado corta o no contiene audio",
+                    )
+                }
+                return@launch
+            }
+
+            val state = _uiState.value
+
+            if (!state.isTranscribeWithAiEnabled) {
+                // Con switch apagado: emitimos la ruta para abrir la ventana de configuración (horario, lugar, etiquetas)
+                _uiState.update {
+                    it.copy(
+                        isRecording = false,
+                        isPaused = false,
+                        isProcessing = false,
+                        completedAudioPathForConfig = file.absolutePath,
+                    )
+                }
+            } else {
+                // Con switch encendido: flujo de IA con Groq
+                if (!isNetworkAvailable()) {
+                    // Sin conexión: guardado Offline First en Room como "Pending" y encolado en WorkManager
                     val reminder = Reminder(
                         type = ReminderType.Note,
                         title = "Nota de voz pendiente de IA",
@@ -176,11 +187,8 @@ class VoiceCaptureViewModel(
                             offlineSavedPending = true,
                         )
                     }
-                }
-            } else {
-                // Con conexión: procesamos de inmediato con Whisper + LLM
-                viewModelScope.launch {
-                    _uiState.update { it.copy(isProcessing = true) }
+                } else {
+                    // Con conexión: procesamos de inmediato con Whisper + LLM
                     val result = processVoiceWithAi(file.absolutePath)
                     result.fold(
                         onSuccess = { analysis ->

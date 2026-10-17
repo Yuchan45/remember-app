@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -552,6 +554,20 @@ private fun ProposedReminderCard(
                 }
             }
 
+            // Si tiene descripción / notas adicionales
+            if (!proposal.description.isNullOrBlank() && proposal.description != proposal.title) {
+                Text(
+                    text = proposal.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 36.dp),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
             // Si es checklist: lista de tareas
             if (proposal.type == ReminderType.Checklist && proposal.items.isNotEmpty()) {
                 Column(
@@ -815,22 +831,30 @@ private fun EditProposalDialog(
     onSave: (ProposedReminder) -> Unit,
 ) {
     var title by remember { mutableStateOf(proposal.title) }
+    var description by remember { mutableStateOf(proposal.description ?: "") }
     var time by remember { mutableStateOf(proposal.triggerDisplayTime ?: "") }
     var place by remember { mutableStateOf(proposal.placeName ?: "") }
     var priority by remember { mutableStateOf(proposal.priorityName ?: "") }
     var list by remember { mutableStateOf(proposal.listName ?: "") }
 
+    val isChecklist = proposal.type == ReminderType.Checklist || proposal.items.isNotEmpty()
+    var itemsList by remember { mutableStateOf(proposal.items) }
+    var newItemText by remember { mutableStateOf("") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Editar recordatorio",
+                text = if (isChecklist) "Editar checklist" else "Editar recordatorio",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
         },
         text = {
             Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 OutlinedTextField(
@@ -843,6 +867,118 @@ private fun EditProposalDialog(
                     ),
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Descripción / Notas") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Primary,
+                        cursorColor = Primary,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 4,
+                )
+
+                if (isChecklist) {
+                    Text(
+                        text = "Tareas de la lista (${itemsList.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+
+                    itemsList.forEachIndexed { index, item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(
+                                    if (item.isChecked) R.drawable.ic_check_box else R.drawable.ic_check_box_outline_blank,
+                                ),
+                                contentDescription = null,
+                                tint = if (item.isChecked) Primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable {
+                                        itemsList = itemsList.mapIndexed { idx, itm ->
+                                            if (idx == index) itm.copy(isChecked = !itm.isChecked) else itm
+                                        }
+                                    },
+                            )
+
+                            OutlinedTextField(
+                                value = item.text,
+                                onValueChange = { newText ->
+                                    itemsList = itemsList.mapIndexed { idx, itm ->
+                                        if (idx == index) itm.copy(text = newText) else itm
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Primary,
+                                    cursorColor = Primary,
+                                ),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    itemsList = itemsList.filterIndexed { idx, _ -> idx != index }
+                                },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_close),
+                                    contentDescription = "Eliminar tarea",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    // Fila para agregar nueva tarea
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = newItemText,
+                            onValueChange = { newItemText = it },
+                            placeholder = { Text("Nueva tarea...", style = MaterialTheme.typography.bodyMedium) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Primary,
+                                cursorColor = Primary,
+                            ),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                        )
+
+                        IconButton(
+                            onClick = {
+                                if (newItemText.isNotBlank()) {
+                                    itemsList = itemsList + ChecklistItem(text = newItemText.trim())
+                                    newItemText = ""
+                                }
+                            },
+                            enabled = newItemText.isNotBlank(),
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_add),
+                                contentDescription = "Agregar tarea",
+                                tint = if (newItemText.isNotBlank()) Primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = time,
                     onValueChange = { time = it },
@@ -888,9 +1024,18 @@ private fun EditProposalDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    val cleanedItems = itemsList.filter { it.text.isNotBlank() }
+                    val finalType = if (isChecklist && cleanedItems.isNotEmpty()) {
+                        ReminderType.Checklist
+                    } else {
+                        proposal.type
+                    }
                     onSave(
                         proposal.copy(
                             title = title.ifBlank { proposal.title },
+                            description = description.ifBlank { null },
+                            type = finalType,
+                            items = cleanedItems,
                             triggerDisplayTime = time.ifBlank { null },
                             placeName = place.ifBlank { null },
                             priorityName = priority.ifBlank { null },
