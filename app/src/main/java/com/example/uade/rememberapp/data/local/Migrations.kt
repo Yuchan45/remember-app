@@ -80,3 +80,13 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         db.execSQL("ALTER TABLE `reminder_alarms` ADD COLUMN `isSnooze` INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * 7 → 8: `audioPath` y `aiStatus` en `reminders`, para grabaciones de voz y estado de procesamiento IA.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `reminders` ADD COLUMN `audioPath` TEXT")
+        db.execSQL("ALTER TABLE `reminders` ADD COLUMN `aiStatus` TEXT NOT NULL DEFAULT 'None'")
+    }
+}

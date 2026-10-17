@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import java.time.Instant
@@ -15,12 +14,14 @@ import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.platform.receiver.ReminderActionReceiver
 
 /**
- * Responsable de la creación de canales y del ensamblado de notificaciones para los recordatorios.
+ * Responsable de la creación de canales y del ensamblado de notificaciones para los recordatorios
+ * y tareas de IA en segundo plano.
  * Pertenece a la capa `platform` porque trata directamente con las APIs de Android.
  */
 object NotificationHelper {
 
     const val CHANNEL_ID = "reminders_channel"
+    const val CHANNEL_AI = "ai_channel"
     const val EXTRA_NAVIGATE_TO_REMINDER_ID = "extra_navigate_to_reminder_id"
 
     private const val PENDING_INTENT_FLAGS =
@@ -38,9 +39,18 @@ object NotificationHelper {
             enableVibration(true)
         }
 
+        val aiChannel = NotificationChannel(
+            CHANNEL_AI,
+            "Procesamiento IA",
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            this.description = "Avisos de transcripción y estructuración de audio"
+        }
+
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+        notificationManager.createNotificationChannel(aiChannel)
     }
 
     /**
@@ -119,6 +129,23 @@ object NotificationHelper {
             notificationManager.notify(reminder.id.toInt(), builder.build())
         } catch (_: SecurityException) {
             // En Android 13+, si el usuario denegó POST_NOTIFICATIONS
+        }
+    }
+
+    fun showSimpleNotification(context: Context, id: Int, title: String, text: String) {
+        createNotificationChannel(context)
+        try {
+            val notification = NotificationCompat.Builder(context, CHANNEL_AI)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build()
+
+            NotificationManagerCompat.from(context).notify(id, notification)
+        } catch (_: SecurityException) {
+            // Sin permiso POST_NOTIFICATIONS
         }
     }
 }

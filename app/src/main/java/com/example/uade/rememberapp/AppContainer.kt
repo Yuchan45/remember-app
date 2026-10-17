@@ -7,6 +7,7 @@ import com.example.uade.rememberapp.data.local.MIGRATION_3_4
 import com.example.uade.rememberapp.data.local.MIGRATION_4_5
 import com.example.uade.rememberapp.data.local.MIGRATION_5_6
 import com.example.uade.rememberapp.data.local.MIGRATION_6_7
+import com.example.uade.rememberapp.data.local.MIGRATION_7_8
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
@@ -26,6 +27,20 @@ import com.example.uade.rememberapp.domain.usecase.SaveCoverUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SnoozeReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.TrashReminderUseCase
+import com.example.uade.rememberapp.platform.audio.AudioRecorder
+import com.example.uade.rememberapp.data.remote.GroqApiService
+import com.example.uade.rememberapp.data.remote.GroqReminderServiceImpl
+import com.example.uade.rememberapp.domain.repository.AiReminderService
+import com.example.uade.rememberapp.domain.usecase.DetectSimilarRemindersUseCase
+import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase
+import com.example.uade.rememberapp.domain.usecase.ProcessVoiceWithAiUseCase
+import com.example.uade.rememberapp.platform.worker.WorkManagerScheduler
+import com.google.gson.Gson
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 /**
  * Inyección de dependencias manual: crea una sola vez la base de datos, los repositorios y los
@@ -45,7 +60,7 @@ class AppContainer(context: Context) {
     private val database: AppDatabase by lazy {
         Room.databaseBuilder(appContext, AppDatabase::class.java, "hey.db")
             // Los cambios con migración escrita conservan los datos.
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             // Si no hay migración (ej. desde la versión 1 o 2), borra y recrea la base. Sirve
             // mientras la app no esté publicada. TODO: escribir migraciones antes de publicar.
             .fallbackToDestructiveMigration(dropAllTables = true)
@@ -80,6 +95,48 @@ class AppContainer(context: Context) {
 
     val importPhotosUseCase: ImportPhotosUseCase by lazy { ImportPhotosUseCase(photoRepository) }
     val saveCoverUseCase: SaveCoverUseCase by lazy { SaveCoverUseCase(photoRepository) }
+
+    // Audio Recorder, Groq AI & WorkManager
+    val audioRecorder: AudioRecorder by lazy { AudioRecorder(appContext) }
+    val workManagerScheduler: WorkManagerScheduler by lazy { WorkManagerScheduler(appContext) }
+
+    val groqApiService: GroqApiService by lazy {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        }
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+        Retrofit.Builder()
+            .baseUrl("https://api.groq.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GroqApiService::class.java)
+    }
+
+    val aiReminderService: AiReminderService by lazy {
+        GroqReminderServiceImpl(
+            apiService = groqApiService,
+            apiKey = BuildConfig.GROQ_API_KEY,
+            gson = Gson(),
+        )
+    }
+
+    val processVoiceWithAiUseCase: ProcessVoiceWithAiUseCase by lazy {
+        ProcessVoiceWithAiUseCase(aiReminderService)
+    }
+
+    val mergeProposedRemindersUseCase: MergeProposedRemindersUseCase by lazy {
+        MergeProposedRemindersUseCase()
+    }
+
+    val detectSimilarRemindersUseCase: DetectSimilarRemindersUseCase by lazy {
+        DetectSimilarRemindersUseCase()
+    }
 
     /** Arranca con las etiquetas de ejemplo que carga [SeedTagsCallback] al crear la base. */
     val tagRepository: TagRepository by lazy {

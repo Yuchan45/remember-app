@@ -29,6 +29,7 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
  * - 5: `reminder_actions`, la acción rápida de la notificación (con migración, ver MIGRATION_4_5).
  * - 6: `reminder_photos`, las fotos elegidas (con migración, ver MIGRATION_5_6).
  * - 7: `isSnooze` en `reminder_alarms`, para el aviso pospuesto (con migración, ver MIGRATION_6_7).
+ * - 8: `audioPath` y `aiStatus` en `reminders`, para grabaciones de voz y estado de IA (ver MIGRATION_7_8).
  */
 @Database(
     entities = [
@@ -40,7 +41,7 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
         ActionEntity::class,
         PhotoEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

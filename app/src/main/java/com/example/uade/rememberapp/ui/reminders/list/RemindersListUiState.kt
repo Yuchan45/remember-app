@@ -62,8 +62,16 @@ data class RemindersListUiState(
     val placeNames: Map<Long, String> = emptyMap(),
     /** Si el modal de captura rápida está abierto. Lo abre la barra "Toma una nota rápida…". */
     val isQuickCaptureOpen: Boolean = false,
+    /** Si el modal de grabación de voz está abierto. Lo abre el botón del micrófono o la opción Audio. */
+    val isVoiceCaptureOpen: Boolean = false,
+    /** Ruta de audio temporal grabado para pasar a la ventana de configuración rápida. */
+    val capturedAudioPath: String? = null,
     /** Si el menú "Crear" está abierto. Lo abre el botón "+" de la barra inferior. */
     val isCreateMenuOpen: Boolean = false,
+    /** Resultado de análisis de Groq IA para abrir la pantalla de revisión de recordatorios (03.B). */
+    val aiAnalysisResult: com.example.uade.rememberapp.domain.model.AiAnalysisResult? = null,
+    /** Indica si se guardó un audio pendiente offline para mostrar aviso amigable. */
+    val offlineVoiceSavedNotification: Boolean = false,
     /**
      * El último recordatorio mandado a la papelera, mientras se muestra el aviso para deshacerlo.
      * Mientras no sea null, MainTabs muestra el snackbar "1 movido a la papelera · Deshacer".

@@ -83,6 +83,9 @@ abstract class ReminderDao {
     @Upsert
     protected abstract suspend fun upsert(reminder: ReminderEntity): Long
 
+    @Query("SELECT * FROM reminders WHERE aiStatus = 'Pending'")
+    abstract suspend fun getPendingAiReminders(): List<ReminderEntity>
+
     @Query("DELETE FROM reminder_tags WHERE reminderId = :reminderId")
     protected abstract suspend fun deleteTagsOf(reminderId: Long)
 

@@ -22,8 +22,11 @@ data class ReminderEntity(
     val title: String?,
     val description: String?,
     val photoPath: String?,
+    val audioPath: String? = null,
     val isDone: Boolean,
     val status: String,
+    @ColumnInfo(defaultValue = "None")
+    val aiStatus: String = "None",
     val createdAtMillis: Long,
     /**
      * Por nombre (ver Importance). El valor por defecto tiene que coincidir con el de la

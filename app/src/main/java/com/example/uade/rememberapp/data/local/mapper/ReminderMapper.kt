@@ -6,6 +6,7 @@ import com.example.uade.rememberapp.data.local.entity.PhotoEntity
 import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderWithDetails
+import com.example.uade.rememberapp.domain.model.AiProcessingStatus
 import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MessageChannel
@@ -48,12 +49,14 @@ fun ReminderEntity.toDomain(
     description = description,
     photoPath = photoPath,
     photos = photos,
+    audioPath = audioPath,
     tags = tags,
     alarms = alarms,
     places = places,
     action = action,
     isDone = isDone,
     status = enumOrDefault(status, ReminderStatus.Active),
+    aiStatus = enumOrDefault(aiStatus, AiProcessingStatus.None),
     importance = enumOrDefault(importance, Importance.Default),
     createdAt = Instant.ofEpochMilli(createdAtMillis),
 )
@@ -64,8 +67,10 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     title = title,
     description = description,
     photoPath = photoPath,
+    audioPath = audioPath,
     isDone = isDone,
     status = status.name,
+    aiStatus = aiStatus.name,
     createdAtMillis = createdAt.toEpochMilli(),
     importance = importance.name,
 )
