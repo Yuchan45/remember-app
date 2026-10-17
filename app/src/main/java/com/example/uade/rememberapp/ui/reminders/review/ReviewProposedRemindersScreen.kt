@@ -118,6 +118,8 @@ fun ReviewProposedRemindersScreen(
             onSaveEdit = viewModel::onSaveEdit,
             onDismissEdit = viewModel::onDismissEdit,
             onMergeAllIntoOne = viewModel::onMergeAllIntoOne,
+            onUnmergeSelected = viewModel::onUnmergeSelected,
+            onUnmergeProposal = viewModel::onUnmergeProposal,
             onCreateClick = viewModel::onCreateClick,
         )
 
@@ -146,6 +148,8 @@ private fun ReviewProposedRemindersContent(
     onSaveEdit: (ProposedReminder) -> Unit,
     onDismissEdit: () -> Unit,
     onMergeAllIntoOne: () -> Unit,
+    onUnmergeSelected: () -> Unit,
+    onUnmergeProposal: (tempId: String) -> Unit,
     onCreateClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -348,6 +352,7 @@ private fun ReviewProposedRemindersContent(
                         onToggle = { onToggleProposal(proposal.tempId) },
                         onToggleChecklistItem = { itemIdx -> onToggleChecklistItem(proposal.tempId, itemIdx) },
                         onEdit = { onStartEdit(proposal) },
+                        onUnmerge = { onUnmergeProposal(proposal.tempId) },
                     )
                 }
             }
@@ -379,7 +384,7 @@ private fun ReviewProposedRemindersContent(
             }
         }
 
-        // 7. Barra inferior flotante de acciones: "Unir en uno" y "✓ Crear N"
+        // 7. Barra inferior flotante de acciones: "Unir en uno", "Desunir" y "✓ Crear N"
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -390,19 +395,36 @@ private fun ReviewProposedRemindersContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Botón "Unir en uno" (solo si hay al menos 2 recordatorios)
-                if (uiState.selectedCount >= 2) {
+                // Botón "Unir en uno" (si hay al menos 2 recordatorios seleccionados)
+                if (uiState.canMerge) {
                     Button(
                         onClick = onMergeAllIntoOne,
                         colors = ButtonDefaults.buttonColors(containerColor = DarkButtonBg),
                         shape = RoundedCornerShape(24.dp),
-                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     ) {
                         Text(
                             text = "Unir en uno",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
+
+                // Botón "Desunir" (si hay alguna propuesta unida o checklist con múltiples tareas seleccionada)
+                if (uiState.canUnmerge) {
+                    Button(
+                        onClick = onUnmergeSelected,
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkButtonBg),
+                        shape = RoundedCornerShape(24.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text(
+                            text = "Desunir",
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp,
@@ -454,6 +476,7 @@ private fun ProposedReminderCard(
     onToggle: () -> Unit,
     onToggleChecklistItem: (Int) -> Unit,
     onEdit: () -> Unit,
+    onUnmerge: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -471,7 +494,7 @@ private fun ProposedReminderCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // Fila superior: Checkbox + Título + Lápiz
+            // Fila superior: Checkbox + Título + Desunir + Lápiz
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -499,6 +522,23 @@ private fun ProposedReminderCard(
                     overflow = TextOverflow.Ellipsis,
                 )
 
+                val canUnmergeThis = !proposal.originalProposals.isNullOrEmpty() ||
+                    (proposal.type == ReminderType.Checklist && proposal.items.isNotEmpty())
+
+                if (canUnmergeThis) {
+                    IconButton(
+                        onClick = onUnmerge,
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_notes),
+                            contentDescription = "Desunir tareas",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+
                 IconButton(
                     onClick = onEdit,
                     modifier = Modifier.size(32.dp),
@@ -520,6 +560,26 @@ private fun ProposedReminderCard(
                         .padding(start = 36.dp, top = 2.dp, bottom = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "${proposal.items.size} tareas agrupadas",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "Desunir",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { onUnmerge() },
+                        )
+                    }
                     proposal.items.forEachIndexed { index, item ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

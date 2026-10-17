@@ -19,6 +19,15 @@ data class ReviewProposedRemindersUiState(
     val selectedCount: Int
         get() = proposals.count { it.isSelected }
 
+    val canMerge: Boolean
+        get() = proposals.count { it.isSelected } >= 2
+
+    val canUnmerge: Boolean
+        get() = proposals.any {
+            it.isSelected && (!it.originalProposals.isNullOrEmpty() ||
+                (it.type == com.example.uade.rememberapp.domain.model.ReminderType.Checklist && it.items.isNotEmpty()))
+        }
+
     val createButtonLabel: String
         get() {
             return if (isChecklistCandidate && isChecklistView) {

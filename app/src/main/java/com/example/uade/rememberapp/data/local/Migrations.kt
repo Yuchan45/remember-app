@@ -72,12 +72,62 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
 }
 
 /**
- * 6 → 7: `isSnooze` en `reminder_alarms`, para distinguir el aviso que creó "Posponer". Los
- * avisos que ya existían quedan como puestos por el usuario (0 = false).
+ * 6 → 7: `isSnooze` en `reminder_alarms`, para distinguir el aviso que creó "Posponer".
+ * Verifica si la tabla `reminder_alarms` o `reminder_places` existen previamente, creándolas
+ * si faltaban desde una versión previa de desarrollo para evitar fallos de migración SQLite.
  */
 val MIGRATION_6_7 = object : Migration(6, 7) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE `reminder_alarms` ADD COLUMN `isSnooze` INTEGER NOT NULL DEFAULT 0")
+        val cursorAlarms = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='reminder_alarms'")
+        val alarmsTableExists = cursorAlarms.use { it.moveToFirst() }
+
+        if (!alarmsTableExists) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `reminder_alarms` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`reminderId` INTEGER NOT NULL, " +
+                    "`atMillis` INTEGER NOT NULL, " +
+                    "`isSnooze` INTEGER NOT NULL DEFAULT 0, " +
+                    "FOREIGN KEY(`reminderId`) REFERENCES `reminders`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_reminder_alarms_reminderId` " +
+                    "ON `reminder_alarms` (`reminderId`)",
+            )
+        } else {
+            val colCursor = db.query("PRAGMA table_info(`reminder_alarms`)")
+            var hasSnooze = false
+            colCursor.use {
+                val nameIndex = it.getColumnIndex("name")
+                while (it.moveToNext()) {
+                    if (nameIndex != -1 && it.getString(nameIndex) == "isSnooze") {
+                        hasSnooze = true
+                        break
+                    }
+                }
+            }
+            if (!hasSnooze) {
+                db.execSQL("ALTER TABLE `reminder_alarms` ADD COLUMN `isSnooze` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        // Aseguramos también reminder_places si faltaba de una versión previa
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `reminder_places` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`reminderId` INTEGER NOT NULL, " +
+                "`placeId` INTEGER NOT NULL, " +
+                "`event` TEXT NOT NULL, " +
+                "FOREIGN KEY(`reminderId`) REFERENCES `reminders`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_reminder_places_reminderId` " +
+                "ON `reminder_places` (`reminderId`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_reminder_places_placeId` " +
+                "ON `reminder_places` (`placeId`)",
+        )
     }
 }
 
@@ -86,7 +136,24 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
  */
 val MIGRATION_7_8 = object : Migration(7, 8) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE `reminders` ADD COLUMN `audioPath` TEXT")
-        db.execSQL("ALTER TABLE `reminders` ADD COLUMN `aiStatus` TEXT NOT NULL DEFAULT 'None'")
+        val colCursor = db.query("PRAGMA table_info(`reminders`)")
+        var hasAudioPath = false
+        var hasAiStatus = false
+        colCursor.use {
+            val nameIndex = it.getColumnIndex("name")
+            while (it.moveToNext()) {
+                if (nameIndex != -1) {
+                    val colName = it.getString(nameIndex)
+                    if (colName == "audioPath") hasAudioPath = true
+                    if (colName == "aiStatus") hasAiStatus = true
+                }
+            }
+        }
+        if (!hasAudioPath) {
+            db.execSQL("ALTER TABLE `reminders` ADD COLUMN `audioPath` TEXT")
+        }
+        if (!hasAiStatus) {
+            db.execSQL("ALTER TABLE `reminders` ADD COLUMN `aiStatus` TEXT NOT NULL DEFAULT 'None'")
+        }
     }
 }

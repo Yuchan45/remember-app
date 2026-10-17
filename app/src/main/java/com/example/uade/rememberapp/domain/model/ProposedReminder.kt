@@ -19,4 +19,5 @@ data class ProposedReminder(
     val listName: String? = null,
     val isSelected: Boolean = true,
     val isSeparateItem: Boolean = false,
+    val originalProposals: List<ProposedReminder>? = null,
 )

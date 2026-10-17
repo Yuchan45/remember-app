@@ -34,6 +34,7 @@ import com.example.uade.rememberapp.domain.repository.AiReminderService
 import com.example.uade.rememberapp.domain.usecase.DetectSimilarRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.ProcessVoiceWithAiUseCase
+import com.example.uade.rememberapp.domain.usecase.SplitProposedReminderUseCase
 import com.example.uade.rememberapp.platform.worker.WorkManagerScheduler
 import com.google.gson.Gson
 import okhttp3.OkHttpClient
@@ -132,6 +133,10 @@ class AppContainer(context: Context) {
 
     val mergeProposedRemindersUseCase: MergeProposedRemindersUseCase by lazy {
         MergeProposedRemindersUseCase()
+    }
+
+    val splitProposedReminderUseCase: SplitProposedReminderUseCase by lazy {
+        SplitProposedReminderUseCase()
     }
 
     val detectSimilarRemindersUseCase: DetectSimilarRemindersUseCase by lazy {

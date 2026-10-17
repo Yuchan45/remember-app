@@ -16,6 +16,7 @@ import com.example.uade.rememberapp.domain.usecase.DetectSimilarRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.SplitProposedReminderUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,11 +33,12 @@ import java.util.UUID
 
 /**
  * Controla el estado y las acciones del flujo de revisión de recordatorios propuestos por la IA.
- * Implementa "Split automático" (03.B), "Unir en uno", "¿Los unimos?" (03.C) y "Checklist" (03.D).
+ * Implementa "Split automático" (03.B), "Unir en uno", "Desunir", "¿Los unimos?" (03.C) y "Checklist" (03.D).
  */
 class ReviewProposedRemindersViewModel(
     private val saveReminder: SaveReminderUseCase,
     private val mergeProposedReminders: MergeProposedRemindersUseCase,
+    private val splitProposedReminder: SplitProposedReminderUseCase,
     private val detectSimilarReminders: DetectSimilarRemindersUseCase,
     private val observeReminders: ObserveRemindersUseCase,
 ) : ViewModel() {
@@ -85,7 +87,12 @@ class ReviewProposedRemindersViewModel(
     }
 
     fun onSetChecklistView(isChecklist: Boolean) {
-        _uiState.update { it.copy(isChecklistView = isChecklist) }
+        if (isChecklist == _uiState.value.isChecklistView) return
+        if (isChecklist) {
+            onMergeAllIntoOne()
+        } else {
+            onUnmergeSelected()
+        }
     }
 
     fun onMergeAllIntoOne() {
@@ -101,6 +108,54 @@ class ReviewProposedRemindersViewModel(
                 summaryBadge = "Recordatorios unidos en una única checklist.",
                 isChecklistCandidate = true,
                 isChecklistView = true,
+            )
+        }
+    }
+
+    fun onUnmergeSelected() {
+        val currentProposals = _uiState.value.proposals
+        val selectedToUnmerge = currentProposals.filter {
+            it.isSelected && (!it.originalProposals.isNullOrEmpty() || (it.type == ReminderType.Checklist && it.items.isNotEmpty()))
+        }
+        if (selectedToUnmerge.isEmpty()) return
+
+        val newProposals = mutableListOf<ProposedReminder>()
+        for (p in currentProposals) {
+            if (p in selectedToUnmerge) {
+                newProposals.addAll(splitProposedReminder(p))
+            } else {
+                newProposals.add(p)
+            }
+        }
+
+        _uiState.update { state ->
+            state.copy(
+                proposals = newProposals,
+                summaryBadge = "Tareas desunidas en recordatorios individuales.",
+                isChecklistView = false,
+            )
+        }
+    }
+
+    fun onUnmergeProposal(tempId: String) {
+        val currentProposals = _uiState.value.proposals
+        val target = currentProposals.firstOrNull { it.tempId == tempId } ?: return
+        val unmerged = splitProposedReminder(target)
+
+        val newProposals = mutableListOf<ProposedReminder>()
+        for (p in currentProposals) {
+            if (p.tempId == tempId) {
+                newProposals.addAll(unmerged)
+            } else {
+                newProposals.add(p)
+            }
+        }
+
+        _uiState.update { state ->
+            state.copy(
+                proposals = newProposals,
+                summaryBadge = "Recordatorio desunido en ${unmerged.size} tareas individuales.",
+                isChecklistView = false,
             )
         }
     }
@@ -266,6 +321,7 @@ class ReviewProposedRemindersViewModel(
                 ReviewProposedRemindersViewModel(
                     saveReminder = app.container.saveReminderUseCase,
                     mergeProposedReminders = app.container.mergeProposedRemindersUseCase,
+                    splitProposedReminder = app.container.splitProposedReminderUseCase,
                     detectSimilarReminders = app.container.detectSimilarRemindersUseCase,
                     observeReminders = app.container.observeRemindersUseCase,
                 )
