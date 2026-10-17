@@ -5,7 +5,7 @@ package com.example.uade.rememberapp.domain.model
  * notificación siempre se ve completa.
  */
 enum class Visibility {
-    /** Se ven el título y el contenido. */
+    /** Se ven el título, el contenido y la portada (si tiene). Es la única que muestra la imagen. */
     Default,
 
     /** Se ve el título; el contenido queda oculto. */

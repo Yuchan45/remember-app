@@ -248,9 +248,9 @@
     <string name="reminders_behavior_done">Hecho</string>
     <string name="reminders_behavior_help">Más información</string>
     <string name="reminders_behavior_section_visibility">Visibilidad</string>
-    <string name="reminders_behavior_visibility_help">Qué se ve de la notificación con el teléfono bloqueado. Con el teléfono desbloqueado siempre se ve completa.</string>
+    <string name="reminders_behavior_visibility_help">Qué se ve de la notificación con el teléfono bloqueado. Con el teléfono desbloqueado siempre se ve completa. Solo con Predeterminado la notificación muestra la portada de la nota, si tiene.</string>
     <string name="reminders_behavior_visibility_default">Predeterminado</string>
-    <string name="reminders_behavior_visibility_default_desc">Mostrar título y contenido.</string>
+    <string name="reminders_behavior_visibility_default_desc">Mostrar título, contenido e imagen de portada.</string>
     <string name="reminders_behavior_visibility_private">Privado</string>
     <string name="reminders_behavior_visibility_private_desc">Mostrar título, ocultar contenido.</string>
     <string name="reminders_behavior_visibility_secret">Secreto</string>

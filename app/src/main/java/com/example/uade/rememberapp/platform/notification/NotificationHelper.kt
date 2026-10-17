@@ -5,6 +5,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -116,6 +118,23 @@ object NotificationHelper {
             )
             .applyVisibility(context, reminder.visibility, title)
 
+        // Con visibilidad "Predeterminado" y portada, la notificación lleva la imagen: plegada,
+        // como miniatura a la derecha; expandida, a todo el ancho. Con "Privado" o "Secreto" no:
+        // la idea de esas opciones es mostrar menos, y una foto puede revelar más que el texto.
+        if (reminder.visibility == Visibility.Default) {
+            reminder.photoPath?.let(::decodeCover)?.let { cover ->
+                builder
+                    .setLargeIcon(cover)
+                    .setStyle(
+                        NotificationCompat.BigPictureStyle()
+                            .bigPicture(cover)
+                            // Expandida, la miniatura sobra: ya se ve la foto grande.
+                            .bigLargeIcon(null as Bitmap?)
+                            .setSummaryText(reminder.description),
+                    )
+            }
+        }
+
         val notificationManager = NotificationManagerCompat.from(context)
         try {
             notificationManager.notify(reminder.id.toInt(), builder.build())
@@ -123,6 +142,25 @@ object NotificationHelper {
             // En Android 13+, si el usuario denegó POST_NOTIFICATIONS
         }
     }
+
+    /**
+     * Lee la portada para la notificación, achicada si hace falta: el sistema descarta las
+     * notificaciones con imágenes muy pesadas. Null si el archivo no existe o no se puede leer
+     * (la notificación sale igual, sin imagen).
+     *
+     * Se llama desde AlarmReceiver, que ya corre fuera del hilo principal.
+     */
+    private fun decodeCover(path: String): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        if (bounds.outWidth <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= MaxPictureWidth) sample *= 2
+        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+    }
+
+    /** Ancho máximo de la imagen de la notificación (la portada se guarda a 1280 de ancho). */
+    private const val MaxPictureWidth = 1024
 
     /**
      * Qué se ve con el teléfono bloqueado, según la [Visibility] del recordatorio:
