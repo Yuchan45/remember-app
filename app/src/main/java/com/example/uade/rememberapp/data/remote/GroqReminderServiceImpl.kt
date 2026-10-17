@@ -92,20 +92,17 @@ class GroqReminderServiceImpl(
                 val content = response.choices.firstOrNull()?.message?.content
                     ?: return@withContext Result.failure(IllegalStateException("Respuesta vacía de Groq LLM"))
 
-                android.util.Log.d("GroqAI", "Whisper transcript: '$text'")
-                android.util.Log.d("GroqAI", "Groq LLM raw content: '$content'")
+                logDebug("GroqAI", "Whisper transcript: '$text'")
+                logDebug("GroqAI", "Groq LLM raw content: '$content'")
 
-                val cleanJson = content.trim()
-                    .removePrefix("```json")
-                    .removePrefix("```")
-                    .removeSuffix("```")
-                    .trim()
+                val jsonMatch = Regex("""\{[\s\S]*\}""").find(content)
+                val cleanJson = jsonMatch?.value ?: content.trim()
 
                 val dto = gson.fromJson(cleanJson, GroqReminderAnalysisDto::class.java)
                 val result = mapDtoToDomain(dto, text)
                 Result.success(result)
             } catch (e: Exception) {
-                android.util.Log.e("GroqAI", "Fallo al procesar con Groq API, usando fallback", e)
+                logError("GroqAI", "Fallo al procesar con Groq API, usando fallback", e)
                 Result.success(createLocalHeuristicResult(text, referenceDateTimeIso))
             }
         }
@@ -117,11 +114,11 @@ class GroqReminderServiceImpl(
         val transcriptionResult = transcribeAudio(audioFilePath)
         transcriptionResult.fold(
             onSuccess = { transcript ->
-                android.util.Log.d("GroqAI", "Audio transcrito con éxito: '$transcript'")
+                logDebug("GroqAI", "Audio transcrito con éxito: '$transcript'")
                 analyzeText(transcript, referenceDateTimeIso)
             },
             onFailure = { error ->
-                android.util.Log.e("GroqAI", "Error en transcripción Whisper", error)
+                logError("GroqAI", "Error en transcripción Whisper", error)
                 Result.failure(error)
             },
         )
@@ -203,30 +200,50 @@ class GroqReminderServiceImpl(
     private fun buildSystemPrompt(referenceIso: String): String {
         return """
         Eres un asistente inteligente para la aplicación Android "Hey, Remember".
-        La hora actual de referencia del usuario es: $referenceIso.
-        Tu misión es analizar lo que dijo el usuario y estructurar recordatorios precisos en formato JSON.
+        La fecha y hora actual de referencia del usuario es: $referenceIso.
+        Tu misión es analizar la transcripción del audio del usuario y estructurar los recordatorios en formato JSON.
 
-        Reglas obligatorias:
-        1. "Split automático" (03.B): Si el usuario menciona dos o más intenciones distintas (ej. "Mañana viene el técnico y después acordarme de comprar papas"), SEPÁRALAS en distintos objetos dentro de "reminders".
-        2. "Texto a Checklist" (03.D): Si el usuario dicta una lista de compras, viaje o tareas (ej. "Para el viaje a Bariloche: campera, protector solar, cargar la SUBE..."), marca "is_checklist_candidate": true, pon el tipo en "Checklist" y coloca los elementos en "items". Si uno de los elementos tiene una fecha u hora específica (ej. "y el viernes avisarle al encargado"), márcalo con "separate": true y su propio "trigger_iso".
-        3. Infiere fechas/horas ("trigger_type": "TIME", "trigger_iso" en ISO-8601, "trigger_display" ej. "Mañana 09:00", "Hoy 22:00").
-        4. Infiere lugares ("place_name" ej. "Casa", "Al pasar por Súper", "Trabajo").
-        5. Infiere prioridad ("priority" ej. "Alta", "Normal") y lista ("list_name" ej. "Súper", "Viaje").
-        6. Devuelve SIEMPRE y ÚNICAMENTE un JSON válido con el siguiente esquema:
+        REGLAS FUNDAMENTALES OBLIGATORIAS:
+        1. "Split automático de intenciones múltiples" (03.B):
+           - Si el usuario menciona dos o más intenciones, tareas o acciones distintas (ej. conectadas por "y después", "después", "y luego", "luego", "más tarde", "además", "también", "y a la noche", etc.), SEPARA CADA TAREA en un objeto individual dentro del arreglo "reminders".
+           - NUNCA unas dos acciones diferentes en un solo recordatorio a menos que el usuario esté dictando una checklist de ítems.
+           - Ejemplo: "A la noche tengo que hacer la tarea y después ir al super" ->
+             Recordatorio 1: título "Hacer la tarea", con horario hoy a la noche ("trigger_display": "Hoy 21:00").
+             Recordatorio 2: título "Ir al súper", con lugar "Al pasar por Súper" o lista "Súper".
+        2. "Fidelidad absoluta al audio del usuario":
+           - NUNCA inventes tareas ni copies nombres o ejemplos (como "técnico del aire" o "papas"). Extrae los títulos ÚNICAMENTE a partir de lo que el usuario dijo en este mensaje específico.
+           - Limpia fórmulas verbales iniciales como "tengo que...", "acordarme de...", "hay que...", "recordar...", dejando la acción concisa en infinitivo o imperativo (ej. "Hacer la tarea", "Llamar al médico", "Comprar leche").
+        3. "Texto a Checklist" (03.D):
+           - Si el usuario dicta una lista de elementos (compras, viaje, valija, tareas) separadas por comas, "y", o con encabezados como "para el viaje...", marca "is_checklist_candidate": true, pon "type": "Checklist" y coloca cada elemento en "items".
+           - Si uno de los elementos tiene una fecha/hora propia (ej. "y el viernes avisarle a Juan"), créalo como un recordatorio separado con "separate": true y su propio "trigger_iso".
+        4. "Inferencia temporal (Fechas y horas)":
+           - Usa la hora de referencia ($referenceIso) para inferir momentos relativos:
+             * "a la noche" / "esta noche" -> Hoy 21:00.
+             * "a la tarde" -> Hoy 17:00.
+             * "al mediodía" -> Hoy 13:00.
+             * "mañana a la mañana" -> Mañana 09:00.
+             * "mañana" -> Mañana 09:00.
+             * Si no hay hora ni fecha indicada -> "trigger_type": "NONE", "trigger_iso": null, "trigger_display": "Sin fecha".
+           - Cuando haya fecha/hora, define "trigger_type": "TIME", "trigger_iso" en ISO-8601 y "trigger_display" legible (ej. "Hoy 21:00", "Mañana 09:00").
+        5. "Inferencia de Lugares, Prioridades y Listas":
+           - "place_name": si menciona un lugar físico (ej. "Casa", "Al pasar por Súper", "Trabajo", "Farmacia").
+           - "priority": "Alta" si indica urgencia o importancia, de lo contrario null o "Normal".
+           - "list_name": si corresponde a una lista lógica (ej. "Súper", "Viaje", "Estudio", "Trabajo").
+        6. Devuelve SIEMPRE y ÚNICAMENTE un JSON válido con el siguiente esquema exacto (sin texto adicional ni explicaciones):
         {
           "summary_badge": "Encontré 2 recordatorios distintos en tu audio. Revísalos antes de crearlos.",
           "is_checklist_candidate": false,
           "reminders": [
             {
-              "title": "Recibir al técnico del aire",
+              "title": "Hacer la tarea",
               "description": "",
               "type": "Note",
               "trigger_type": "TIME",
-              "trigger_iso": "2026-10-09T09:00:00Z",
-              "trigger_display": "Mañana 09:00",
-              "place_name": "Casa",
-              "priority": "Alta",
-              "list_name": null,
+              "trigger_iso": "2026-10-17T21:00:00Z",
+              "trigger_display": "Hoy 21:00",
+              "place_name": null,
+              "priority": "Normal",
+              "list_name": "Estudio",
               "items": [],
               "separate": false
             }
@@ -236,80 +253,194 @@ class GroqReminderServiceImpl(
     }
 
     /**
-     * Fallback local heurístico para desarrollo, pruebas unitarias y modo sin API Key.
+     * Fallback local heurístico dinámico para desarrollo, pruebas unitarias y modo offline.
+     * Procesa REALMENTE el texto del usuario sin usar datos estáticos o ficticios.
      */
     private fun createLocalHeuristicResult(text: String, referenceIso: String): AiAnalysisResult {
-        val lower = text.lowercase()
+        val trimmed = text.trim()
+        val lower = trimmed.lowercase()
 
-        // Caso 03.D: Checklist / Lista de viaje o compras
-        if (lower.contains("para el viaje") || lower.contains("lista") || text.contains(":") || text.split(",").size >= 3) {
-            val items = listOf(
-                "Sacar la campera del placard",
-                "Comprar protector solar",
-                "Cargar la SUBE",
-                "Llevar el cargador del celu",
-                "Imprimir los pasajes",
-            )
+        // Caso 03.D: Checklist / Lista de compras, viaje o tareas (comas, dos puntos o lista explícita)
+        val hasListKeyword = lower.startsWith("lista") || lower.contains("para el viaje") || lower.contains("para las vacaciones")
+        val commaSegments = trimmed.split(",").map { it.trim() }.filter { it.isNotBlank() }
+
+        if (trimmed.contains(":") || (hasListKeyword && commaSegments.size >= 2) || commaSegments.size >= 3) {
+            val title: String
+            val rawItems: List<String>
+            if (trimmed.contains(":")) {
+                val splitColon = trimmed.split(":", limit = 2)
+                title = splitColon[0].trim().replaceFirstChar { it.uppercase() }
+                rawItems = splitColon[1].split(Regex("[,;\n]|\\s+y\\s+")).map { it.trim() }.filter { it.isNotBlank() }
+            } else {
+                title = if (lower.contains("viaje")) "Viaje" else if (lower.contains("super") || lower.contains("compra")) "Compras" else "Lista de tareas"
+                rawItems = commaSegments
+            }
+
+            val checklistItems = mutableListOf<ChecklistItem>()
+            var separateReminder: ProposedReminder? = null
+
+            for (item in rawItems) {
+                val itemLower = item.lowercase()
+                val hasSpecificDate = itemLower.contains("el viernes") || itemLower.contains("el lunes") ||
+                    itemLower.contains("mañana") || itemLower.contains("a las")
+                if (hasSpecificDate && separateReminder == null) {
+                    separateReminder = ProposedReminder(
+                        tempId = UUID.randomUUID().toString(),
+                        title = cleanTaskTitle(item),
+                        type = ReminderType.Note,
+                        triggerDisplayTime = inferDisplayTime(itemLower),
+                        isSeparateItem = true,
+                        isSelected = true,
+                    )
+                } else {
+                    checklistItems.add(ChecklistItem(text = cleanTaskTitle(item)))
+                }
+            }
+
             val mainChecklist = ProposedReminder(
-                title = if (lower.contains("bariloche")) "Viaje a Bariloche" else "Lista de tareas",
+                tempId = UUID.randomUUID().toString(),
+                title = title.ifBlank { "Lista de tareas" },
                 type = ReminderType.Checklist,
-                items = items.map { ChecklistItem(text = it) },
-                listName = "Viaje",
+                items = checklistItems,
+                listName = if (lower.contains("super") || lower.contains("compra")) "Súper" else if (lower.contains("viaje")) "Viaje" else null,
+                isSelected = true,
             )
-            val separateReminder = ProposedReminder(
-                title = "Avisarle al encargado",
-                type = ReminderType.Note,
-                triggerDisplayTime = "Viernes 09:00",
-                alarms = emptyList(),
-                isSeparateItem = true,
-            )
+
+            val proposals = if (separateReminder != null) listOf(mainChecklist, separateReminder) else listOf(mainChecklist)
+            val badge = if (separateReminder != null) {
+                "Detecté ${checklistItems.size + 1} ítems. Uno tiene fecha propia: te sugiero crearlo aparte."
+            } else {
+                "Detecté una lista con ${checklistItems.size} ítems."
+            }
+
             return AiAnalysisResult(
-                rawTranscript = text,
-                summaryBadge = "Detecté 6 ítems. Uno tiene fecha propia: te sugiero crearlo aparte.",
-                proposedReminders = listOf(mainChecklist, separateReminder),
+                rawTranscript = trimmed,
+                summaryBadge = badge,
+                proposedReminders = proposals,
                 isChecklistCandidate = true,
             )
         }
 
-        // Caso 03.B: Split en dos recordatorios (Técnico + Papas)
-        if (lower.contains("técnico") || lower.contains("papas") || lower.contains(" y después ") || lower.contains(" y además ")) {
-            val r1 = ProposedReminder(
-                title = "Recibir al técnico del aire",
-                type = ReminderType.Note,
-                triggerDisplayTime = "Mañana 09:00",
-                placeName = "Casa",
-                priorityName = "Alta",
-                isSelected = true,
-            )
-            val r2 = ProposedReminder(
-                title = "Comprar papas",
-                type = ReminderType.Note,
-                triggerDisplayTime = "Sin fecha",
-                placeName = "Al pasar por Súper",
-                listName = "Súper",
-                isSelected = true,
-            )
+        // Caso 03.B: Split automático por conectores secuenciales ("y después", "luego", "más tarde", etc.)
+        val splitRegex = Regex("""\s+(?:y\s+después|después|y\s+luego|luego|y\s+más\s+tarde|más\s+tarde|y\s+además|y\s+también)\s+""", RegexOption.IGNORE_CASE)
+        val segments = trimmed.split(splitRegex).map { it.trim() }.filter { it.isNotBlank() }
+
+        if (segments.size >= 2) {
+            val proposals = segments.map { segment ->
+                buildProposalFromText(segment)
+            }
             return AiAnalysisResult(
-                rawTranscript = text,
-                summaryBadge = "Encontré 2 recordatorios distintos en tu audio. Revísalos antes de crearlos.",
-                proposedReminders = listOf(r1, r2),
+                rawTranscript = trimmed,
+                summaryBadge = "Encontré ${proposals.size} recordatorios distintos en tu audio. Revísalos antes de crearlos.",
+                proposedReminders = proposals,
                 isChecklistCandidate = false,
             )
         }
 
         // Caso individual general
+        val singleProposal = buildProposalFromText(trimmed)
         return AiAnalysisResult(
-            rawTranscript = text,
+            rawTranscript = trimmed,
             summaryBadge = "Detecté 1 recordatorio en tu audio.",
-            proposedReminders = listOf(
-                ProposedReminder(
-                    title = text.replaceFirstChar { it.uppercase() },
-                    type = ReminderType.Note,
-                    triggerDisplayTime = "Sin fecha",
-                    isSelected = true,
-                ),
-            ),
+            proposedReminders = listOf(singleProposal),
             isChecklistCandidate = false,
         )
+    }
+
+    private fun buildProposalFromText(rawText: String): ProposedReminder {
+        val lower = rawText.lowercase()
+        val timeDisplay = inferDisplayTime(lower)
+        val place = inferPlace(lower)
+        val list = inferList(lower)
+        val priority = inferPriority(lower)
+        val cleanTitle = cleanTaskTitle(rawText)
+
+        return ProposedReminder(
+            tempId = UUID.randomUUID().toString(),
+            title = cleanTitle.ifBlank { rawText.replaceFirstChar { it.uppercase() } },
+            type = ReminderType.Note,
+            triggerDisplayTime = timeDisplay,
+            placeName = place,
+            priorityName = priority,
+            listName = list,
+            isSelected = true,
+        )
+    }
+
+    private fun cleanTaskTitle(text: String): String {
+        var cleaned = text.trim()
+        val prefixesToRemove = listOf(
+            Regex("""^(?:a\s+la\s+noche|esta\s+noche|a\s+la\s+tarde|a\s+la\s+mañana|mañana|hoy)\s+""", RegexOption.IGNORE_CASE),
+            Regex("""^(?:tengo\s+que|acordarme\s+de|recordar\s+que|recordar|hay\s+que|debo|necesito)\s+""", RegexOption.IGNORE_CASE),
+        )
+        for (pattern in prefixesToRemove) {
+            cleaned = cleaned.replace(pattern, "").trim()
+        }
+        return cleaned.replaceFirstChar { it.uppercase() }
+    }
+
+    private fun inferDisplayTime(lower: String): String {
+        return when {
+            lower.contains("a la noche") || lower.contains("esta noche") || lower.contains("de noche") -> "Hoy 21:00"
+            lower.contains("a la tarde") || lower.contains("de la tarde") -> "Hoy 17:00"
+            lower.contains("al mediodía") || lower.contains("al medio día") -> "Hoy 13:00"
+            lower.contains("mañana a la mañana") -> "Mañana 09:00"
+            lower.contains("mañana a la tarde") -> "Mañana 16:00"
+            lower.contains("mañana a la noche") -> "Mañana 21:00"
+            lower.contains("mañana") -> "Mañana 09:00"
+            lower.contains("viernes") -> "Viernes 09:00"
+            lower.contains("lunes") -> "Lunes 09:00"
+            lower.contains("hoy") -> "Hoy 20:00"
+            else -> "Sin fecha"
+        }
+    }
+
+    private fun inferPlace(lower: String): String? {
+        return when {
+            lower.contains("super") || lower.contains("súper") || lower.contains("supermercado") -> "Al pasar por Súper"
+            lower.contains("casa") -> "Casa"
+            lower.contains("farmacia") -> "Farmacia"
+            lower.contains("trabajo") || lower.contains("oficina") -> "Trabajo"
+            lower.contains("universidad") || lower.contains("facultad") || lower.contains("uade") -> "Facultad"
+            else -> null
+        }
+    }
+
+    private fun inferList(lower: String): String? {
+        return when {
+            lower.contains("super") || lower.contains("súper") || lower.contains("supermercado") || lower.contains("comprar") -> "Súper"
+            lower.contains("viaje") || lower.contains("vacaciones") -> "Viaje"
+            lower.contains("tarea") || lower.contains("estudiar") || lower.contains("facultad") -> "Estudio"
+            lower.contains("trabajo") -> "Trabajo"
+            else -> null
+        }
+    }
+
+    private fun inferPriority(lower: String): String? {
+        return when {
+            lower.contains("urgente") || lower.contains("ya") || lower.contains("urgente!") -> "Alta"
+            lower.contains("importante") || lower.contains("prioritario") -> "Alta"
+            else -> null
+        }
+    }
+
+    private fun logDebug(tag: String, msg: String) {
+        try {
+            android.util.Log.d(tag, msg)
+        } catch (_: Throwable) {
+            // Ignorar en entorno de test unitario JVM
+        }
+    }
+
+    private fun logError(tag: String, msg: String, tr: Throwable? = null) {
+        try {
+            if (tr != null) {
+                android.util.Log.e(tag, msg, tr)
+            } else {
+                android.util.Log.e(tag, msg)
+            }
+        } catch (_: Throwable) {
+            // Ignorar en entorno de test unitario JVM
+        }
     }
 }

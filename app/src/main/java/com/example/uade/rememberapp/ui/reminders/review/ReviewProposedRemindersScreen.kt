@@ -757,6 +757,8 @@ private fun EditProposalDialog(
     var title by remember { mutableStateOf(proposal.title) }
     var time by remember { mutableStateOf(proposal.triggerDisplayTime ?: "") }
     var place by remember { mutableStateOf(proposal.placeName ?: "") }
+    var priority by remember { mutableStateOf(proposal.priorityName ?: "") }
+    var list by remember { mutableStateOf(proposal.listName ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -784,7 +786,7 @@ private fun EditProposalDialog(
                 OutlinedTextField(
                     value = time,
                     onValueChange = { time = it },
-                    label = { Text("Fecha / Horario (ej. Mañana 09:00)") },
+                    label = { Text("Fecha / Horario (ej. Hoy 21:00, Mañana 09:00)") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Primary,
                         cursorColor = Primary,
@@ -794,7 +796,27 @@ private fun EditProposalDialog(
                 OutlinedTextField(
                     value = place,
                     onValueChange = { place = it },
-                    label = { Text("Lugar (ej. Casa, Súper)") },
+                    label = { Text("Lugar (ej. Casa, Al pasar por Súper)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Primary,
+                        cursorColor = Primary,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = priority,
+                    onValueChange = { priority = it },
+                    label = { Text("Prioridad (ej. Normal, Alta, Urgente)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Primary,
+                        cursorColor = Primary,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = list,
+                    onValueChange = { list = it },
+                    label = { Text("Lista (ej. Súper, Estudio, Trabajo)") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Primary,
                         cursorColor = Primary,
@@ -811,6 +833,8 @@ private fun EditProposalDialog(
                             title = title.ifBlank { proposal.title },
                             triggerDisplayTime = time.ifBlank { null },
                             placeName = place.ifBlank { null },
+                            priorityName = priority.ifBlank { null },
+                            listName = list.ifBlank { null },
                         ),
                     )
                 },
