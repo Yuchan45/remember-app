@@ -36,6 +36,7 @@ class ReminderRepositoryImpl(
             places = reminder.places.map { it.toEntity() },
             action = reminder.action?.toEntity(),
             photos = reminder.photos.mapIndexed { i, photo -> photo.toEntity(position = i) },
+            items = reminder.items.mapIndexed { i, item -> item.toEntity(position = i) },
         )
 
     override suspend fun delete(id: Long) = dao.deleteById(id)

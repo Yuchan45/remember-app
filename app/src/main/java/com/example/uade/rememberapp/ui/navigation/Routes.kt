@@ -25,4 +25,9 @@ object Routes {
      * No es "reminders/new" porque chocaría con "reminders/{id}" (el id es un número).
      */
     const val NEW_NOTE = "notes/new"
+
+    /**
+     * Checklist nuevo ("+" → "Lista"): la pantalla de checklist vacía lista para agregar ítems.
+     */
+    const val NEW_CHECKLIST = "checklists/new"
 }

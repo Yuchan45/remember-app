@@ -14,6 +14,6 @@ class RestoreReminderUseCase(
 ) {
     suspend operator fun invoke(id: Long) {
         val reminder = reminders.getById(id) ?: return
-        reminders.save(reminder.copy(status = ReminderStatus.Active))
+        reminders.save(reminder.copy(status = ReminderStatus.Active, isDone = false))
     }
 }

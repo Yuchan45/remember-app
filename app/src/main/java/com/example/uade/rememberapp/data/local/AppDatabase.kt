@@ -7,6 +7,7 @@ import com.example.uade.rememberapp.data.local.dao.ReminderDao
 import com.example.uade.rememberapp.data.local.dao.TagDao
 import com.example.uade.rememberapp.data.local.entity.ActionEntity
 import com.example.uade.rememberapp.data.local.entity.AlarmEntity
+import com.example.uade.rememberapp.data.local.entity.ChecklistItemEntity
 import com.example.uade.rememberapp.data.local.entity.PhotoEntity
 import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
@@ -30,6 +31,7 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
  * - 6: `reminder_photos`, las fotos elegidas (con migración, ver MIGRATION_5_6).
  * - 7: `isSnooze` en `reminder_alarms`, para el aviso pospuesto (con migración, ver MIGRATION_6_7).
  * - 8: `audioPath` y `aiStatus` en `reminders`, para grabaciones de voz y estado de IA (ver MIGRATION_7_8).
+ * - 9: `reminder_checklist_items`, ítems de una lista (con migración, ver MIGRATION_8_9).
  */
 @Database(
     entities = [
@@ -40,8 +42,9 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
         PlaceAlertEntity::class,
         ActionEntity::class,
         PhotoEntity::class,
+        ChecklistItemEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

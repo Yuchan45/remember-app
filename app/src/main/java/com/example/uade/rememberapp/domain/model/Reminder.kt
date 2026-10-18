@@ -38,8 +38,8 @@ data class Reminder(
     val createdAt: Instant,
 ) {
     init {
-        require(!title.isNullOrBlank() || !description.isNullOrBlank() || photoPath != null || audioPath != null) {
-            "Un recordatorio necesita título, descripción, foto o audio"
+        require(!title.isNullOrBlank() || !description.isNullOrBlank() || photoPath != null || audioPath != null || items.isNotEmpty()) {
+            "Un recordatorio necesita título, descripción, ítems, foto o audio"
         }
     }
 }

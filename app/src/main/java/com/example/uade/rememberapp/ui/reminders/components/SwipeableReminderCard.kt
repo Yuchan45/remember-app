@@ -107,6 +107,7 @@ fun SwipeableReminderCard(
     onTrash: () -> Unit,
     modifier: Modifier = Modifier,
     revealGroup: SwipeRevealGroupState = rememberSwipeRevealGroupState(),
+    onToggleChecklistItem: ((itemId: Long, index: Int) -> Unit)? = null,
 ) {
     val isOpen = revealGroup.openId == reminder.id
     fun setOpen(open: Boolean) = revealGroup.setOpen(reminder.id, open)
@@ -154,6 +155,7 @@ fun SwipeableReminderCard(
             placeName = placeName,
             now = now,
             onClick = { if (isOpen) settle(open = false) else onClick() },
+            onToggleChecklistItem = onToggleChecklistItem,
             modifier = Modifier
                 .shrinkBy { offset.value }
                 .draggable(

@@ -143,6 +143,9 @@
         <item quantity="one">%d movido a la papelera</item>
         <item quantity="other">%d movidos a la papelera</item>
     </plurals>
+    <string name="reminder_completed">Recordatorio completado</string>
+    <string name="checklist_incomplete_for_done">Para finalizar el recordatorio se debe marcar toda la checklist</string>
+    <string name="checklist_all_completed_banner">¡Toda la checklist completada! Toca para finalizar</string>
 
     <!-- Detalle de un recordatorio: barra superior y estados -->
     <string name="reminder_detail_back">Volver</string>

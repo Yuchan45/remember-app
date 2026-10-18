@@ -19,4 +19,16 @@ class RestoreReminderUseCaseTest {
 
         assertEquals(listOf(id), ObserveRemindersUseCase(repository)().first().map { it.id })
     }
+
+    @Test
+    fun `los recordatorios hechos no aparecen en activos pero si en archivados`() = runBlocking {
+        val repository = FakeReminderRepository()
+        val id = repository.save(Reminder(title = "Completado", isDone = true, createdAt = Instant.EPOCH))
+
+        assertEquals(emptyList<Long>(), ObserveRemindersUseCase(repository)(com.example.uade.rememberapp.domain.model.ReminderStatus.Active).first().map { it.id })
+        assertEquals(listOf(id), ObserveRemindersUseCase(repository)(com.example.uade.rememberapp.domain.model.ReminderStatus.Archived).first().map { it.id })
+
+        RestoreReminderUseCase(repository)(id)
+        assertEquals(listOf(id), ObserveRemindersUseCase(repository)(com.example.uade.rememberapp.domain.model.ReminderStatus.Active).first().map { it.id })
+    }
 }
