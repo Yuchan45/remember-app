@@ -6,8 +6,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.RestoreReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.TrashReminderUseCase
 import com.example.uade.rememberapp.ui.reminders.create.CreateReminderOption
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +33,9 @@ class RemindersListViewModel(
     private val observeReminders: ObserveRemindersUseCase,
     private val trashReminder: TrashReminderUseCase,
     private val restoreReminder: RestoreReminderUseCase,
+    private val markReminderDone: MarkReminderDoneUseCase,
+    private val getReminder: GetReminderUseCase,
+    private val saveReminder: SaveReminderUseCase,
     private val now: () -> Instant = Instant::now,
 ) : ViewModel() {
 
@@ -77,8 +84,58 @@ class RemindersListViewModel(
 
 
     // Acciones que aparecen al deslizar una card hacia la izquierda.
-    // TODO: marcarlo como hecho y archivarlo (con casos de uso, como la papelera).
-    fun onReminderDone(id: Long) = Unit
+    /**
+     * Marca el recordatorio como hecho (completado).
+     * Para recordatorios tipo Checklist, exige que toda la checklist esté marcada para poder finalizarlo.
+     */
+    fun onReminderDone(id: Long) {
+        viewModelScope.launch {
+            val reminder = getReminder(id) ?: return@launch
+            if (reminder.type == ReminderType.Checklist) {
+                val hasUnchecked = reminder.items.any { !it.isChecked }
+                if (hasUnchecked) {
+                    _uiState.update {
+                        it.copy(
+                            checklistIncompleteNotice = "Para finalizar el recordatorio se debe marcar toda la checklist",
+                        )
+                    }
+                    return@launch
+                }
+            }
+            markReminderDone(id)
+            _uiState.update { it.copy(completedReminderId = id) }
+        }
+    }
+
+    /** Permite tildar o destildar un ítem de una checklist directamente desde la card de la Home. */
+    fun onToggleChecklistItem(reminderId: Long, itemId: Long, itemIndex: Int) {
+        viewModelScope.launch {
+            val reminder = getReminder(reminderId) ?: return@launch
+            val updatedItems = reminder.items.mapIndexed { index, item ->
+                if ((itemId != 0L && item.id == itemId) || (itemId == 0L && index == itemIndex)) {
+                    item.copy(isChecked = !item.isChecked)
+                } else {
+                    item
+                }
+            }
+            saveReminder(reminder.copy(items = updatedItems))
+        }
+    }
+
+    fun onUndoDone(id: Long) {
+        viewModelScope.launch { restoreReminder(id) }
+    }
+
+    fun onDoneNoticeDone(id: Long) {
+        _uiState.update { state ->
+            if (state.completedReminderId == id) state.copy(completedReminderId = null) else state
+        }
+    }
+
+    fun onChecklistNoticeDismissed() {
+        _uiState.update { it.copy(checklistIncompleteNotice = null) }
+    }
+
     fun onReminderArchive(id: Long) = Unit
 
     /**
@@ -207,6 +264,9 @@ class RemindersListViewModel(
                     observeReminders = app.container.observeRemindersUseCase,
                     trashReminder = app.container.trashReminderUseCase,
                     restoreReminder = app.container.restoreReminderUseCase,
+                    markReminderDone = app.container.markReminderDoneUseCase,
+                    getReminder = app.container.getReminderUseCase,
+                    saveReminder = app.container.saveReminderUseCase,
                 )
             }
         }

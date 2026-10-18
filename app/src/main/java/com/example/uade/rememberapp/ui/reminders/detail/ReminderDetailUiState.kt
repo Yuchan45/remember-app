@@ -3,6 +3,7 @@ package com.example.uade.rememberapp.ui.reminders.detail
 import androidx.annotation.DrawableRes
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.MessageChannel
@@ -11,6 +12,7 @@ import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderPhoto
+import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
@@ -88,12 +90,28 @@ data class ReminderDetailUiState(
     val photos: List<ReminderPhoto> = emptyList(),
     /** La portada ya recortada (se ve arriba de la descripción y en la card); null = sin portada. */
     val photoPath: String? = null,
-    /**
-     * El modal "Imágenes" mientras está abierto (null = cerrado). Copia de trabajo: "Guardar" pasa
+    /** El modal "Imágenes" mientras está abierto (null = cerrado). Copia de trabajo: "Guardar" pasa
      * sus fotos y su portada a [photos] y [photoPath]; "Cancelar" la descarta.
      */
     val photosEditor: PhotosEditor? = null,
 
+    /** Tipo de recordatorio (Nota o Checklist). */
+    val type: ReminderType = ReminderType.Note,
+    /** Ítems si es de tipo lista (Checklist). */
+    val items: List<ChecklistItem> = emptyList(),
+    /** Si la sección COMPLETADOS está desplegada. */
+    val isCompletedExpanded: Boolean = true,
+    /** Índice del ítem cuya nota está abierta para edición (null = ninguna abierta). */
+    val expandedItemNoteIndex: Int? = null,
+    /** Modal para pegar texto y parsear con IA. */
+    val isPasteDialogOpen: Boolean = false,
+    /** Sheet de captura por voz para dictar ítems. */
+    val isVoiceCaptureOpen: Boolean = false,
+    /** Indicador de progreso mientras la IA genera/parsea ítems. */
+    val isGeneratingItems: Boolean = false,
+
+    /** true mientras se está guardando con ✓ para evitar guardados duplicados. */
+    val isSaving: Boolean = false,
     /** true cuando se guardó con ✓: la pantalla lo ve y se cierra. */
     val isSaved: Boolean = false,
 ) {
@@ -112,7 +130,7 @@ data class ReminderDetailUiState(
      */
     val hasUnsavedChanges: Boolean
         get() = when {
-            isNew -> cleanTitle != null || cleanDescription != null || photoPath != null
+            isNew -> cleanTitle != null || cleanDescription != null || photoPath != null || items.isNotEmpty()
             reminder != null -> cleanTitle != reminder.title ||
                 cleanDescription != reminder.description ||
                 tagIds != reminder.tags.map { it.id }.toSet() ||
@@ -120,7 +138,9 @@ data class ReminderDetailUiState(
                 importance != reminder.importance ||
                 action != reminder.action ||
                 photos != reminder.photos ||
-                photoPath != reminder.photoPath
+                photoPath != reminder.photoPath ||
+                items != reminder.items ||
+                type != reminder.type
             else -> false
         }
 
@@ -149,7 +169,8 @@ data class ReminderDetailUiState(
         }
 
     @get:DrawableRes
-    val typeIcon: Int get() = reminder?.typeIcon() ?: R.drawable.ic_description
+    val typeIcon: Int
+        get() = if (type == ReminderType.Checklist) R.drawable.ic_checklist else (reminder?.typeIcon() ?: R.drawable.ic_description)
 
     /** El título y la descripción como se guardarían: sin espacios de los bordes, vacío = null. */
     val cleanTitle: String? get() = title.trim().ifEmpty { null }

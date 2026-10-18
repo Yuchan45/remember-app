@@ -20,26 +20,32 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.style.TextDecoration
+
 /**
  * Vista previa de una lista dentro de la card: los primeros [maxVisible] ítems y un
  * "+ N más" con el resto.
  *
- * Los tildes son solo ícono, no checkboxes: marcar ítems se hace desde el detalle de la
- * lista, así un toque en la card siempre abre el recordatorio.
+ * Permite marcar ítems como terminados directamente desde la card.
  */
 @Composable
 fun ChecklistPreview(
     items: List<ChecklistItem>,
     modifier: Modifier = Modifier,
     maxVisible: Int = 2,
+    onToggleItem: ((itemId: Long, index: Int) -> Unit)? = null,
 ) {
     val hidden = items.size - maxVisible
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items.take(maxVisible).forEach { item ->
-            ChecklistPreviewItem(item)
+        items.take(maxVisible).forEachIndexed { index, item ->
+            ChecklistPreviewItem(
+                item = item,
+                onToggle = if (onToggleItem != null) { { onToggleItem(item.id, index) } } else null,
+            )
         }
         if (hidden > 0) {
             Text(
@@ -55,33 +61,54 @@ fun ChecklistPreview(
 private fun ChecklistPreviewItem(
     item: ChecklistItem,
     modifier: Modifier = Modifier,
+    onToggle: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(
-            painter = painterResource(
-                if (item.isChecked) R.drawable.ic_check_box else R.drawable.ic_check_box_outline_blank,
-            ),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
-        )
+        if (onToggle != null) {
+            IconButton(
+                onClick = onToggle,
+                modifier = Modifier.size(24.dp),
+            ) {
+                Icon(
+                    painter = painterResource(
+                        if (item.isChecked) R.drawable.ic_check_box else R.drawable.ic_check_box_outline_blank,
+                    ),
+                    contentDescription = if (item.isChecked) "Marcar como pendiente" else "Marcar como terminado",
+                    tint = if (item.isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        } else {
+            Icon(
+                painter = painterResource(
+                    if (item.isChecked) R.drawable.ic_check_box else R.drawable.ic_check_box_outline_blank,
+                ),
+                contentDescription = null,
+                tint = if (item.isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Column {
             Text(
                 text = item.text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
+                    color = if (item.isChecked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             item.note?.let { note ->
                 Text(
                     text = note,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

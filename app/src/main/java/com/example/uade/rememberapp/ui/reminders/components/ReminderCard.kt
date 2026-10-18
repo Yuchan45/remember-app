@@ -72,6 +72,7 @@ fun ReminderCard(
     now: Instant,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onToggleChecklistItem: ((itemId: Long, index: Int) -> Unit)? = null,
 ) {
     val accentBrush = remember(reminder.tags) { accentBrush(reminder.tags) }
     val hasPhoto = reminder.photoPath != null
@@ -99,6 +100,7 @@ fun ReminderCard(
                     reminder = reminder,
                     placeName = placeName,
                     now = now,
+                    onToggleChecklistItem = onToggleChecklistItem,
                     modifier = Modifier
                         .weight(1f)
                         // Una card de solo foto no tiene texto: se le da alto para que la foto se vea.
@@ -115,6 +117,7 @@ private fun ReminderCardContent(
     reminder: Reminder,
     placeName: String?,
     now: Instant,
+    onToggleChecklistItem: ((itemId: Long, index: Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -156,6 +159,7 @@ private fun ReminderCardContent(
         if (reminder.type == ReminderType.Checklist && reminder.items.isNotEmpty()) {
             ChecklistPreview(
                 items = reminder.items,
+                onToggleItem = onToggleChecklistItem,
                 modifier = Modifier.padding(top = 4.dp),
             )
         }

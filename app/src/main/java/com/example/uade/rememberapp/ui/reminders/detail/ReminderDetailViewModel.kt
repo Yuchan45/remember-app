@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.domain.model.AiAnalysisResult
+import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.CropRect
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
@@ -16,6 +18,7 @@ import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.repository.AiReminderService
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
@@ -37,6 +40,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+
+import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
 
 /**
  * ViewModel de la pantalla de un recordatorio. Sirve para dos casos:
@@ -60,6 +65,8 @@ class ReminderDetailViewModel(
     tagRepository: TagRepository,
     private val importPhotos: ImportPhotosUseCase,
     private val saveCover: SaveCoverUseCase,
+    private val aiReminderService: AiReminderService? = null,
+    private val markReminderDone: MarkReminderDoneUseCase? = null,
     private val now: () -> Instant = Instant::now,
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
@@ -80,6 +87,8 @@ class ReminderDetailViewModel(
                     it.copy(
                         isLoading = false,
                         reminder = reminder,
+                        type = reminder?.type ?: ReminderType.Note,
+                        items = reminder?.items.orEmpty(),
                         title = reminder?.title.orEmpty(),
                         description = reminder?.description.orEmpty(),
                         tagIds = reminder?.tags.orEmpty().map { tag -> tag.id }.toSet(),
@@ -499,6 +508,204 @@ class ReminderDetailViewModel(
     private fun resolveAt(shortcut: TimeShortcut, date: LocalDate?, time: LocalTime?): Instant? =
         resolveReminderTime(shortcut, date, time, now().atZone(zone))?.toInstant()
 
+    fun setInitialType(type: ReminderType) {
+        if (reminderId == null) {
+            _uiState.update { it.copy(type = type) }
+        }
+    }
+
+    fun onToggleItem(index: Int) {
+        _uiState.update { state ->
+            val updated = state.items.mapIndexed { i, item ->
+                if (i == index) item.copy(isChecked = !item.isChecked) else item
+            }
+            state.copy(items = updated)
+        }
+    }
+
+    fun onItemTextChange(index: Int, text: String) {
+        _uiState.update { state ->
+            val updated = state.items.mapIndexed { i, item ->
+                if (i == index) item.copy(text = text) else item
+            }
+            state.copy(items = updated)
+        }
+    }
+
+    fun onItemNoteChange(index: Int, note: String) {
+        _uiState.update { state ->
+            val updated = state.items.mapIndexed { i, item ->
+                if (i == index) item.copy(note = note.ifBlank { null }) else item
+            }
+            state.copy(items = updated)
+        }
+    }
+
+    fun onToggleItemNoteExpanded(index: Int) {
+        _uiState.update { state ->
+            val current = state.expandedItemNoteIndex
+            state.copy(expandedItemNoteIndex = if (current == index) null else index)
+        }
+    }
+
+    fun onDeleteItem(index: Int) {
+        _uiState.update { state ->
+            val updated = state.items.filterIndexed { i, _ -> i != index }
+            state.copy(
+                items = updated,
+                expandedItemNoteIndex = if (state.expandedItemNoteIndex == index) null else state.expandedItemNoteIndex,
+            )
+        }
+    }
+
+    fun onAddItem(text: String = "") {
+        _uiState.update { state ->
+            state.copy(items = state.items + ChecklistItem(text = text))
+        }
+    }
+
+    fun onMoveItem(fromIndex: Int, toIndex: Int) {
+        _uiState.update { state ->
+            val list = state.items.toMutableList()
+            if (fromIndex in list.indices && toIndex in list.indices) {
+                val moved = list.removeAt(fromIndex)
+                list.add(toIndex, moved)
+                state.copy(items = list)
+            } else {
+                state
+            }
+        }
+    }
+
+    fun onToggleCompletedExpanded() {
+        _uiState.update { it.copy(isCompletedExpanded = !it.isCompletedExpanded) }
+    }
+
+    fun onOpenPasteDialog() {
+        _uiState.update { it.copy(isPasteDialogOpen = true) }
+    }
+
+    fun onClosePasteDialog() {
+        _uiState.update { it.copy(isPasteDialogOpen = false) }
+    }
+
+    fun onOpenVoiceCapture() {
+        _uiState.update { it.copy(isVoiceCaptureOpen = true) }
+    }
+
+    fun onCloseVoiceCapture() {
+        _uiState.update { it.copy(isVoiceCaptureOpen = false) }
+    }
+
+    fun onPasteItemsSubmit(rawText: String) {
+        if (rawText.isBlank()) {
+            _uiState.update { it.copy(isPasteDialogOpen = false) }
+            return
+        }
+        _uiState.update { it.copy(isPasteDialogOpen = false, isGeneratingItems = true) }
+        viewModelScope.launch {
+            try {
+                val result = aiReminderService?.analyzeText(rawText, now().toString())
+                val extracted = result?.getOrNull()?.let { analysis ->
+                    analysis.proposedReminders.flatMap { p ->
+                        if (p.items.isNotEmpty()) {
+                            p.items
+                        } else {
+                            listOf(ChecklistItem(text = p.title, note = p.description))
+                        }
+                    }
+                }?.ifEmpty { null } ?: fallbackParseChecklist(rawText)
+
+                _uiState.update { state ->
+                    val detectedListName = result?.getOrNull()?.proposedReminders?.firstOrNull()?.listName
+                    val newTitle = if (state.title.isBlank() && !detectedListName.isNullOrBlank()) {
+                        detectedListName
+                    } else state.title
+                    state.copy(
+                        items = state.items + extracted,
+                        title = newTitle,
+                        isGeneratingItems = false,
+                    )
+                }
+            } catch (e: Exception) {
+                val fallback = fallbackParseChecklist(rawText)
+                _uiState.update { it.copy(items = it.items + fallback, isGeneratingItems = false) }
+            }
+        }
+    }
+
+    fun onVoiceItemsRecorded(audioFilePath: String) {
+        _uiState.update { it.copy(isVoiceCaptureOpen = false, isGeneratingItems = true) }
+        viewModelScope.launch {
+            try {
+                val result = aiReminderService?.processAudio(audioFilePath, now().toString())
+                val extracted = result?.getOrNull()?.let { analysis ->
+                    analysis.proposedReminders.flatMap { p ->
+                        if (p.items.isNotEmpty()) {
+                            p.items
+                        } else {
+                            listOf(ChecklistItem(text = p.title, note = p.description))
+                        }
+                    }
+                } ?: emptyList()
+
+                _uiState.update { state ->
+                    val detectedListName = result?.getOrNull()?.proposedReminders?.firstOrNull()?.listName
+                    val newTitle = if (state.title.isBlank() && !detectedListName.isNullOrBlank()) {
+                        detectedListName
+                    } else state.title
+                    state.copy(
+                        items = state.items + extracted,
+                        title = newTitle,
+                        isGeneratingItems = false,
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isGeneratingItems = false) }
+            }
+        }
+    }
+
+    fun onAiAnalysisItemsReady(result: AiAnalysisResult) {
+        val extracted = result.proposedReminders.flatMap { p ->
+            if (p.items.isNotEmpty()) {
+                p.items
+            } else {
+                listOf(ChecklistItem(text = p.title, note = p.description))
+            }
+        }.ifEmpty {
+            fallbackParseChecklist(result.rawTranscript)
+        }
+
+        _uiState.update { state ->
+            val detectedListName = result.proposedReminders.firstOrNull()?.listName
+            val newTitle = if (state.title.isBlank() && !detectedListName.isNullOrBlank()) {
+                detectedListName
+            } else state.title
+
+            state.copy(
+                items = state.items + extracted,
+                title = newTitle,
+                isVoiceCaptureOpen = false,
+                isGeneratingItems = false,
+            )
+        }
+    }
+
+    private fun fallbackParseChecklist(text: String): List<ChecklistItem> {
+        return text.lines()
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .map { line ->
+                val clean = line.replace(Regex("""^[-*•\d.]+\s*"""), "").trim()
+                val noteMatch = Regex("""\((.*?)\)""").find(clean)
+                val note = noteMatch?.groupValues?.get(1)?.trim()
+                val textOnly = clean.replace(Regex("""\(.*?\)"""), "").trim()
+                ChecklistItem(text = if (textOnly.isNotBlank()) textOnly else clean, note = note)
+            }
+            .filter { it.text.isNotBlank() }
+    }
+
     fun onTitleChange(title: String) {
         _uiState.update { it.copy(title = title) }
     }
@@ -511,24 +718,24 @@ class ReminderDetailViewModel(
      * ✓: guarda y cierra. Título y descripción vacíos se guardan como null. Las etiquetas y los
      * avisos se guardan como quedaron en sus modales.
      *
-     * - Nota nueva: la crea, salvo que no tenga título ni descripción (no se crean notas vacías).
-     * - Existente: guarda los cambios, salvo que no haya cambios o que la nota quede sin título,
-     *   descripción ni foto (Reminder no lo permite).
-     *
-     * En los casos que no se guarda, solo se cierra.
+     * - Nota o Checklist nueva: la crea, salvo que no tenga título, descripción, foto ni ítems.
+     * - Existente: guarda los cambios, salvo que no haya cambios.
      */
     fun onDone() {
         val state = _uiState.value
+        if (state.isSaving || state.isSaved) return
         val title = state.cleanTitle
         val description = state.cleanDescription
         val reminder = state.reminder
+        val validItems = state.items.filter { it.text.isNotBlank() }
 
         val toSave = when {
             !state.hasUnsavedChanges -> null
             state.isNew -> Reminder(
-                type = ReminderType.Note,
+                type = state.type,
                 title = title,
                 description = description,
+                items = validItems,
                 tags = state.tags,
                 alarms = state.alarmsToSave,
                 importance = state.importance,
@@ -537,11 +744,13 @@ class ReminderDetailViewModel(
                 photos = state.photos,
                 createdAt = now(),
             )
-            reminder != null && (title != null || description != null || state.photoPath != null) ->
+            reminder != null && (title != null || description != null || state.photoPath != null || validItems.isNotEmpty()) ->
                 // Los avisos por lugar quedan como estaban (copy los conserva).
                 reminder.copy(
+                    type = state.type,
                     title = title,
                     description = description,
+                    items = validItems,
                     tags = state.tags,
                     alarms = state.alarmsToSave,
                     importance = state.importance,
@@ -556,9 +765,57 @@ class ReminderDetailViewModel(
             _uiState.update { it.copy(isSaved = true) }
             return
         }
+        _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             saveReminder(toSave)
-            _uiState.update { it.copy(isSaved = true) }
+            _uiState.update { it.copy(isSaved = true, isSaving = false) }
+        }
+    }
+
+    /**
+     * Finaliza el recordatorio marcándolo como hecho (isDone = true).
+     */
+    fun onFinalizeReminder() {
+        val state = _uiState.value
+        if (state.isSaving || state.isSaved) return
+        val validItems = state.items.filter { it.text.isNotBlank() }
+        val reminder = state.reminder
+        _uiState.update { it.copy(isSaving = true) }
+        viewModelScope.launch {
+            if (reminder == null) {
+                val toSave = Reminder(
+                    type = state.type,
+                    title = state.cleanTitle,
+                    description = state.cleanDescription,
+                    items = validItems,
+                    tags = state.tags,
+                    alarms = state.alarmsToSave,
+                    importance = state.importance,
+                    action = state.action,
+                    photoPath = state.photoPath,
+                    photos = state.photos,
+                    isDone = true,
+                    createdAt = now(),
+                )
+                saveReminder(toSave)
+            } else {
+                val updated = reminder.copy(
+                    type = state.type,
+                    title = state.cleanTitle,
+                    description = state.cleanDescription,
+                    items = validItems,
+                    tags = state.tags,
+                    alarms = state.alarmsToSave,
+                    importance = state.importance,
+                    action = state.action,
+                    photoPath = state.photoPath,
+                    photos = state.photos,
+                    isDone = true,
+                )
+                saveReminder(updated)
+                markReminderDone?.invoke(reminder.id)
+            }
+            _uiState.update { it.copy(isSaved = true, isSaving = false) }
         }
     }
 
@@ -577,6 +834,8 @@ class ReminderDetailViewModel(
                     tagRepository = app.container.tagRepository,
                     importPhotos = app.container.importPhotosUseCase,
                     saveCover = app.container.saveCoverUseCase,
+                    aiReminderService = app.container.aiReminderService,
+                    markReminderDone = app.container.markReminderDoneUseCase,
                 )
             }
         }

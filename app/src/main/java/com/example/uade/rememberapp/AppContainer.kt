@@ -8,6 +8,7 @@ import com.example.uade.rememberapp.data.local.MIGRATION_4_5
 import com.example.uade.rememberapp.data.local.MIGRATION_5_6
 import com.example.uade.rememberapp.data.local.MIGRATION_6_7
 import com.example.uade.rememberapp.data.local.MIGRATION_7_8
+import com.example.uade.rememberapp.data.local.MIGRATION_8_9
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
@@ -34,6 +35,7 @@ import com.example.uade.rememberapp.domain.repository.AiReminderService
 import com.example.uade.rememberapp.domain.usecase.DetectSimilarRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.ProcessVoiceWithAiUseCase
+import com.example.uade.rememberapp.domain.usecase.SplitProposedReminderUseCase
 import com.example.uade.rememberapp.platform.worker.WorkManagerScheduler
 import com.google.gson.Gson
 import okhttp3.OkHttpClient
@@ -60,7 +62,7 @@ class AppContainer(context: Context) {
     private val database: AppDatabase by lazy {
         Room.databaseBuilder(appContext, AppDatabase::class.java, "hey.db")
             // Los cambios con migración escrita conservan los datos.
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
             // Si no hay migración (ej. desde la versión 1 o 2), borra y recrea la base. Sirve
             // mientras la app no esté publicada. TODO: escribir migraciones antes de publicar.
             .fallbackToDestructiveMigration(dropAllTables = true)
@@ -132,6 +134,10 @@ class AppContainer(context: Context) {
 
     val mergeProposedRemindersUseCase: MergeProposedRemindersUseCase by lazy {
         MergeProposedRemindersUseCase()
+    }
+
+    val splitProposedReminderUseCase: SplitProposedReminderUseCase by lazy {
+        SplitProposedReminderUseCase()
     }
 
     val detectSimilarRemindersUseCase: DetectSimilarRemindersUseCase by lazy {

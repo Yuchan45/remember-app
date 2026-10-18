@@ -49,6 +49,7 @@ class MergeProposedRemindersUseCase {
             priorityName = activeProposals.firstOrNull { !it.priorityName.isNullOrBlank() }?.priorityName,
             listName = primaryListName,
             isSelected = true,
+            originalProposals = activeProposals,
         )
     }
 }

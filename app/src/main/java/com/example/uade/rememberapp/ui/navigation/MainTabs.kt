@@ -63,6 +63,7 @@ fun MainTabs(
     remindersViewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
     onReminderClick: (id: Long) -> Unit = {},
     onCreateNote: () -> Unit = {},
+    onCreateChecklist: () -> Unit = {},
 ) {
     val remindersState by remindersViewModel.uiState.collectAsStateWithLifecycle()
     val destinations = AppDestination.entries
@@ -83,6 +84,17 @@ fun MainTabs(
         snackbarHostState = snackbarHostState,
         onUndo = remindersViewModel::onUndoTrash,
         onDone = remindersViewModel::onTrashNoticeDone,
+    )
+    CompletedReminderSnackbar(
+        completedReminderId = remindersState.completedReminderId,
+        snackbarHostState = snackbarHostState,
+        onUndo = remindersViewModel::onUndoDone,
+        onDone = remindersViewModel::onDoneNoticeDone,
+    )
+    ChecklistNoticeSnackbar(
+        notice = remindersState.checklistIncompleteNotice,
+        snackbarHostState = snackbarHostState,
+        onDismiss = remindersViewModel::onChecklistNoticeDismissed,
     )
 
     Scaffold(
@@ -144,10 +156,10 @@ fun MainTabs(
             // el ViewModel.
             onOptionClick = { option ->
                 remindersViewModel.onCreateMenuDismiss()
-                if (option == CreateReminderOption.Note) {
-                    onCreateNote()
-                } else {
-                    remindersViewModel.onCreateOptionClick(option)
+                when (option) {
+                    CreateReminderOption.Note -> onCreateNote()
+                    CreateReminderOption.Checklist -> onCreateChecklist()
+                    else -> remindersViewModel.onCreateOptionClick(option)
                 }
             },
             onDismiss = remindersViewModel::onCreateMenuDismiss,
@@ -186,6 +198,50 @@ private fun TrashedReminderSnackbar(
         )
         if (result == SnackbarResult.ActionPerformed) currentOnUndo(id)
         currentOnDone(id)
+    }
+}
+
+@Composable
+private fun CompletedReminderSnackbar(
+    completedReminderId: Long?,
+    snackbarHostState: SnackbarHostState,
+    onUndo: (Long) -> Unit,
+    onDone: (Long) -> Unit,
+) {
+    val message = stringResource(R.string.reminder_completed)
+    val undoLabel = stringResource(R.string.reminders_undo)
+    val currentOnUndo by rememberUpdatedState(onUndo)
+    val currentOnDone by rememberUpdatedState(onDone)
+
+    LaunchedEffect(completedReminderId) {
+        val id = completedReminderId ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = message,
+            actionLabel = undoLabel,
+            withDismissAction = true,
+            duration = SnackbarDuration.Short,
+        )
+        if (result == SnackbarResult.ActionPerformed) currentOnUndo(id)
+        currentOnDone(id)
+    }
+}
+
+@Composable
+private fun ChecklistNoticeSnackbar(
+    notice: String?,
+    snackbarHostState: SnackbarHostState,
+    onDismiss: () -> Unit,
+) {
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    LaunchedEffect(notice) {
+        val msg = notice ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(
+            message = msg,
+            withDismissAction = true,
+            duration = SnackbarDuration.Short,
+        )
+        currentOnDismiss()
     }
 }
 

@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.rememberScrollState
@@ -47,14 +48,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.sp
+import com.example.uade.rememberapp.domain.model.ChecklistItem
+import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -124,11 +134,16 @@ private const val CoverAspectRatio = 16f / 9f
 @Composable
 fun ReminderDetailScreen(
     onBack: () -> Unit,
+    initialType: ReminderType = ReminderType.Note,
     viewModel: ReminderDetailViewModel = viewModel(factory = ReminderDetailViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // "Ahora" fijo mientras la pantalla está abierta: decide si el aviso dice "Hoy 18:00".
     val now = remember { Instant.now() }
+
+    LaunchedEffect(initialType) {
+        viewModel.setInitialType(initialType)
+    }
 
     // Guardado con ✓: recién ahí se cierra, así no se sale antes de que termine de guardar.
     LaunchedEffect(uiState.isSaved) {
@@ -162,6 +177,17 @@ fun ReminderDetailScreen(
         onBehaviorClick = viewModel::onBehaviorClick,
         onActionClick = viewModel::onActionClick,
         onDescriptionChange = viewModel::onDescriptionChange,
+        onToggleItem = viewModel::onToggleItem,
+        onItemTextChange = viewModel::onItemTextChange,
+        onItemNoteChange = viewModel::onItemNoteChange,
+        onToggleItemNoteExpanded = viewModel::onToggleItemNoteExpanded,
+        onDeleteItem = viewModel::onDeleteItem,
+        onAddItem = viewModel::onAddItem,
+        onMoveItem = viewModel::onMoveItem,
+        onToggleCompletedExpanded = viewModel::onToggleCompletedExpanded,
+        onOpenPasteDialog = viewModel::onOpenPasteDialog,
+        onOpenVoiceCapture = viewModel::onOpenVoiceCapture,
+        onFinalizeReminder = viewModel::onFinalizeReminder,
     )
 
     uiState.tagsEditor?.let { assigned ->
@@ -260,6 +286,21 @@ fun ReminderDetailScreen(
                 onDismiss = viewModel::onAlarmDatePickerDismiss,
             )
         }
+    }
+
+    if (uiState.isPasteDialogOpen) {
+        PasteItemsDialog(
+            onDismiss = viewModel::onClosePasteDialog,
+            onSubmit = viewModel::onPasteItemsSubmit,
+        )
+    }
+
+    if (uiState.isVoiceCaptureOpen) {
+        VoiceCaptureSheet(
+            onDismiss = viewModel::onCloseVoiceCapture,
+            onAiAnalysisReady = viewModel::onAiAnalysisItemsReady,
+            onAudioRecordedForConfig = viewModel::onVoiceItemsRecorded,
+        )
     }
 }
 
@@ -435,6 +476,17 @@ private fun ReminderDetailContent(
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
+    onToggleItem: (Int) -> Unit = {},
+    onItemTextChange: (Int, String) -> Unit = { _, _ -> },
+    onItemNoteChange: (Int, String) -> Unit = { _, _ -> },
+    onToggleItemNoteExpanded: (Int) -> Unit = {},
+    onDeleteItem: (Int) -> Unit = {},
+    onAddItem: (String) -> Unit = {},
+    onMoveItem: (Int, Int) -> Unit = { _, _ -> },
+    onToggleCompletedExpanded: () -> Unit = {},
+    onOpenPasteDialog: () -> Unit = {},
+    onOpenVoiceCapture: () -> Unit = {},
+    onFinalizeReminder: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -464,6 +516,17 @@ private fun ReminderDetailContent(
                 onBehaviorClick = onBehaviorClick,
                 onActionClick = onActionClick,
                 onDescriptionChange = onDescriptionChange,
+                onToggleItem = onToggleItem,
+                onItemTextChange = onItemTextChange,
+                onItemNoteChange = onItemNoteChange,
+                onToggleItemNoteExpanded = onToggleItemNoteExpanded,
+                onDeleteItem = onDeleteItem,
+                onAddItem = onAddItem,
+                onMoveItem = onMoveItem,
+                onToggleCompletedExpanded = onToggleCompletedExpanded,
+                onOpenPasteDialog = onOpenPasteDialog,
+                onOpenVoiceCapture = onOpenVoiceCapture,
+                onFinalizeReminder = onFinalizeReminder,
             )
 
             uiState.isNotFound -> Text(
@@ -543,6 +606,17 @@ private fun ReminderDetailBody(
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
+    onToggleItem: (Int) -> Unit,
+    onItemTextChange: (Int, String) -> Unit,
+    onItemNoteChange: (Int, String) -> Unit,
+    onToggleItemNoteExpanded: (Int) -> Unit,
+    onDeleteItem: (Int) -> Unit,
+    onAddItem: (String) -> Unit,
+    onMoveItem: (Int, Int) -> Unit,
+    onToggleCompletedExpanded: () -> Unit,
+    onOpenPasteDialog: () -> Unit,
+    onOpenVoiceCapture: () -> Unit,
+    onFinalizeReminder: () -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // La descripción tiene que llegar hasta el panel de opciones, así todo ese espacio se
@@ -577,18 +651,52 @@ private fun ReminderDetailBody(
                     )
                 }
 
-                DescriptionField(
-                    value = uiState.description,
-                    onValueChange = onDescriptionChange,
-                    // Todo el alto que queda: si el texto es más largo, se desplaza adentro.
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                )
+                if (uiState.type == ReminderType.Checklist) {
+                    ChecklistDetailContent(
+                        items = uiState.items,
+                        isCompletedExpanded = uiState.isCompletedExpanded,
+                        expandedItemNoteIndex = uiState.expandedItemNoteIndex,
+                        isGeneratingItems = uiState.isGeneratingItems,
+                        onToggleItem = onToggleItem,
+                        onItemTextChange = onItemTextChange,
+                        onItemNoteChange = onItemNoteChange,
+                        onToggleItemNoteExpanded = onToggleItemNoteExpanded,
+                        onDeleteItem = onDeleteItem,
+                        onAddItem = onAddItem,
+                        onMoveItem = onMoveItem,
+                        onToggleCompletedExpanded = onToggleCompletedExpanded,
+                        onOpenPasteDialog = onOpenPasteDialog,
+                        onOpenVoiceCapture = onOpenVoiceCapture,
+                        onFinalizeReminder = onFinalizeReminder,
+                    )
+
+                    ReminderOptionsPanel(
+                        uiState = uiState,
+                        now = now,
+                        onTagsClick = onTagsClick,
+                        onTimeClick = onTimeClick,
+                        onPlaceClick = onPlaceClick,
+                        onImageClick = onImageClick,
+                        onBehaviorClick = onBehaviorClick,
+                        onActionClick = onActionClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                    )
+                } else {
+                    DescriptionField(
+                        value = uiState.description,
+                        onValueChange = onDescriptionChange,
+                        // Todo el alto que queda: si el texto es más largo, se desplaza adentro.
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    )
+                }
             }
         }
 
-        if (!WindowInsets.isImeVisible) {
+        if (uiState.type != ReminderType.Checklist && !WindowInsets.isImeVisible) {
             ReminderOptionsPanel(
                 uiState = uiState,
                 now = now,
@@ -648,6 +756,483 @@ private fun DescriptionField(
                 // El campo real va siempre: es el que recibe el toque y dibuja el cursor.
                 innerTextField()
             }
+        },
+    )
+}
+
+/**
+ * Cuerpo del editor cuando el recordatorio es de tipo [ReminderType.Checklist] (Mockup 04.B).
+ *
+ * Muestra los ítems activos reordenables con nota opcional, botones de ayuda IA ("Dictar ítems"
+ * y "Pegar texto"), y la sección colapsable "COMPLETADOS (n)".
+ */
+@Composable
+private fun ChecklistDetailContent(
+    items: List<ChecklistItem>,
+    isCompletedExpanded: Boolean,
+    expandedItemNoteIndex: Int?,
+    isGeneratingItems: Boolean,
+    onToggleItem: (Int) -> Unit,
+    onItemTextChange: (Int, String) -> Unit,
+    onItemNoteChange: (Int, String) -> Unit,
+    onToggleItemNoteExpanded: (Int) -> Unit,
+    onDeleteItem: (Int) -> Unit,
+    onAddItem: (String) -> Unit,
+    onMoveItem: (Int, Int) -> Unit,
+    onToggleCompletedExpanded: () -> Unit,
+    onOpenPasteDialog: () -> Unit,
+    onOpenVoiceCapture: () -> Unit,
+    onFinalizeReminder: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val activeItemsWithIndices = items.mapIndexed { index, item -> index to item }.filter { !it.second.isChecked }
+    val completedItemsWithIndices = items.mapIndexed { index, item -> index to item }.filter { it.second.isChecked }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        // Ítems activos reordenables
+        activeItemsWithIndices.forEach { (index, item) ->
+            ChecklistActiveItemRow(
+                index = index,
+                item = item,
+                isNoteExpanded = expandedItemNoteIndex == index,
+                onToggle = { onToggleItem(index) },
+                onTextChange = { onItemTextChange(index, it) },
+                onNoteChange = { onItemNoteChange(index, it) },
+                onToggleNote = { onToggleItemNoteExpanded(index) },
+                onDelete = { onDeleteItem(index) },
+                onMoveUp = if (index > 0) { { onMoveItem(index, index - 1) } } else null,
+                onMoveDown = if (index < items.size - 1) { { onMoveItem(index, index + 1) } } else null,
+            )
+        }
+
+        // Fila "+ Añadir elemento"
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onAddItem("") }
+                .padding(vertical = 10.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_add),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                text = "Añadir elemento",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                ),
+            )
+        }
+
+        // Botones de acciones IA: [ 🎤 Dictar ítems ] [ ✨ Pegar texto ]
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(vertical = 6.dp),
+        ) {
+            ChecklistActionPill(
+                icon = R.drawable.ic_mic,
+                label = "Dictar ítems",
+                onClick = onOpenVoiceCapture,
+            )
+            ChecklistActionPill(
+                icon = R.drawable.ic_auto_awesome,
+                label = "Pegar texto",
+                onClick = onOpenPasteDialog,
+            )
+        }
+
+        if (isGeneratingItems) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(vertical = 6.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = "Generando ítems con IA…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+
+        // Sección COMPLETADOS (n)
+        if (completedItemsWithIndices.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(onClick = onToggleCompletedExpanded)
+                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "COMPLETADOS (${completedItemsWithIndices.size})",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    painter = painterResource(
+                        if (isCompletedExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
+                    ),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+
+            if (isCompletedExpanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    completedItemsWithIndices.forEach { (index, item) ->
+                        ChecklistCompletedItemRow(
+                            item = item,
+                            onToggle = { onToggleItem(index) },
+                            onDelete = { onDeleteItem(index) },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (activeItemsWithIndices.isEmpty() && completedItemsWithIndices.isNotEmpty() && onFinalizeReminder != null) {
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onFinalizeReminder),
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.checklist_all_completed_banner),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+/** Píldora de acción de ayuda con IA. */
+@Composable
+private fun ChecklistActionPill(
+    @DrawableRes icon: Int,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFF132029),
+        border = BorderStroke(1.dp, Color(0xFF2A3D4C)),
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+            )
+        }
+    }
+}
+
+/** Fila de un ítem activo en la lista, fiel al mockup 04.B. */
+@Composable
+private fun ChecklistActiveItemRow(
+    index: Int,
+    item: ChecklistItem,
+    isNoteExpanded: Boolean,
+    onToggle: () -> Unit,
+    onTextChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onToggleNote: () -> Unit,
+    onDelete: () -> Unit,
+    onMoveUp: (() -> Unit)?,
+    onMoveDown: (() -> Unit)?,
+) {
+    val isNoteVisible = !item.note.isNullOrBlank() || isNoteExpanded
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        // Checkbox para marcar el ítem como terminado (o no)
+        IconButton(
+            onClick = onToggle,
+            modifier = Modifier
+                .padding(top = 0.dp, end = 4.dp)
+                .size(32.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_check_box_outline_blank),
+                contentDescription = "Marcar como terminado",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                modifier = Modifier.size(22.dp),
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(top = 2.dp),
+        ) {
+            BasicTextField(
+                value = item.text,
+                onValueChange = onTextChange,
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next,
+                ),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (item.text.isEmpty()) {
+                            Text(
+                                text = "Elemento",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+            )
+
+            if (isNoteVisible) {
+                BasicTextField(
+                    value = item.note.orEmpty(),
+                    onValueChange = onNoteChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done,
+                    ),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (item.note.isNullOrEmpty()) {
+                                Text(
+                                    text = "Nota (opcional)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                )
+                            }
+                            innerTextField()
+                        }
+                    },
+                )
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            IconButton(
+                onClick = onToggleNote,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    painter = painterResource(
+                        if (isNoteVisible) R.drawable.ic_expand_less else R.drawable.ic_notes,
+                    ),
+                    contentDescription = if (isNoteVisible) "Ocultar nota" else "Agregar nota",
+                    tint = if (isNoteVisible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close),
+                    contentDescription = "Eliminar",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Fila de un ítem completado (tachado con checkbox marcado). */
+@Composable
+private fun ChecklistCompletedItemRow(
+    item: ChecklistItem,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(
+            onClick = onToggle,
+            modifier = Modifier.size(32.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_check_box),
+                contentDescription = "Desmarcar ítem",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.text,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    textDecoration = TextDecoration.LineThrough,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            )
+            if (!item.note.isNullOrBlank()) {
+                Text(
+                    text = item.note,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        textDecoration = TextDecoration.LineThrough,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    ),
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(32.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_close),
+                contentDescription = "Eliminar",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+/** Diálogo interactivo para pegar texto y parsear con IA. */
+@Composable
+private fun PasteItemsDialog(
+    onDismiss: () -> Unit,
+    onSubmit: (String) -> Unit,
+) {
+    var text by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_auto_awesome),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text(text = "Pegar texto")
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Pega un mensaje, lista de compras o ingredientes. La IA detectará los ítems automáticamente.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 120.dp, max = 220.dp),
+                    placeholder = {
+                        Text(
+                            text = "Ej:\nVacío 5kg (en el Coto)\nAsado 3kg (en Res)\nChorizo y morcilla",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    },
+                )
+            }
+        },
+        confirmButton = {
+            DialogFilledConfirmButton(
+                text = "Generar ítems",
+                onClick = { onSubmit(text) },
+            )
+        },
+        dismissButton = {
+            DialogDismissButton(
+                text = stringResource(R.string.common_cancel),
+                onClick = onDismiss,
+            )
         },
     )
 }

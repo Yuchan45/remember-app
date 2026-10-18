@@ -35,9 +35,15 @@ class AudioProcessingWorker(
                 val proposals = analysis.proposedReminders.filter { it.isSelected }
 
                 if (proposals.isEmpty()) {
+                    val fallbackTitle = if (analysis.rawTranscript.isNotBlank()) {
+                        analysis.rawTranscript.take(40).trim().replaceFirstChar { it.uppercase() }
+                    } else {
+                        "Nota de voz procesada"
+                    }
                     container.saveReminderUseCase(
                         existing.copy(
-                            title = analysis.rawTranscript.ifBlank { "Nota de voz procesada" },
+                            title = fallbackTitle,
+                            description = analysis.rawTranscript.ifBlank { null },
                             aiStatus = AiProcessingStatus.Completed,
                         ),
                     )

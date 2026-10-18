@@ -77,6 +77,10 @@ data class RemindersListUiState(
      * Mientras no sea null, MainTabs muestra el snackbar "1 movido a la papelera · Deshacer".
      */
     val trashedReminderId: Long? = null,
+    /** Id del recordatorio marcado como completado/hecho para mostrar snackbar con opción de Deshacer. */
+    val completedReminderId: Long? = null,
+    /** Mensaje de aviso cuando se intenta finalizar una checklist sin haber marcado todos los ítems. */
+    val checklistIncompleteNotice: String? = null,
 ) {
     val isEmpty: Boolean get() = !isLoading && sections.all { it.reminders.isEmpty() }
 }

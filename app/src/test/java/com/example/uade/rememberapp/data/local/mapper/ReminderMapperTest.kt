@@ -149,4 +149,25 @@ class ReminderMapperTest {
         assertEquals(ReminderStatus.Active, domain.status)
         assertEquals(Importance.Default, domain.importance)
     }
+
+    @Test
+    fun `los items de checklist van a su fila y vuelven en orden con su nota y tilde`() {
+        val items = listOf(
+            com.example.uade.rememberapp.domain.model.ChecklistItem(id = 1, text = "Vacío 5kg", note = "En el Coto"),
+            com.example.uade.rememberapp.domain.model.ChecklistItem(id = 2, text = "Asado 3kg", note = "En Res", isChecked = true),
+        )
+        val rows = items.mapIndexed { i, item -> item.toEntity(position = i, reminderId = 7) }.reversed()
+        val row = ReminderWithDetails(
+            reminder = reminder.copy(type = com.example.uade.rememberapp.domain.model.ReminderType.Checklist).toEntity(),
+            tags = emptyList(),
+            alarms = emptyList(),
+            places = emptyList(),
+            items = rows,
+        )
+
+        val domain = row.toDomain()
+        assertEquals(items.map { it.text }, domain.items.map { it.text })
+        assertEquals(items.map { it.note }, domain.items.map { it.note })
+        assertEquals(items.map { it.isChecked }, domain.items.map { it.isChecked })
+    }
 }

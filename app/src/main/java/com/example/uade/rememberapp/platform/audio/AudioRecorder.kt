@@ -16,6 +16,7 @@ class AudioRecorder(private val context: Context) {
     private var currentFile: File? = null
     private var isRecording = false
     private var isPaused = false
+    private var startTimestamp = 0L
 
     /**
      * Inicia la grabación guardando en [outputFile].
@@ -49,6 +50,7 @@ class AudioRecorder(private val context: Context) {
             currentFile = outputFile
             isRecording = true
             isPaused = false
+            startTimestamp = System.currentTimeMillis()
             true
         } catch (e: IOException) {
             e.printStackTrace()
@@ -87,9 +89,20 @@ class AudioRecorder(private val context: Context) {
 
     /**
      * Detiene la grabación y devuelve el archivo generado si todo fue exitoso.
+     * Si la grabación fue muy breve (< 1200 ms), espera el remanente para permitir que MediaRecorder
+     * escriba las tramas de audio y finalice correctamente el contenedor MP4/AAC sin arrojar RuntimeException (-1007).
      */
     fun stop(): File? {
         val file = currentFile
+        if (isRecording) {
+            val elapsed = System.currentTimeMillis() - startTimestamp
+            if (elapsed < 1200L) {
+                try {
+                    Thread.sleep(1200L - elapsed)
+                } catch (_: InterruptedException) {
+                }
+            }
+        }
         stopAndRelease()
         return if (file != null && file.exists() && file.length() > 0) file else null
     }
@@ -122,8 +135,11 @@ class AudioRecorder(private val context: Context) {
                 recorder?.stop()
             }
         } catch (e: RuntimeException) {
-            // Si se detiene inmediatamente tras start(), MediaRecorder puede arrojar RuntimeException
-            currentFile?.delete()
+            e.printStackTrace()
+            // Solo si el archivo quedó completamente vacío (0 bytes) lo borramos
+            if (currentFile?.exists() == true && currentFile?.length() == 0L) {
+                currentFile?.delete()
+            }
         } finally {
             try {
                 recorder?.reset()

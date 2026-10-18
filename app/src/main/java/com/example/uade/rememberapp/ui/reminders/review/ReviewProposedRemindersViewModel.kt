@@ -16,22 +16,29 @@ import com.example.uade.rememberapp.domain.usecase.DetectSimilarRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.SplitProposedReminderUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.Importance
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.UUID
 
 /**
  * Controla el estado y las acciones del flujo de revisión de recordatorios propuestos por la IA.
- * Implementa "Split automático" (03.B), "Unir en uno", "¿Los unimos?" (03.C) y "Checklist" (03.D).
+ * Implementa "Split automático" (03.B), "Unir en uno", "Desunir", "¿Los unimos?" (03.C) y "Checklist" (03.D).
  */
 class ReviewProposedRemindersViewModel(
     private val saveReminder: SaveReminderUseCase,
     private val mergeProposedReminders: MergeProposedRemindersUseCase,
+    private val splitProposedReminder: SplitProposedReminderUseCase,
     private val detectSimilarReminders: DetectSimilarRemindersUseCase,
     private val observeReminders: ObserveRemindersUseCase,
 ) : ViewModel() {
@@ -80,7 +87,12 @@ class ReviewProposedRemindersViewModel(
     }
 
     fun onSetChecklistView(isChecklist: Boolean) {
-        _uiState.update { it.copy(isChecklistView = isChecklist) }
+        if (isChecklist == _uiState.value.isChecklistView) return
+        if (isChecklist) {
+            onMergeAllIntoOne()
+        } else {
+            onUnmergeSelected()
+        }
     }
 
     fun onMergeAllIntoOne() {
@@ -96,6 +108,54 @@ class ReviewProposedRemindersViewModel(
                 summaryBadge = "Recordatorios unidos en una única checklist.",
                 isChecklistCandidate = true,
                 isChecklistView = true,
+            )
+        }
+    }
+
+    fun onUnmergeSelected() {
+        val currentProposals = _uiState.value.proposals
+        val selectedToUnmerge = currentProposals.filter {
+            it.isSelected && (!it.originalProposals.isNullOrEmpty() || (it.type == ReminderType.Checklist && it.items.isNotEmpty()))
+        }
+        if (selectedToUnmerge.isEmpty()) return
+
+        val newProposals = mutableListOf<ProposedReminder>()
+        for (p in currentProposals) {
+            if (p in selectedToUnmerge) {
+                newProposals.addAll(splitProposedReminder(p))
+            } else {
+                newProposals.add(p)
+            }
+        }
+
+        _uiState.update { state ->
+            state.copy(
+                proposals = newProposals,
+                summaryBadge = "Tareas desunidas en recordatorios individuales.",
+                isChecklistView = false,
+            )
+        }
+    }
+
+    fun onUnmergeProposal(tempId: String) {
+        val currentProposals = _uiState.value.proposals
+        val target = currentProposals.firstOrNull { it.tempId == tempId } ?: return
+        val unmerged = splitProposedReminder(target)
+
+        val newProposals = mutableListOf<ProposedReminder>()
+        for (p in currentProposals) {
+            if (p.tempId == tempId) {
+                newProposals.addAll(unmerged)
+            } else {
+                newProposals.add(p)
+            }
+        }
+
+        _uiState.update { state ->
+            state.copy(
+                proposals = newProposals,
+                summaryBadge = "Recordatorio desunido en ${unmerged.size} tareas individuales.",
+                isChecklistView = false,
             )
         }
     }
@@ -186,18 +246,72 @@ class ReviewProposedRemindersViewModel(
 
     private suspend fun saveAllProposals(proposals: List<ProposedReminder>) {
         for (p in proposals) {
+            val importance = when (p.priorityName?.lowercase()) {
+                "alta" -> Importance.High
+                "urgente", "crítica" -> Importance.Critical
+                "baja" -> Importance.Low
+                else -> Importance.Default
+            }
+
+            val alarms = if (p.alarms.isNotEmpty()) {
+                p.alarms
+            } else {
+                parseDisplayTimeToAlarm(p.triggerDisplayTime)
+            }
+
             val reminder = Reminder(
                 type = p.type,
                 title = p.title,
                 description = p.description,
                 items = p.items,
-                alarms = p.alarms,
+                alarms = alarms,
+                importance = importance,
                 aiStatus = AiProcessingStatus.Completed,
                 createdAt = Instant.now(),
             )
             saveReminder(reminder)
         }
         _uiState.update { it.copy(isSaved = true) }
+    }
+
+    private fun parseDisplayTimeToAlarm(displayTime: String?): List<Alarm> {
+        if (displayTime.isNullOrBlank() || displayTime.equals("Sin fecha", ignoreCase = true)) {
+            return emptyList()
+        }
+        val lower = displayTime.lowercase()
+        val zone = ZoneId.systemDefault()
+        val now = ZonedDateTime.now(zone)
+
+        return try {
+            val targetDateTime: ZonedDateTime? = when {
+                lower.contains("hoy") -> {
+                    val timePart = Regex("""(\d{1,2}):(\d{2})""").find(displayTime)?.value ?: "21:00"
+                    val (h, m) = timePart.split(":").map { it.toInt() }
+                    now.withHour(h).withMinute(m).withSecond(0).withNano(0)
+                }
+                lower.contains("mañana") -> {
+                    val timePart = Regex("""(\d{1,2}):(\d{2})""").find(displayTime)?.value ?: "09:00"
+                    val (h, m) = timePart.split(":").map { it.toInt() }
+                    now.plusDays(1).withHour(h).withMinute(m).withSecond(0).withNano(0)
+                }
+                lower.contains("viernes") -> {
+                    val daysUntilFriday = ((DayOfWeek.FRIDAY.value - now.dayOfWeek.value + 7) % 7).let { if (it == 0) 7 else it }
+                    now.plusDays(daysUntilFriday.toLong()).withHour(9).withMinute(0).withSecond(0).withNano(0)
+                }
+                lower.contains("lunes") -> {
+                    val daysUntilMonday = ((DayOfWeek.MONDAY.value - now.dayOfWeek.value + 7) % 7).let { if (it == 0) 7 else it }
+                    now.plusDays(daysUntilMonday.toLong()).withHour(9).withMinute(0).withSecond(0).withNano(0)
+                }
+                else -> null
+            }
+            if (targetDateTime != null) {
+                listOf(Alarm(targetDateTime.toInstant()))
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     companion object {
@@ -207,6 +321,7 @@ class ReviewProposedRemindersViewModel(
                 ReviewProposedRemindersViewModel(
                     saveReminder = app.container.saveReminderUseCase,
                     mergeProposedReminders = app.container.mergeProposedRemindersUseCase,
+                    splitProposedReminder = app.container.splitProposedReminderUseCase,
                     detectSimilarReminders = app.container.detectSimilarRemindersUseCase,
                     observeReminders = app.container.observeRemindersUseCase,
                 )

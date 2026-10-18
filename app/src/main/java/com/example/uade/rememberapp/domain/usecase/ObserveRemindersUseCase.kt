@@ -14,5 +14,13 @@ class ObserveRemindersUseCase(
     private val reminders: ReminderRepository,
 ) {
     operator fun invoke(status: ReminderStatus = ReminderStatus.Active): Flow<List<Reminder>> =
-        reminders.observeAll().map { list -> list.filter { it.status == status } }
+        reminders.observeAll().map { list ->
+            list.filter { reminder ->
+                when (status) {
+                    ReminderStatus.Active -> reminder.status == ReminderStatus.Active && !reminder.isDone
+                    ReminderStatus.Archived -> reminder.status == ReminderStatus.Archived || (reminder.status == ReminderStatus.Active && reminder.isDone)
+                    ReminderStatus.Deleted -> reminder.status == ReminderStatus.Deleted
+                }
+            }
+        }
 }

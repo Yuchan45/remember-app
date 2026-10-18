@@ -39,4 +39,6 @@ data class ReminderWithDetails(
     val actions: List<ActionEntity> = emptyList(),
     @Relation(parentColumn = "id", entityColumn = "reminderId")
     val photos: List<PhotoEntity> = emptyList(),
+    @Relation(parentColumn = "id", entityColumn = "reminderId")
+    val items: List<ChecklistItemEntity> = emptyList(),
 )
