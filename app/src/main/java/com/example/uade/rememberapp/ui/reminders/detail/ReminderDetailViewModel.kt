@@ -41,6 +41,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
+import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
+
 /**
  * ViewModel de la pantalla de un recordatorio. Sirve para dos casos:
  *
@@ -64,6 +66,7 @@ class ReminderDetailViewModel(
     private val importPhotos: ImportPhotosUseCase,
     private val saveCover: SaveCoverUseCase,
     private val aiReminderService: AiReminderService? = null,
+    private val markReminderDone: MarkReminderDoneUseCase? = null,
     private val now: () -> Instant = Instant::now,
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
@@ -769,6 +772,53 @@ class ReminderDetailViewModel(
         }
     }
 
+    /**
+     * Finaliza el recordatorio marcándolo como hecho (isDone = true).
+     */
+    fun onFinalizeReminder() {
+        val state = _uiState.value
+        if (state.isSaving || state.isSaved) return
+        val validItems = state.items.filter { it.text.isNotBlank() }
+        val reminder = state.reminder
+        _uiState.update { it.copy(isSaving = true) }
+        viewModelScope.launch {
+            if (reminder == null) {
+                val toSave = Reminder(
+                    type = state.type,
+                    title = state.cleanTitle,
+                    description = state.cleanDescription,
+                    items = validItems,
+                    tags = state.tags,
+                    alarms = state.alarmsToSave,
+                    importance = state.importance,
+                    action = state.action,
+                    photoPath = state.photoPath,
+                    photos = state.photos,
+                    isDone = true,
+                    createdAt = now(),
+                )
+                saveReminder(toSave)
+            } else {
+                val updated = reminder.copy(
+                    type = state.type,
+                    title = state.cleanTitle,
+                    description = state.cleanDescription,
+                    items = validItems,
+                    tags = state.tags,
+                    alarms = state.alarmsToSave,
+                    importance = state.importance,
+                    action = state.action,
+                    photoPath = state.photoPath,
+                    photos = state.photos,
+                    isDone = true,
+                )
+                saveReminder(updated)
+                markReminderDone?.invoke(reminder.id)
+            }
+            _uiState.update { it.copy(isSaved = true, isSaving = false) }
+        }
+    }
+
     // TODO: compartir el recordatorio (crear link). Por ahora es maquetado.
     fun onShareClick() = Unit
 
@@ -785,6 +835,7 @@ class ReminderDetailViewModel(
                     importPhotos = app.container.importPhotosUseCase,
                     saveCover = app.container.saveCoverUseCase,
                     aiReminderService = app.container.aiReminderService,
+                    markReminderDone = app.container.markReminderDoneUseCase,
                 )
             }
         }

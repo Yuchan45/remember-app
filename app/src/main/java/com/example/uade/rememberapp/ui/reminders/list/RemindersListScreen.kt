@@ -78,6 +78,7 @@ fun RemindersListScreen(
                 onReminderDone = viewModel::onReminderDone,
                 onReminderArchive = viewModel::onReminderArchive,
                 onReminderTrash = viewModel::onReminderTrash,
+                onToggleChecklistItem = viewModel::onToggleChecklistItem,
                 onQuickCaptureClick = viewModel::onQuickCaptureClick,
                 onVoiceCapture = viewModel::onVoiceCaptureClick,
                 onPhotoCapture = viewModel::onPhotoCaptureClick,
@@ -127,6 +128,7 @@ data class RemindersListActions(
     val onReminderDone: (id: Long) -> Unit = {},
     val onReminderArchive: (id: Long) -> Unit = {},
     val onReminderTrash: (id: Long) -> Unit = {},
+    val onToggleChecklistItem: (reminderId: Long, itemId: Long, index: Int) -> Unit = { _, _, _ -> },
     val onQuickCaptureClick: () -> Unit = {},
     val onVoiceCapture: () -> Unit = {},
     val onPhotoCapture: () -> Unit = {},
@@ -248,6 +250,9 @@ private fun RemindersListContent(
                             onDone = { actions.onReminderDone(reminder.id) },
                             onArchive = { actions.onReminderArchive(reminder.id) },
                             onTrash = { actions.onReminderTrash(reminder.id) },
+                            onToggleChecklistItem = { itemId, index ->
+                                actions.onToggleChecklistItem(reminder.id, itemId, index)
+                            },
                             modifier = Modifier.padding(horizontal = ScreenPadding),
                             revealGroup = revealGroup,
                         )

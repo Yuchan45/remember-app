@@ -187,6 +187,7 @@ fun ReminderDetailScreen(
         onToggleCompletedExpanded = viewModel::onToggleCompletedExpanded,
         onOpenPasteDialog = viewModel::onOpenPasteDialog,
         onOpenVoiceCapture = viewModel::onOpenVoiceCapture,
+        onFinalizeReminder = viewModel::onFinalizeReminder,
     )
 
     uiState.tagsEditor?.let { assigned ->
@@ -485,6 +486,7 @@ private fun ReminderDetailContent(
     onToggleCompletedExpanded: () -> Unit = {},
     onOpenPasteDialog: () -> Unit = {},
     onOpenVoiceCapture: () -> Unit = {},
+    onFinalizeReminder: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -524,6 +526,7 @@ private fun ReminderDetailContent(
                 onToggleCompletedExpanded = onToggleCompletedExpanded,
                 onOpenPasteDialog = onOpenPasteDialog,
                 onOpenVoiceCapture = onOpenVoiceCapture,
+                onFinalizeReminder = onFinalizeReminder,
             )
 
             uiState.isNotFound -> Text(
@@ -613,6 +616,7 @@ private fun ReminderDetailBody(
     onToggleCompletedExpanded: () -> Unit,
     onOpenPasteDialog: () -> Unit,
     onOpenVoiceCapture: () -> Unit,
+    onFinalizeReminder: () -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // La descripción tiene que llegar hasta el panel de opciones, así todo ese espacio se
@@ -663,6 +667,7 @@ private fun ReminderDetailBody(
                         onToggleCompletedExpanded = onToggleCompletedExpanded,
                         onOpenPasteDialog = onOpenPasteDialog,
                         onOpenVoiceCapture = onOpenVoiceCapture,
+                        onFinalizeReminder = onFinalizeReminder,
                     )
 
                     ReminderOptionsPanel(
@@ -777,6 +782,7 @@ private fun ChecklistDetailContent(
     onToggleCompletedExpanded: () -> Unit,
     onOpenPasteDialog: () -> Unit,
     onOpenVoiceCapture: () -> Unit,
+    onFinalizeReminder: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val activeItemsWithIndices = items.mapIndexed { index, item -> index to item }.filter { !it.second.isChecked }
@@ -907,6 +913,37 @@ private fun ChecklistDetailContent(
             }
         }
 
+        if (activeItemsWithIndices.isEmpty() && completedItemsWithIndices.isNotEmpty() && onFinalizeReminder != null) {
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onFinalizeReminder),
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.checklist_all_completed_banner),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -970,20 +1007,18 @@ private fun ChecklistActiveItemRow(
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        // Ícono de drag handle (6 puntos). Tocarlo marca el ítem completado.
-        Box(
+        // Checkbox para marcar el ítem como terminado (o no)
+        IconButton(
+            onClick = onToggle,
             modifier = Modifier
-                .padding(top = 4.dp, end = 8.dp)
-                .size(28.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onToggle),
-            contentAlignment = Alignment.Center,
+                .padding(top = 0.dp, end = 4.dp)
+                .size(32.dp),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_drag_handle),
-                contentDescription = "Completar ítem",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.size(20.dp),
+                painter = painterResource(R.drawable.ic_check_box_outline_blank),
+                contentDescription = "Marcar como terminado",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                modifier = Modifier.size(22.dp),
             )
         }
 
