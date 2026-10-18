@@ -157,3 +157,26 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         }
     }
 }
+
+/**
+ * 8 → 9: `reminder_checklist_items`, ítems de un recordatorio tipo lista (checklist).
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `reminder_checklist_items` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`reminderId` INTEGER NOT NULL, " +
+                "`text` TEXT NOT NULL, " +
+                "`note` TEXT, " +
+                "`isChecked` INTEGER NOT NULL, " +
+                "`position` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`reminderId`) REFERENCES `reminders`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_reminder_checklist_items_reminderId` " +
+                "ON `reminder_checklist_items` (`reminderId`)",
+        )
+    }
+}
+

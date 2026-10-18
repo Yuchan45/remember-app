@@ -7,6 +7,7 @@ import androidx.room.Transaction
 import androidx.room.Upsert
 import com.example.uade.rememberapp.data.local.entity.ActionEntity
 import com.example.uade.rememberapp.data.local.entity.AlarmEntity
+import com.example.uade.rememberapp.data.local.entity.ChecklistItemEntity
 import com.example.uade.rememberapp.data.local.entity.PhotoEntity
 import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
@@ -61,6 +62,7 @@ abstract class ReminderDao {
         places: List<PlaceAlertEntity>,
         action: ActionEntity? = null,
         photos: List<PhotoEntity> = emptyList(),
+        items: List<ChecklistItemEntity> = emptyList(),
     ): Long {
         val newId = upsert(reminder)
         // @Upsert devuelve -1 cuando actualiza una fila existente: el id es el que ya tenía.
@@ -76,6 +78,8 @@ abstract class ReminderDao {
         action?.let { insertAction(it.copy(id = 0, reminderId = id)) }
         deletePhotosOf(id)
         insertPhotos(photos.map { it.copy(id = 0, reminderId = id) })
+        deleteItemsOf(id)
+        insertItems(items.map { it.copy(id = 0, reminderId = id) })
         return id
     }
 
@@ -124,6 +128,12 @@ abstract class ReminderDao {
 
     @Insert
     protected abstract suspend fun insertPhotos(photos: List<PhotoEntity>)
+
+    @Query("DELETE FROM reminder_checklist_items WHERE reminderId = :reminderId")
+    protected abstract suspend fun deleteItemsOf(reminderId: Long)
+
+    @Insert
+    protected abstract suspend fun insertItems(items: List<ChecklistItemEntity>)
 
     /** Sus etiquetas, avisos y lugares se borran solos (CASCADE). */
     @Query("DELETE FROM reminders WHERE id = :id")

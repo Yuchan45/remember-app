@@ -63,6 +63,7 @@ fun MainTabs(
     remindersViewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
     onReminderClick: (id: Long) -> Unit = {},
     onCreateNote: () -> Unit = {},
+    onCreateChecklist: () -> Unit = {},
 ) {
     val remindersState by remindersViewModel.uiState.collectAsStateWithLifecycle()
     val destinations = AppDestination.entries
@@ -144,10 +145,10 @@ fun MainTabs(
             // el ViewModel.
             onOptionClick = { option ->
                 remindersViewModel.onCreateMenuDismiss()
-                if (option == CreateReminderOption.Note) {
-                    onCreateNote()
-                } else {
-                    remindersViewModel.onCreateOptionClick(option)
+                when (option) {
+                    CreateReminderOption.Note -> onCreateNote()
+                    CreateReminderOption.Checklist -> onCreateChecklist()
+                    else -> remindersViewModel.onCreateOptionClick(option)
                 }
             },
             onDismiss = remindersViewModel::onCreateMenuDismiss,

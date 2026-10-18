@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.ui.reminders.detail.ReminderDetailScreen
 
 /**
@@ -19,6 +20,7 @@ import com.example.uade.rememberapp.ui.reminders.detail.ReminderDetailScreen
  * - [Routes.REMINDER_DETAIL]: el detalle de un recordatorio, que se abre encima al tocar una
  *   card de la Home.
  * - [Routes.NEW_NOTE]: una nota nueva ("+" → "Nota"), con la misma pantalla que el detalle.
+ * - [Routes.NEW_CHECKLIST]: una lista nueva ("+" → "Lista").
  *
  * Es el único lugar que conoce el [NavHostController]; las pantallas reciben la navegación
  * como lambdas.
@@ -42,18 +44,28 @@ fun AppNavHost(
                 onCreateNote = {
                     navController.navigate(Routes.NEW_NOTE) { launchSingleTop = true }
                 },
+                onCreateChecklist = {
+                    navController.navigate(Routes.NEW_CHECKLIST) { launchSingleTop = true }
+                },
             )
         }
         // La misma pantalla que el detalle: sin id en la ruta, el ViewModel arranca vacío.
         composable(Routes.NEW_NOTE) {
-            ReminderDetailScreen(onBack = { navController.navigateUp() })
+            ReminderDetailScreen(
+                onBack = { navController.navigateUp() },
+                initialType = ReminderType.Note,
+            )
+        }
+        composable(Routes.NEW_CHECKLIST) {
+            ReminderDetailScreen(
+                onBack = { navController.navigateUp() },
+                initialType = ReminderType.Checklist,
+            )
         }
         composable(
             route = Routes.REMINDER_DETAIL,
             arguments = listOf(navArgument(Routes.ARG_REMINDER_ID) { type = NavType.LongType }),
         ) {
-            // navigateUp y no popBackStack: si se toca "volver" dos veces rápido, no saca
-            // también la pantalla principal (dejando la app en blanco).
             ReminderDetailScreen(onBack = { navController.navigateUp() })
         }
     }
