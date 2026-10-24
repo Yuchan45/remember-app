@@ -75,6 +75,7 @@ import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureTriggerRow
 import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
+import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.components.TimeOptionsPanel
@@ -197,6 +198,12 @@ fun QuickCaptureSheet(
             initialTime = uiState.pickedTime,
             onConfirm = viewModel::onDatePicked,
             onDismiss = viewModel::onDatePickerDismiss,
+        )
+    }
+
+    if (uiState.isCreatingPlace) {
+        PlaceEditSheet(
+            onDismiss = viewModel::onDismissPlaceSheet,
         )
     }
 }

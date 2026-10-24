@@ -94,6 +94,7 @@ import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
@@ -246,7 +247,14 @@ fun ReminderDetailScreen(
             onPlaceClick = viewModel::onPlaceSelected,
             onSearchAddress = viewModel::onSearchAddress,
             onEventClick = viewModel::onPlaceEventSelected,
+            onSave = viewModel::onSavePlace,
             onClose = viewModel::onClosePlace,
+        )
+    }
+
+    if (uiState.isCreatingPlace) {
+        PlaceEditSheet(
+            onDismiss = viewModel::onDismissPlaceSheet,
         )
     }
 
@@ -356,6 +364,7 @@ private fun PlaceSheet(
     onPlaceClick: (Long) -> Unit,
     onSearchAddress: () -> Unit,
     onEventClick: (PlaceEvent) -> Unit,
+    onSave: () -> Unit,
     onClose: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -382,7 +391,7 @@ private fun PlaceSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onClose)
-                DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onClose)
+                DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onSave)
             }
         }
     }
