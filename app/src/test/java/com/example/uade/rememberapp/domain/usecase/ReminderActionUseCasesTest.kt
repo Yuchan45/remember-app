@@ -1,7 +1,10 @@
 package com.example.uade.rememberapp.domain.usecase
 
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.scheduler.GeofenceRegistrar
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -72,5 +75,42 @@ class ReminderActionUseCasesTest {
 
         assertEquals(listOf(at("15:00")), scheduler.scheduledFor(idActive))
         assertEquals(emptyList<Instant>(), scheduler.scheduledFor(idDone))
+    }
+
+    @Test
+    fun `reprogramar en reinicio registra geocercas de recordatorios activos con lugar`() = runBlocking {
+        val now = at("12:00")
+        val fakeRegistrar = object : GeofenceRegistrar {
+            val registered = mutableListOf<Long>()
+            override suspend fun ensureRegistered(placeId: Long) {
+                registered.add(placeId)
+            }
+            override suspend fun remove(placeId: Long) = Unit
+        }
+
+        repository.save(
+            Reminder(
+                title = "Al llegar a Facultad",
+                places = listOf(PlaceAlert(placeId = 99L, event = PlaceAlertEvent.Arrive)),
+                createdAt = createdAt,
+            ),
+        )
+        repository.save(
+            Reminder(
+                title = "Lugar terminado",
+                places = listOf(PlaceAlert(placeId = 88L, event = PlaceAlertEvent.Leave)),
+                isDone = true,
+                createdAt = createdAt,
+            ),
+        )
+
+        RescheduleRemindersUseCase(
+            reminders = repository,
+            scheduler = scheduler,
+            geofenceRegistrar = fakeRegistrar,
+            now = { now },
+        )()
+
+        assertEquals(listOf(99L), fakeRegistrar.registered)
     }
 }

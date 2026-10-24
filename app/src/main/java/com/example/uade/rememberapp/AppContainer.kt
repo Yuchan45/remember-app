@@ -15,12 +15,14 @@ import com.example.uade.rememberapp.data.repository.PlaceRepositoryImpl
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
 import com.example.uade.rememberapp.data.scheduler.AlarmReminderScheduler
+import com.example.uade.rememberapp.data.scheduler.GeofenceRegistrarImpl
 import com.example.uade.rememberapp.data.storage.PhotoRepositoryImpl
 import com.example.uade.rememberapp.domain.repository.AddressSearchService
 import com.example.uade.rememberapp.domain.repository.PhotoRepository
 import com.example.uade.rememberapp.domain.repository.PlaceRepository
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
+import com.example.uade.rememberapp.domain.scheduler.GeofenceRegistrar
 import com.example.uade.rememberapp.domain.scheduler.ReminderScheduler
 import com.example.uade.rememberapp.domain.usecase.DeletePlaceUseCase
 import com.example.uade.rememberapp.domain.usecase.GetCurrentLocationUseCase
@@ -94,7 +96,13 @@ class AppContainer(context: Context) {
 
     val reminderScheduler: ReminderScheduler by lazy { AlarmReminderScheduler(appContext) }
 
-    val saveReminderUseCase: SaveReminderUseCase by lazy { SaveReminderUseCase(reminderRepository, reminderScheduler) }
+    val geofenceRegistrar: GeofenceRegistrar by lazy {
+        GeofenceRegistrarImpl(appContext, placeRepository)
+    }
+
+    val saveReminderUseCase: SaveReminderUseCase by lazy {
+        SaveReminderUseCase(reminderRepository, reminderScheduler, geofenceRegistrar)
+    }
     val observeRemindersUseCase: ObserveRemindersUseCase by lazy { ObserveRemindersUseCase(reminderRepository) }
     val getReminderUseCase: GetReminderUseCase by lazy { GetReminderUseCase(reminderRepository) }
     val trashReminderUseCase: TrashReminderUseCase by lazy { TrashReminderUseCase(reminderRepository) }
@@ -108,7 +116,7 @@ class AppContainer(context: Context) {
         SnoozeReminderUseCase(reminderRepository, reminderScheduler)
     }
     val rescheduleRemindersUseCase: RescheduleRemindersUseCase by lazy {
-        RescheduleRemindersUseCase(reminderRepository, reminderScheduler)
+        RescheduleRemindersUseCase(reminderRepository, reminderScheduler, geofenceRegistrar)
     }
 
     val photoRepository: PhotoRepository by lazy { PhotoRepositoryImpl(appContext) }
