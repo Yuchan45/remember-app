@@ -180,3 +180,19 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+/**
+ * 9 → 10: `places`, lugares guardados por el usuario para alertas por ubicación.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `places` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`name` TEXT NOT NULL, " +
+                "`latitude` REAL NOT NULL, " +
+                "`longitude` REAL NOT NULL, " +
+                "`radiusMeters` INTEGER NOT NULL, " +
+                "`kind` TEXT NOT NULL)",
+        )
+    }
+}

@@ -9,12 +9,15 @@ import com.example.uade.rememberapp.data.local.MIGRATION_5_6
 import com.example.uade.rememberapp.data.local.MIGRATION_6_7
 import com.example.uade.rememberapp.data.local.MIGRATION_7_8
 import com.example.uade.rememberapp.data.local.MIGRATION_8_9
+import com.example.uade.rememberapp.data.local.MIGRATION_9_10
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
+import com.example.uade.rememberapp.data.repository.PlaceRepositoryImpl
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
 import com.example.uade.rememberapp.data.scheduler.AlarmReminderScheduler
 import com.example.uade.rememberapp.data.storage.PhotoRepositoryImpl
 import com.example.uade.rememberapp.domain.repository.PhotoRepository
+import com.example.uade.rememberapp.domain.repository.PlaceRepository
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.scheduler.ReminderScheduler
@@ -62,7 +65,15 @@ class AppContainer(context: Context) {
     private val database: AppDatabase by lazy {
         Room.databaseBuilder(appContext, AppDatabase::class.java, "hey.db")
             // Los cambios con migración escrita conservan los datos.
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+            .addMigrations(
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+                MIGRATION_8_9,
+                MIGRATION_9_10,
+            )
             // Si no hay migración (ej. desde la versión 1 o 2), borra y recrea la base. Sirve
             // mientras la app no esté publicada. TODO: escribir migraciones antes de publicar.
             .fallbackToDestructiveMigration(dropAllTables = true)
@@ -147,5 +158,10 @@ class AppContainer(context: Context) {
     /** Arranca con las etiquetas de ejemplo que carga [SeedTagsCallback] al crear la base. */
     val tagRepository: TagRepository by lazy {
         TagRepositoryImpl(database.tagDao())
+    }
+
+    /** Repositorio de lugares para recordatorios geolocalizados. */
+    val placeRepository: PlaceRepository by lazy {
+        PlaceRepositoryImpl(database.placeDao())
     }
 }

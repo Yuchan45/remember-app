@@ -3,6 +3,7 @@ package com.example.uade.rememberapp.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.uade.rememberapp.data.local.dao.PlaceDao
 import com.example.uade.rememberapp.data.local.dao.ReminderDao
 import com.example.uade.rememberapp.data.local.dao.TagDao
 import com.example.uade.rememberapp.data.local.entity.ActionEntity
@@ -10,6 +11,7 @@ import com.example.uade.rememberapp.data.local.entity.AlarmEntity
 import com.example.uade.rememberapp.data.local.entity.ChecklistItemEntity
 import com.example.uade.rememberapp.data.local.entity.PhotoEntity
 import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
+import com.example.uade.rememberapp.data.local.entity.PlaceEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderTagCrossRef
 import com.example.uade.rememberapp.data.local.entity.TagEntity
@@ -32,6 +34,7 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
  * - 7: `isSnooze` en `reminder_alarms`, para el aviso pospuesto (con migración, ver MIGRATION_6_7).
  * - 8: `audioPath` y `aiStatus` en `reminders`, para grabaciones de voz y estado de IA (ver MIGRATION_7_8).
  * - 9: `reminder_checklist_items`, ítems de una lista (con migración, ver MIGRATION_8_9).
+ * - 10: `places`, lugares guardados para geolocalización (con migración, ver MIGRATION_9_10).
  */
 @Database(
     entities = [
@@ -43,13 +46,15 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
         ActionEntity::class,
         PhotoEntity::class,
         ChecklistItemEntity::class,
+        PlaceEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
     abstract fun tagDao(): TagDao
+    abstract fun placeDao(): PlaceDao
 }
 
 /**
