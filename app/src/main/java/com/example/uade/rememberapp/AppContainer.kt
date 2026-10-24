@@ -16,22 +16,29 @@ import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
 import com.example.uade.rememberapp.data.scheduler.AlarmReminderScheduler
 import com.example.uade.rememberapp.data.storage.PhotoRepositoryImpl
+import com.example.uade.rememberapp.domain.repository.AddressSearchService
 import com.example.uade.rememberapp.domain.repository.PhotoRepository
 import com.example.uade.rememberapp.domain.repository.PlaceRepository
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.scheduler.ReminderScheduler
+import com.example.uade.rememberapp.domain.usecase.DeletePlaceUseCase
+import com.example.uade.rememberapp.domain.usecase.GetCurrentLocationUseCase
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
 import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
+import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.RescheduleRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.RestoreReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveCoverUseCase
+import com.example.uade.rememberapp.domain.usecase.SavePlaceUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.SearchAddressUseCase
 import com.example.uade.rememberapp.domain.usecase.SnoozeReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.TrashReminderUseCase
 import com.example.uade.rememberapp.platform.audio.AudioRecorder
+import com.example.uade.rememberapp.platform.location.AndroidAddressSearchService
 import com.example.uade.rememberapp.data.remote.GroqApiService
 import com.example.uade.rememberapp.data.remote.GroqReminderServiceImpl
 import com.example.uade.rememberapp.domain.repository.AiReminderService
@@ -164,4 +171,14 @@ class AppContainer(context: Context) {
     val placeRepository: PlaceRepository by lazy {
         PlaceRepositoryImpl(database.placeDao())
     }
+
+    val addressSearchService: AddressSearchService by lazy {
+        AndroidAddressSearchService(appContext)
+    }
+
+    val observePlacesUseCase: ObservePlacesUseCase by lazy { ObservePlacesUseCase(placeRepository) }
+    val savePlaceUseCase: SavePlaceUseCase by lazy { SavePlaceUseCase(placeRepository) }
+    val deletePlaceUseCase: DeletePlaceUseCase by lazy { DeletePlaceUseCase(placeRepository) }
+    val searchAddressUseCase: SearchAddressUseCase by lazy { SearchAddressUseCase(addressSearchService) }
+    val getCurrentLocationUseCase: GetCurrentLocationUseCase by lazy { GetCurrentLocationUseCase(addressSearchService) }
 }

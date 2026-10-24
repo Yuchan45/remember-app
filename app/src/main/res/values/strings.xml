@@ -246,9 +246,42 @@
     <string name="archive_empty_archived">Acá van a aparecer los recordatorios que archives.</string>
     <string name="archive_empty_deleted">Acá van a aparecer los recordatorios que elimines, para que puedas recuperarlos.</string>
 
-    <!-- Lugares: lista (template) -->
+    <!-- Lugares: lista y edición -->
     <string name="places_list_title">Lugares</string>
     <string name="places_list_placeholder">Acá vas a ver y administrar tus lugares guardados.</string>
+    <string name="places_list_subtitle">Tus lugares guardados para recordatorios al llegar o salir</string>
+    <string name="places_list_empty_title">Sin lugares guardados</string>
+    <string name="places_list_empty_message">Agregá lugares como tu casa, trabajo o facultad para recordatorios por ubicación.</string>
+    <string name="places_list_add">Agregar lugar</string>
+    <string name="places_list_radius_format">Radio: %1$d m</string>
+    <string name="places_list_delete_confirm_title">¿Eliminar lugar?</string>
+    <string name="places_list_delete_confirm_message">Se eliminará "%1$s" y se desvincularán los avisos de este lugar en tus recordatorios.</string>
+    <string name="places_list_delete_confirm_action">Eliminar</string>
+
+    <string name="places_edit_title_new">Nuevo lugar</string>
+    <string name="places_edit_title_edit">Editar lugar</string>
+    <string name="places_edit_name_label">Nombre del lugar</string>
+    <string name="places_edit_name_placeholder">Ej. Casa, Trabajo, Gimnasio…</string>
+    <string name="places_edit_kind_label">Tipo de lugar</string>
+    <string name="places_edit_address_label">Dirección o ubicación</string>
+    <string name="places_edit_address_placeholder">Ingresá calle, altura o zona…</string>
+    <string name="places_edit_use_current_location">Usar mi ubicación actual</string>
+    <string name="places_edit_searching">Buscando dirección…</string>
+    <string name="places_edit_no_results">No se encontraron resultados para esa dirección</string>
+    <string name="places_edit_radius_label">Radio de aviso</string>
+    <string name="places_edit_radius_chip">%1$d m</string>
+    <string name="places_edit_radius_recommended">%1$d m (Recomendado)</string>
+    <string name="places_edit_selected_location">Ubicación seleccionada</string>
+    <string name="places_edit_save">Guardar lugar</string>
+    <string name="places_edit_cancel">Cancelar</string>
+    <string name="places_edit_error_no_name">Ingresá un nombre para el lugar</string>
+    <string name="places_edit_error_no_location">Buscá una dirección o usá tu ubicación actual</string>
+
+    <string name="places_kind_home">Casa</string>
+    <string name="places_kind_work">Trabajo</string>
+    <string name="places_kind_study">Facultad</string>
+    <string name="places_kind_parking">Estacionamiento</string>
+    <string name="places_kind_other">Otro</string>
 
     <!-- Ajustes (template) -->
     <string name="settings_title">Ajustes</string>
