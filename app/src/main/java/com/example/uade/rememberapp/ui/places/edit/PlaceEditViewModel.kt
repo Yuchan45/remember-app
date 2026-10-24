@@ -101,9 +101,8 @@ class PlaceEditViewModel(
 
     fun onAddressSuggestionSelected(suggestion: AddressSuggestion) {
         _uiState.update { current ->
-            val suggestedName = if (current.name.isBlank()) suggestion.featureName.orEmpty() else current.name
             current.copy(
-                name = suggestedName,
+                name = current.name,
                 latitude = suggestion.latitude,
                 longitude = suggestion.longitude,
                 formattedAddress = suggestion.addressLine,
@@ -121,9 +120,8 @@ class PlaceEditViewModel(
             val current = getCurrentLocationUseCase()
             if (current != null) {
                 _uiState.update { state ->
-                    val suggestedName = if (state.name.isBlank()) current.featureName.orEmpty() else state.name
                     state.copy(
-                        name = suggestedName,
+                        name = state.name,
                         latitude = current.latitude,
                         longitude = current.longitude,
                         formattedAddress = current.addressLine,

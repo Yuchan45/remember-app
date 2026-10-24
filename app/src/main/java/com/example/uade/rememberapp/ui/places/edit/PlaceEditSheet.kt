@@ -58,6 +58,7 @@ import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceKind
 import com.example.uade.rememberapp.ui.components.CircleIconButton
 import com.example.uade.rememberapp.ui.components.OptionChip
+import com.example.uade.rememberapp.ui.places.components.PlaceMapPreview
 import com.example.uade.rememberapp.ui.components.OptionChipStyle
 import com.example.uade.rememberapp.ui.components.SectionLabel
 import com.example.uade.rememberapp.ui.places.components.iconRes
@@ -332,40 +333,17 @@ private fun PlaceEditContent(
                 }
             }
 
-            // Ubicación seleccionada
+            // Mapa con ubicación seleccionada y radio de aviso
             AnimatedVisibility(visible = uiState.hasSelectedLocation) {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_check_circle),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.places_edit_selected_location),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                text = uiState.formattedAddress
-                                    ?: "${uiState.latitude}, ${uiState.longitude}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
-                    }
-                }
+                PlaceMapPreview(
+                    latitude = uiState.latitude ?: 0.0,
+                    longitude = uiState.longitude ?: 0.0,
+                    radiusMeters = uiState.radiusMeters,
+                    address = uiState.formattedAddress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                )
             }
         }
 

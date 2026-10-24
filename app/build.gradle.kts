@@ -86,6 +86,9 @@ dependencies {
     // Google Play Services Location & Geofencing
     implementation(libs.play.services.location)
 
+    // OpenStreetMap (OSMDroid)
+    implementation(libs.osmdroid.android)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
