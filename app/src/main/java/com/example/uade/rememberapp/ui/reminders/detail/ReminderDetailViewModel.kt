@@ -783,7 +783,7 @@ class ReminderDetailViewModel(
                 photos = state.photos,
                 createdAt = now(),
             )
-            reminder != null && (title != null || description != null || state.photoPath != null || validItems.isNotEmpty()) ->
+            reminder != null && (title != null || description != null || state.photoPath != null || validItems.isNotEmpty() || state.places.isNotEmpty() || state.alarms.isNotEmpty()) ->
                 // Los avisos por lugar quedan como estaban (copy los conserva).
                 reminder.copy(
                     type = state.type,
@@ -830,6 +830,7 @@ class ReminderDetailViewModel(
                     items = validItems,
                     tags = state.tags,
                     alarms = state.alarmsToSave,
+                    places = state.places,
                     importance = state.importance,
                     action = state.action,
                     photoPath = state.photoPath,
@@ -846,6 +847,7 @@ class ReminderDetailViewModel(
                     items = validItems,
                     tags = state.tags,
                     alarms = state.alarmsToSave,
+                    places = state.places,
                     importance = state.importance,
                     action = state.action,
                     photoPath = state.photoPath,

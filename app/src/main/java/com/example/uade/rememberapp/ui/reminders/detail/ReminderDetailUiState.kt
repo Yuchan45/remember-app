@@ -129,11 +129,12 @@ data class ReminderDetailUiState(
      */
     val hasUnsavedChanges: Boolean
         get() = when {
-            isNew -> cleanTitle != null || cleanDescription != null || photoPath != null || items.isNotEmpty()
+            isNew -> cleanTitle != null || cleanDescription != null || photoPath != null || items.isNotEmpty() || alarms.isNotEmpty() || places.isNotEmpty()
             reminder != null -> cleanTitle != reminder.title ||
                 cleanDescription != reminder.description ||
                 tagIds != reminder.tags.map { it.id }.toSet() ||
                 alarms != reminder.alarms.map { it.at } ||
+                places != reminder.places ||
                 importance != reminder.importance ||
                 action != reminder.action ||
                 photos != reminder.photos ||
