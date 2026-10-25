@@ -3,9 +3,6 @@ package com.example.uade.rememberapp.ui.places.components
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.ColorFilter
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
 import android.graphics.drawable.BitmapDrawable
 import android.view.MotionEvent
 import androidx.annotation.DrawableRes
@@ -15,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,7 +36,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.uade.rememberapp.R
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
@@ -48,11 +45,31 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 
 /**
- * Vista previa de mapa con OpenStreetMap (OSMDroid) para visualizar la ubicación
+ * Fuente de mapa nativa en Dark Mode (CartoDB Dark Matter / OpenStreetMap).
+ * Provee tiles oscuros de alta legibilidad, excelente contraste con la paleta de la app,
+ * CDN de alta velocidad y libre de bloqueos 403.
+ */
+private val CartoDarkTileSource = XYTileSource(
+    "CartoDark",
+    0,
+    20,
+    256,
+    ".png",
+    arrayOf(
+        "https://a.basemaps.cartocdn.com/rastertiles/dark_all/",
+        "https://b.basemaps.cartocdn.com/rastertiles/dark_all/",
+        "https://c.basemaps.cartocdn.com/rastertiles/dark_all/",
+        "https://d.basemaps.cartocdn.com/rastertiles/dark_all/",
+    ),
+    "© OpenStreetMap contributors © CARTO",
+)
+
+/**
+ * Vista previa de mapa con OpenStreetMap para visualizar la ubicación
  * seleccionada, el marcador y el radio de geofence configurado.
  *
- * Aplica un filtro de color oscuro para integrarse a la paleta nocturna de la app
- * y actualiza de forma reactiva el radio y las coordenadas.
+ * Utiliza tiles nativos en modo oscuro y actualiza de forma reactiva
+ * el radio de geofence y las coordenadas.
  */
 @Composable
 fun PlaceMapPreview(
@@ -77,14 +94,18 @@ fun PlaceMapPreview(
     }
 
     val mapView = remember {
+        // Aseguramos la inicialización del User-Agent aún en live-edit o recargas en caliente
+        val prefs = context.getSharedPreferences("osmdroid_prefs", Context.MODE_PRIVATE)
+        val osmConfig = Configuration.getInstance()
+        osmConfig.load(context, prefs)
+        osmConfig.userAgentValue = "HeyRememberApp/1.0 (Android; org.uade.rememberapp)"
+        osmConfig.save(context, prefs)
+
         MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
+            setTileSource(CartoDarkTileSource)
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             isTilesScaledToDpi = true
-
-            // Filtro oscuro para adaptar los tiles claros de OSM al tema nocturno
-            overlayManager.tilesOverlay.setColorFilter(createDarkColorFilter())
 
             // Evitar que el scroll del bottom sheet intercepte los gestos dentro del mapa
             setOnTouchListener { v, event ->
@@ -185,24 +206,6 @@ fun PlaceMapPreview(
             }
         }
     }
-}
-
-/**
- * Filtro matricial que invierte el brillo y desatura los colores de los tiles OSM
- * para mimetizar un mapa en Dark Mode de alta fidelidad.
- */
-private fun createDarkColorFilter(): ColorFilter {
-    val inverseMatrix = ColorMatrix(
-        floatArrayOf(
-            -0.85f, 0f, 0f, 0f, 255f,
-            0f, -0.85f, 0f, 0f, 255f,
-            0f, 0f, -0.85f, 0f, 255f,
-            0f, 0f, 0f, 1f, 0f,
-        ),
-    )
-    val desaturateMatrix = ColorMatrix().apply { setSaturation(0.25f) }
-    inverseMatrix.postConcat(desaturateMatrix)
-    return ColorMatrixColorFilter(inverseMatrix)
 }
 
 /**
