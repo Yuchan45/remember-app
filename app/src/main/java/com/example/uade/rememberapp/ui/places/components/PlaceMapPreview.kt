@@ -3,6 +3,9 @@ package com.example.uade.rememberapp.ui.places.components
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.ColorFilter
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.drawable.BitmapDrawable
 import android.view.MotionEvent
 import androidx.annotation.DrawableRes
@@ -45,31 +48,28 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 
 /**
- * Fuente de mapa nativa en Dark Mode (CartoDB Dark Matter / OpenStreetMap).
- * Provee tiles oscuros de alta legibilidad, excelente contraste con la paleta de la app,
- * CDN de alta velocidad y libre de bloqueos 403.
+ * Fuente de mapa basada en OpenStreetMap (con espejos oficiales de alta disponibilidad).
+ * 100% libre, sin requerimiento de API Key ni marcas de agua.
  */
-private val CartoDarkTileSource = XYTileSource(
-    "CartoDark",
+private val OsmMapTileSource = XYTileSource(
+    "OsmDarkMap",
     0,
-    20,
+    19,
     256,
     ".png",
     arrayOf(
-        "https://a.basemaps.cartocdn.com/rastertiles/dark_all/",
-        "https://b.basemaps.cartocdn.com/rastertiles/dark_all/",
-        "https://c.basemaps.cartocdn.com/rastertiles/dark_all/",
-        "https://d.basemaps.cartocdn.com/rastertiles/dark_all/",
+        "https://tile.openstreetmap.org/",
+        "https://tile.openstreetmap.de/",
     ),
-    "© OpenStreetMap contributors © CARTO",
+    "© OpenStreetMap contributors",
 )
 
 /**
  * Vista previa de mapa con OpenStreetMap para visualizar la ubicación
  * seleccionada, el marcador y el radio de geofence configurado.
  *
- * Utiliza tiles nativos en modo oscuro y actualiza de forma reactiva
- * el radio de geofence y las coordenadas.
+ * Utiliza un filtro de color oscuro para integrarse a la paleta nocturna de la app
+ * y actualiza de forma reactiva el radio de geofence y las coordenadas.
  */
 @Composable
 fun PlaceMapPreview(
@@ -102,10 +102,13 @@ fun PlaceMapPreview(
         osmConfig.save(context, prefs)
 
         MapView(context).apply {
-            setTileSource(CartoDarkTileSource)
+            setTileSource(OsmMapTileSource)
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             isTilesScaledToDpi = true
+
+            // Filtro oscuro para adaptar los tiles claros de OSM a la paleta nocturna de la app
+            overlayManager.tilesOverlay.setColorFilter(createDarkColorFilter())
 
             // Evitar que el scroll del bottom sheet intercepte los gestos dentro del mapa
             setOnTouchListener { v, event ->
@@ -206,6 +209,24 @@ fun PlaceMapPreview(
             }
         }
     }
+}
+
+/**
+ * Filtro matricial que invierte el brillo y desatura los colores de los tiles OSM
+ * para mimetizar un mapa en Dark Mode de alta fidelidad.
+ */
+private fun createDarkColorFilter(): ColorFilter {
+    val inverseMatrix = ColorMatrix(
+        floatArrayOf(
+            -0.85f, 0f, 0f, 0f, 255f,
+            0f, -0.85f, 0f, 0f, 255f,
+            0f, 0f, -0.85f, 0f, 255f,
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    )
+    val desaturateMatrix = ColorMatrix().apply { setSaturation(0.25f) }
+    inverseMatrix.postConcat(desaturateMatrix)
+    return ColorMatrixColorFilter(inverseMatrix)
 }
 
 /**

@@ -30,5 +30,14 @@ class RememberApp : Application() {
         osmConfig.osmdroidBasePath = osmDir
         osmConfig.osmdroidTileCache = File(osmDir, "tiles")
         osmConfig.save(this, prefs)
+
+        // Limpiar caché previa de CartoDB si existía para evitar tiles con marcas de agua
+        try {
+            val cartoCache = File(osmConfig.osmdroidTileCache, "CartoDark")
+            if (cartoCache.exists()) {
+                cartoCache.deleteRecursively()
+            }
+        } catch (_: Exception) {
+        }
     }
 }
