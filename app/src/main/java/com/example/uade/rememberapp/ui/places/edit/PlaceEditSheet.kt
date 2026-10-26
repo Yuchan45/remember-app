@@ -2,8 +2,18 @@ package com.example.uade.rememberapp.ui.places.edit
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
+import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -79,12 +89,30 @@ fun PlaceEditSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
 
+    var showBackgroundPermissionDialog by remember { mutableStateOf(false) }
+
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        if (isGranted) {
+            val app = context.applicationContext as? RememberApp
+            app?.let {
+                CoroutineScope(Dispatchers.IO).launch {
+                    it.container.rescheduleRemindersUseCase()
+                }
+            }
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
         val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
         val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         viewModel.onLocationPermissionResult(fineGranted || coarseGranted)
+        if (fineGranted && !LocationPermissionHelper.hasBackgroundLocation(context)) {
+            showBackgroundPermissionDialog = true
+        }
     }
 
     LaunchedEffect(place) {
@@ -140,9 +168,28 @@ fun PlaceEditSheet(
                     )
                 }
             },
-            onSave = viewModel::onSave,
+            onSave = {
+                viewModel.onSave()
+                if (!LocationPermissionHelper.hasBackgroundLocation(context)) {
+                    showBackgroundPermissionDialog = true
+                }
+            },
             onDismiss = onDismiss,
             modifier = Modifier.navigationBarsPadding(),
+        )
+    }
+
+    if (showBackgroundPermissionDialog) {
+        LocationPermissionDialog(
+            onConfirm = {
+                showBackgroundPermissionDialog = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    LocationPermissionHelper.openAppSettings(context)
+                }
+            },
+            onDismiss = { showBackgroundPermissionDialog = false },
         )
     }
 }
@@ -372,9 +419,10 @@ private fun PlaceEditContent(
         }
 
         // Mensaje de error
-        if (uiState.errorMessageRes != null) {
+        val errorRes = uiState.errorMessageRes
+        if (errorRes != null) {
             Text(
-                text = stringResource(uiState.errorMessageRes),
+                text = stringResource(errorRes),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(vertical = 4.dp),

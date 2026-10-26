@@ -11,8 +11,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
 import com.example.uade.rememberapp.ui.navigation.AppNavHost
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Única Activity de la app. Monta el AppNavHost, que tiene la barra inferior y todas las
@@ -36,6 +40,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             RememberAppTheme {
                 AppNavHost()
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (LocationPermissionHelper.hasAllLocationPermissions(this)) {
+            val app = application as? RememberApp
+            app?.let {
+                CoroutineScope(Dispatchers.IO).launch {
+                    it.container.rescheduleRemindersUseCase()
+                }
             }
         }
     }

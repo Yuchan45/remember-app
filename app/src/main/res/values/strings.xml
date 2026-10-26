@@ -283,6 +283,15 @@
     <string name="places_kind_parking">Estacionamiento</string>
     <string name="places_kind_other">Otro</string>
 
+    <!-- Permisos de ubicación para avisos por lugar -->
+    <string name="location_permission_dialog_title">Permiso de ubicación todo el tiempo</string>
+    <string name="location_permission_dialog_desc">Para avisarte al llegar o salir de un lugar incluso cuando la app esté en segundo plano o cerrada, Remember necesita el permiso de ubicación \"Permitir todo el tiempo\".</string>
+    <string name="location_permission_dialog_action_settings">Configurar</string>
+    <string name="location_permission_dialog_action_dismiss">Ahora no</string>
+    <string name="location_permission_banner_warning">Para recibir avisos al llegar o salir con la app cerrada, activá \"Permitir todo el tiempo\" en ubicación.</string>
+    <string name="location_permission_banner_action">Activar</string>
+    <string name="location_permission_gps_disabled_warning">El servicio de ubicación (GPS) está desactivado en tu teléfono. Activalo para que funcionen los avisos por lugar.</string>
+
     <!-- Ajustes (template) -->
     <string name="settings_title">Ajustes</string>
     <string name="settings_placeholder">Acá van a estar las preferencias de la app.</string>

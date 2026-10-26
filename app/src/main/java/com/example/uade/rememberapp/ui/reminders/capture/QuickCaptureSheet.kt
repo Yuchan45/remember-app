@@ -1,5 +1,19 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
+import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
@@ -119,6 +133,32 @@ fun QuickCaptureSheet(
             onDismiss()
         }
     }
+
+    val context = LocalContext.current
+    var showLocationPermissionDialog by remember { mutableStateOf(false) }
+
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        if (isGranted) {
+            val app = context.applicationContext as? RememberApp
+            app?.let {
+                CoroutineScope(Dispatchers.IO).launch {
+                    it.container.rescheduleRemindersUseCase()
+                }
+            }
+        }
+    }
+
+    val foregroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        if (fineGranted && !LocationPermissionHelper.hasBackgroundLocation(context)) {
+            showLocationPermissionDialog = true
+        }
+    }
+
     val density = LocalDensity.current
     val maxStretchPx = with(density) { HandleMaxStretch.toPx() }
     val pullToExpandPx = with(density) { HandlePullToExpand.toPx() }
@@ -163,7 +203,19 @@ fun QuickCaptureSheet(
                 onPanelToggle = viewModel::onPanelToggle,
                 onTimeSelected = viewModel::onTimeSelected,
                 onRepeatSelected = viewModel::onRepeatSelected,
-                onPlaceSelected = viewModel::onPlaceSelected,
+                onPlaceSelected = { placeId ->
+                    viewModel.onPlaceSelected(placeId)
+                    if (!LocationPermissionHelper.hasFineLocation(context)) {
+                        foregroundPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            ),
+                        )
+                    } else if (!LocationPermissionHelper.hasBackgroundLocation(context)) {
+                        showLocationPermissionDialog = true
+                    }
+                },
                 onPlaceEventSelected = viewModel::onPlaceEventSelected,
                 onImportanceSelected = viewModel::onImportanceSelected,
                 onSearchAddress = viewModel::onSearchAddress,
@@ -172,7 +224,21 @@ fun QuickCaptureSheet(
                 onChecklist = viewModel::onChecklistClick,
                 onToggleFullScreen = viewModel::onFullScreenToggle,
                 onRemoveAudio = viewModel::onRemoveAudio,
-                onSave = viewModel::onSave,
+                onSave = {
+                    viewModel.onSave()
+                    if (uiState.selectedPlaceId != null) {
+                        if (!LocationPermissionHelper.hasFineLocation(context)) {
+                            foregroundPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                ),
+                            )
+                        } else if (!LocationPermissionHelper.hasBackgroundLocation(context)) {
+                            showLocationPermissionDialog = true
+                        }
+                    }
+                },
             ),
             modifier = Modifier
                 // Estiramiento desde abajo (el borde de abajo queda fijo, el de arriba sube).
@@ -204,6 +270,20 @@ fun QuickCaptureSheet(
     if (uiState.isCreatingPlace) {
         PlaceEditSheet(
             onDismiss = viewModel::onDismissPlaceSheet,
+        )
+    }
+
+    if (showLocationPermissionDialog) {
+        LocationPermissionDialog(
+            onConfirm = {
+                showLocationPermissionDialog = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    LocationPermissionHelper.openAppSettings(context)
+                }
+            },
+            onDismiss = { showLocationPermissionDialog = false },
         )
     }
 }

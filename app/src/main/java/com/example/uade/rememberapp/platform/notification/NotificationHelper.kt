@@ -199,8 +199,9 @@ object NotificationHelper {
         val notificationManager = NotificationManagerCompat.from(context)
         try {
             notificationManager.notify(reminder.id.toInt(), builder.build())
-        } catch (_: SecurityException) {
-            // En Android 13+, si el usuario denegó POST_NOTIFICATIONS
+            android.util.Log.d("NotificationHelper", "Notificación de lugar emitida para recordatorio id=${reminder.id}")
+        } catch (e: SecurityException) {
+            android.util.Log.e("NotificationHelper", "No se pudo emitir la notificación para recordatorio id=${reminder.id}: permiso POST_NOTIFICATIONS denegado", e)
         }
     }
 

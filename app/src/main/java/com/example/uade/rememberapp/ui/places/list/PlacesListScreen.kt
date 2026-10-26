@@ -17,8 +17,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,10 +31,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
+import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -104,18 +119,72 @@ fun PlacesListScreen(
         )
     }
 
+    val context = LocalContext.current
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        if (isGranted) {
+            val app = context.applicationContext as? RememberApp
+            app?.let {
+                CoroutineScope(Dispatchers.IO).launch {
+                    it.container.rescheduleRemindersUseCase()
+                }
+            }
+        }
+    }
+
+    val foregroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        if (fineGranted && !LocationPermissionHelper.hasBackgroundLocation(context)) {
+            showPermissionDialog = true
+        }
+    }
+
     PlacesListContent(
         uiState = uiState,
+        hasAllLocationPermissions = LocationPermissionHelper.hasAllLocationPermissions(context),
+        onRequestPermissions = {
+            if (!LocationPermissionHelper.hasFineLocation(context)) {
+                foregroundPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    ),
+                )
+            } else {
+                showPermissionDialog = true
+            }
+        },
         onAddNewPlace = viewModel::onAddNewPlaceClick,
         onEditPlace = viewModel::onEditPlaceClick,
         onDeletePlace = viewModel::onRequestDeletePlace,
         contentPadding = contentPadding,
     )
+
+    if (showPermissionDialog) {
+        LocationPermissionDialog(
+            onConfirm = {
+                showPermissionDialog = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    LocationPermissionHelper.openAppSettings(context)
+                }
+            },
+            onDismiss = { showPermissionDialog = false },
+        )
+    }
 }
 
 @Composable
 private fun PlacesListContent(
     uiState: PlacesListUiState,
+    hasAllLocationPermissions: Boolean = true,
+    onRequestPermissions: () -> Unit = {},
     onAddNewPlace: () -> Unit,
     onEditPlace: (Place) -> Unit,
     onDeletePlace: (Place) -> Unit,
@@ -160,6 +229,50 @@ private fun PlacesListContent(
                     contentDescription = stringResource(R.string.places_list_add),
                     onClick = onAddNewPlace,
                 )
+            }
+
+            if (!uiState.isEmpty && !hasAllLocationPermissions) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_priority_high),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.location_permission_banner_warning),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Button(
+                            onClick = onRequestPermissions,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError,
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.location_permission_banner_action),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    }
+                }
             }
 
             if (uiState.isEmpty) {
