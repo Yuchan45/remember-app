@@ -283,6 +283,22 @@
     <string name="places_kind_parking">Estacionamiento</string>
     <string name="places_kind_other">Otro</string>
 
+    <!-- Permisos de inicio (Startup Permissions) -->
+    <string name="startup_permissions_dialog_title">Permisos para Hey!</string>
+    <string name="startup_permissions_dialog_subtitle">Para recordarte tus pendientes a tiempo y en el lugar indicado, Hey! necesita los siguientes permisos:</string>
+    <string name="startup_permissions_item_notifications_title">Notificaciones</string>
+    <string name="startup_permissions_item_notifications_desc">Para avisarte al momento exacto de tus tareas y alarmas.</string>
+    <string name="startup_permissions_item_location_title">Ubicación</string>
+    <string name="startup_permissions_item_location_desc">Para avisarte automáticamente al llegar o salir de un lugar guardado.</string>
+    <string name="startup_permissions_item_audio_title">Micrófono</string>
+    <string name="startup_permissions_item_audio_desc">Para crear recordatorios por voz y procesarlos con inteligencia artificial.</string>
+    <string name="startup_permissions_btn_continue">Continuar</string>
+    <string name="startup_permissions_btn_not_now">Ahora no</string>
+    <string name="startup_permissions_permanent_title">Permisos necesarios</string>
+    <string name="startup_permissions_permanent_desc">Algunos permisos necesarios para avisarte o grabar notas fueron deshabilitados. Podés activarlos en los Ajustes de la app.</string>
+    <string name="startup_permissions_btn_settings">Abrir Ajustes</string>
+    <string name="startup_permissions_btn_close">Entendido</string>
+
     <!-- Permisos de ubicación para avisos por lugar -->
     <string name="location_permission_dialog_title">Permiso de ubicación todo el tiempo</string>
     <string name="location_permission_dialog_desc">Para avisarte al llegar o salir de un lugar incluso cuando la app esté en segundo plano o cerrada, Remember necesita el permiso de ubicación \"Permitir todo el tiempo\".</string>
