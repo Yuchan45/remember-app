@@ -262,4 +262,76 @@ class GroqReminderServiceImplTest {
         assertEquals("Ir al super", analysis.proposedReminders[1].title)
         assertEquals("Al pasar por Súper", analysis.proposedReminders[1].placeName)
     }
+
+    @Test
+    fun `transcribeAudio sin apiKey falla y no devuelve template falso`() = runBlocking {
+        val tempFile = java.io.File.createTempFile("test_audio", ".m4a")
+        tempFile.writeBytes(ByteArray(2000))
+        try {
+            val service = GroqReminderServiceImpl(fakeApiService, apiKey = "", gson = Gson())
+            val result = service.transcribeAudio(tempFile.absolutePath)
+
+            assertTrue(result.isFailure)
+            val errorMsg = result.exceptionOrNull()?.message.orEmpty()
+            assertTrue(errorMsg.contains("clave de API"))
+        } finally {
+            tempFile.delete()
+        }
+    }
+
+    @Test
+    fun `transcribeAudio con archivo demasiado corto falla`() = runBlocking {
+        val tempFile = java.io.File.createTempFile("short_audio", ".m4a")
+        tempFile.writeBytes(ByteArray(500))
+        try {
+            val service = GroqReminderServiceImpl(fakeApiService, apiKey = "gsk_test", gson = Gson())
+            val result = service.transcribeAudio(tempFile.absolutePath)
+
+            assertTrue(result.isFailure)
+            val errorMsg = result.exceptionOrNull()?.message.orEmpty()
+            assertTrue(errorMsg.contains("demasiado corto") || errorMsg.contains("vacío"))
+        } finally {
+            tempFile.delete()
+        }
+    }
+
+    @Test
+    fun `transcribeAudio cuando Whisper devuelve ruido o silencio falla`() = runBlocking {
+        val mockApi = object : GroqApiService {
+            override suspend fun transcribeAudio(
+                authHeader: String,
+                file: MultipartBody.Part,
+                model: RequestBody,
+                language: RequestBody?,
+            ): GroqTranscriptionResponse = GroqTranscriptionResponse("[música]")
+
+            override suspend fun createChatCompletion(
+                authHeader: String,
+                request: GroqChatRequest,
+            ): GroqChatResponse = GroqChatResponse()
+        }
+
+        val tempFile = java.io.File.createTempFile("noise_audio", ".m4a")
+        tempFile.writeBytes(ByteArray(2000))
+        try {
+            val service = GroqReminderServiceImpl(mockApi, apiKey = "gsk_test", gson = Gson())
+            val result = service.transcribeAudio(tempFile.absolutePath)
+
+            assertTrue(result.isFailure)
+            val errorMsg = result.exceptionOrNull()?.message.orEmpty()
+            assertTrue(errorMsg.contains("vacío o es ininteligible"))
+        } finally {
+            tempFile.delete()
+        }
+    }
+
+    @Test
+    fun `analyzeText con texto vacio o ininteligible falla`() = runBlocking {
+        val service = GroqReminderServiceImpl(fakeApiService, apiKey = "", gson = Gson())
+        val resultBlank = service.analyzeText("   ", "2026-10-17T15:00:00Z")
+        val resultNoise = service.analyzeText("[silencio]", "2026-10-17T15:00:00Z")
+
+        assertTrue(resultBlank.isFailure)
+        assertTrue(resultNoise.isFailure)
+    }
 }

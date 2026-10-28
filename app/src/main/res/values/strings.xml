@@ -354,7 +354,7 @@
     <string name="voice_capture_resume">Reanudar</string>
     <string name="voice_capture_default_title">Nota de voz</string>
     <string name="voice_capture_attached_note">Nota de voz adjunta</string>
-    <string name="voice_capture_error_empty_or_unintelligible">El audio está vacío o no se entendió. Por favor, volvé a grabar.</string>
+    <string name="voice_capture_error_empty_or_unintelligible">No se pudo procesar el audio (vacío o ininteligible). Por favor, volvé a grabar.</string>
     <string name="voice_capture_action_retry">Reintentar</string>
     <string name="voice_capture_ready_to_record">Listo para grabar</string>
     <string name="voice_capture_start_recording">Grabar</string>

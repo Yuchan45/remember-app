@@ -158,7 +158,7 @@ class VoiceCaptureViewModel(
             val currentSeconds = _uiState.value.durationSeconds
 
             // 1. Verificación de audio vacío o demasiado corto
-            if (file == null || !file.exists() || file.length() < 1000L || currentSeconds < 1) {
+            if (file == null || !file.exists() || file.length() < 1200L || currentSeconds < 1) {
                 file?.delete()
                 currentAudioFile = null
                 resetRecordingState()
@@ -210,7 +210,7 @@ class VoiceCaptureViewModel(
                     result.fold(
                         onSuccess = { analysis ->
                             // 2. Verificación de audio ininteligible o sin texto significativo
-                            if (isTranscriptEmptyOrUnintelligible(analysis.rawTranscript)) {
+                            if (isTranscriptEmptyOrUnintelligible(analysis.rawTranscript) || analysis.proposedReminders.isEmpty()) {
                                 file.delete()
                                 currentAudioFile = null
                                 resetRecordingState()
@@ -291,12 +291,14 @@ class VoiceCaptureViewModel(
         val lettersCount = trimmed.count { it.isLetter() }
         if (lettersCount < 2) return true
 
-        // Patrones de Whisper para audio sin voz o con solo ruido/sonido ambiental
+        // Patrones de Whisper para audio sin voz o con solo ruido/sonido ambiental o alucinaciones
         val noisePatterns = listOf(
             Regex("""^\[.*\]$"""),
             Regex("""^\(.*\)$"""),
             Regex("""^\*.*\*$"""),
-            Regex("""(?i)^\[?(m[uú]sica|ruido|sonido|silencio|ininteligible|aplausos|risas|tos|suspiro)\]?$"""),
+            Regex("""^[\p{Punct}\s]+$"""),
+            Regex("""(?i)^\[?(?:m[uú]sica|ruido|sonido|silencio|ininteligible|aplausos|risas|tos|suspiro|campana|pitido|bip|est[aá]tica)\]?\.?$"""),
+            Regex("""(?i).*(?:subt[íi]tulos\s+(?:por|realizados)|amara\.org|gracias\s+por\s+ver|suscr[íi]bete|like\s+y\s+suscr[íi]bete).*"""),
         )
         if (noisePatterns.any { it.matches(trimmed) }) {
             return true
@@ -313,15 +315,32 @@ class VoiceCaptureViewModel(
     }
 
     private fun isErrorEmptyOrUnintelligible(error: Throwable): Boolean {
+        if (error is retrofit2.HttpException) {
+            val code = error.code()
+            if (code == 400 || code == 401 || code == 403 || code == 422) {
+                return true
+            }
+        }
         val msg = error.message.orEmpty().lowercase()
         return msg.contains("vacío") ||
             msg.contains("vacio") ||
             msg.contains("empty") ||
             msg.contains("ininteligible") ||
-            msg.contains("too short") ||
             msg.contains("unintelligible") ||
+            msg.contains("too short") ||
+            msg.contains("demasiado corto") ||
+            msg.contains("corto") ||
             msg.contains("no speech") ||
-            msg.contains("silence")
+            msg.contains("silence") ||
+            msg.contains("silencio") ||
+            msg.contains("no se pudo procesar") ||
+            msg.contains("clave de api") ||
+            msg.contains("api key") ||
+            msg.contains("400") ||
+            msg.contains("bad request") ||
+            msg.contains("sin texto") ||
+            msg.contains("texto vacío") ||
+            msg.contains("texto vacio")
     }
 
     private fun isNetworkAvailable(): Boolean {

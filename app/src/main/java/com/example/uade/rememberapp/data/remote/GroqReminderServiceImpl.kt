@@ -43,9 +43,14 @@ class GroqReminderServiceImpl(
         }
 
         if (apiKey.isBlank()) {
-            // Modo demo / sin API key aún configurada en local.properties:
-            return@withContext Result.success(
-                "Mañana a las 9 viene el técnico del aire y después tengo que acordarme de comprar papas en el super",
+            return@withContext Result.failure(
+                IllegalStateException("No se pudo procesar el audio: clave de API de Groq no configurada"),
+            )
+        }
+
+        if (file.length() < 1200L) {
+            return@withContext Result.failure(
+                IllegalArgumentException("El archivo de audio está vacío o es demasiado corto"),
             )
         }
 
@@ -58,8 +63,8 @@ class GroqReminderServiceImpl(
 
             val response = apiService.transcribeAudio(authHeader, body, model, language)
             val text = response.text.trim()
-            if (text.isBlank()) {
-                Result.failure(IllegalStateException("La transcripción de Groq devolvió texto vacío"))
+            if (text.isBlank() || isTranscriptBlankOrNoise(text)) {
+                Result.failure(IllegalStateException("No se pudo procesar el audio: el audio está vacío o es ininteligible"))
             } else {
                 Result.success(text)
             }
@@ -70,8 +75,8 @@ class GroqReminderServiceImpl(
 
     override suspend fun analyzeText(text: String, referenceDateTimeIso: String): Result<AiAnalysisResult> =
         withContext(Dispatchers.IO) {
-            if (text.isBlank()) {
-                return@withContext Result.failure(IllegalArgumentException("El texto a analizar no puede estar vacío"))
+            if (text.isBlank() || isTranscriptBlankOrNoise(text)) {
+                return@withContext Result.failure(IllegalArgumentException("El texto a analizar está vacío o es ininteligible"))
             }
 
             if (apiKey.isBlank()) {
@@ -622,6 +627,29 @@ class GroqReminderServiceImpl(
         } catch (_: Throwable) {
             // Ignorar en entorno de test unitario JVM
         }
+    }
+
+    private fun isTranscriptBlankOrNoise(text: String): Boolean {
+        if (text.isBlank()) return true
+        val trimmed = text.trim()
+        val lettersCount = trimmed.count { it.isLetter() }
+        if (lettersCount < 2) return true
+
+        val noisePatterns = listOf(
+            Regex("""^\[.*\]$"""),
+            Regex("""^\(.*\)$"""),
+            Regex("""^\*.*\*$"""),
+            Regex("""^[\p{Punct}\s]+$"""),
+            Regex("""(?i)^\[?(?:m[uú]sica|ruido|sonido|silencio|ininteligible|aplausos|risas|tos|suspiro|campana|pitido|bip|est[aá]tica)\]?\.?$"""),
+            Regex("""(?i).*(?:subt[íi]tulos\s+(?:por|realizados)|amara\.org|gracias\s+por\s+ver|suscr[íi]bete|like\s+y\s+suscr[íi]bete).*"""),
+        )
+        if (noisePatterns.any { it.matches(trimmed) }) return true
+
+        val fillerWords = setOf("eh", "ah", "uh", "um", "oh", "mm", "mmm", "shh", "ay")
+        val words = trimmed.lowercase().split(Regex("""\W+""")).filter { it.isNotBlank() }
+        if (words.isNotEmpty() && words.all { it in fillerWords }) return true
+
+        return false
     }
 
     companion object {
