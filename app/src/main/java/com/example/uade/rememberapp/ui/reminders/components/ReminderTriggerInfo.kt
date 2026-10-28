@@ -22,6 +22,7 @@ import com.example.uade.rememberapp.ui.theme.rememberAppLocale
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.isDueSoon
 import com.example.uade.rememberapp.domain.model.nextAlarm
@@ -35,7 +36,7 @@ import java.time.Instant
  * - por hora, hoy:          ⏰ 18:00   (+ "!" si falta poco o ya pasó)
  * - por hora, otro día:     📅 Sáb 11:00
  * - con varias horas:       ⏰ 18:00 +2   (la próxima, y cuántas más hay)
- * - por lugar:              ➤ Al llegar a Casa   (en color de acento)
+ * - por lugar:              ➤ Al llegar a Casa / Al salir de Casa   (en color de acento)
  * - hora y lugar:           los dos, uno al lado del otro
  * - sin aviso:              no dibuja nada
  *
@@ -76,9 +77,15 @@ fun ReminderTriggerInfo(
         }
         // Sin nombre (lugar borrado o todavía sin cargar) no hay nada útil para mostrar.
         if (reminder.places.isNotEmpty() && placeName != null) {
+            val isLeave = reminder.places.firstOrNull()?.event == PlaceAlertEvent.Leave
+            val textRes = if (isLeave) {
+                R.string.reminders_trigger_on_departure
+            } else {
+                R.string.reminders_trigger_on_arrival
+            }
             IconAndText(
                 icon = R.drawable.ic_near_me,
-                text = stringResource(R.string.reminders_trigger_on_arrival, placeName),
+                text = stringResource(textRes, placeName),
                 color = MaterialTheme.colorScheme.primary,
             )
         }
@@ -129,7 +136,8 @@ private fun ReminderTriggerInfoPreview() {
         ) {
             ReminderTriggerInfo(note(listOf(now.plus(Duration.ofMinutes(30)))), null, now)
             ReminderTriggerInfo(note(listOf(now.plus(Duration.ofDays(3)), now.plus(Duration.ofDays(4)))), null, now)
-            ReminderTriggerInfo(note(places = listOf(PlaceAlert(placeId = 1))), "Casa", now)
+            ReminderTriggerInfo(note(places = listOf(PlaceAlert(placeId = 1, event = PlaceAlertEvent.Arrive))), "Casa", now)
+            ReminderTriggerInfo(note(places = listOf(PlaceAlert(placeId = 1, event = PlaceAlertEvent.Leave))), "Kiosco", now)
         }
     }
 }

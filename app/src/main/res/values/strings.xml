@@ -87,6 +87,7 @@
     <string name="reminders_checklist_more_items">+ %1$d más</string>
     <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
     <string name="reminders_trigger_on_arrival">Al llegar a %1$s</string>
+    <string name="reminders_trigger_on_departure">Al salir de %1$s</string>
     <string name="reminders_trigger_due_soon">Aviso próximo o vencido</string>
     <!-- Hora del próximo aviso y cuántos más tiene, ej. "18:00 +2". %1$s = hora, %2$d = cantidad. -->
     <string name="reminders_trigger_more_alarms">%1$s +%2$d</string>
@@ -169,7 +170,9 @@
     <string name="reminder_detail_place_none">Sin ubicación</string>
     <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
     <string name="reminder_detail_place_arrive">Al llegar a %1$s</string>
+    <string name="reminder_detail_place_leave">Al salir de %1$s</string>
     <string name="reminder_detail_place_unknown">Al llegar a un lugar</string>
+    <string name="reminder_detail_place_leave_unknown">Al salir de un lugar</string>
     <string name="reminder_detail_behavior">Comportamiento</string>
     <string name="reminder_detail_notification_action">Acción de notificación</string>
     <string name="reminder_detail_notification_action_none">Sin acción</string>

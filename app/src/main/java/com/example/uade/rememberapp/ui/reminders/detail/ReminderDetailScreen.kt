@@ -1,4 +1,4 @@
-package com.example.uade.rememberapp.ui.reminders.detail
+﻿package com.example.uade.rememberapp.ui.reminders.detail
 
 import android.Manifest
 import android.os.Build
@@ -103,6 +103,7 @@ import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
@@ -1611,10 +1612,19 @@ private fun actionValue(action: NotificationAction?): String = when (action) {
 @Composable
 private fun placeValue(places: List<PlaceAlert>, placeName: String?): String {
     if (places.isEmpty()) return stringResource(R.string.reminder_detail_place_none)
+    val isLeave = places.firstOrNull()?.event == PlaceAlertEvent.Leave
     val first = if (placeName != null) {
-        stringResource(R.string.reminder_detail_place_arrive, placeName)
+        if (isLeave) {
+            stringResource(R.string.reminder_detail_place_leave, placeName)
+        } else {
+            stringResource(R.string.reminder_detail_place_arrive, placeName)
+        }
     } else {
-        stringResource(R.string.reminder_detail_place_unknown)
+        if (isLeave) {
+            stringResource(R.string.reminder_detail_place_leave_unknown)
+        } else {
+            stringResource(R.string.reminder_detail_place_unknown)
+        }
     }
     val extra = places.size - 1
     return if (extra > 0) stringResource(R.string.reminder_detail_place_more, first, extra) else first
