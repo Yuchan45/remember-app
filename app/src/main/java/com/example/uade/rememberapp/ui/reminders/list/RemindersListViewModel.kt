@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.RestoreReminderUseCase
@@ -36,6 +37,7 @@ class RemindersListViewModel(
     private val markReminderDone: MarkReminderDoneUseCase,
     private val getReminder: GetReminderUseCase,
     private val saveReminder: SaveReminderUseCase,
+    observePlaces: ObservePlacesUseCase,
     private val now: () -> Instant = Instant::now,
 ) : ViewModel() {
 
@@ -43,6 +45,12 @@ class RemindersListViewModel(
     val uiState: StateFlow<RemindersListUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            observePlaces().collect { places ->
+                val names = places.associate { it.id to it.name }
+                _uiState.update { it.copy(placeNames = names) }
+            }
+        }
         viewModelScope.launch {
             observeReminders().collect { reminders ->
                 _uiState.update { state ->
@@ -267,6 +275,7 @@ class RemindersListViewModel(
                     markReminderDone = app.container.markReminderDoneUseCase,
                     getReminder = app.container.getReminderUseCase,
                     saveReminder = app.container.saveReminderUseCase,
+                    observePlaces = app.container.observePlacesUseCase,
                 )
             }
         }

@@ -4,9 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -23,13 +20,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -38,6 +38,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,14 +55,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.AiAnalysisResult
 import com.example.uade.rememberapp.ui.reminders.voice.components.VoiceWaveform
 import com.example.uade.rememberapp.ui.theme.CardSurface
 import com.example.uade.rememberapp.ui.theme.Outline
 import com.example.uade.rememberapp.ui.theme.Primary
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
-import com.example.uade.rememberapp.ui.theme.SurfaceVariant
-
-import com.example.uade.rememberapp.domain.model.AiAnalysisResult
 
 private val RecordingRed = Color(0xFFEF5350)
 private val StopButtonColor = Color(0xFFEF5350)
@@ -70,6 +69,9 @@ private val ControlButtonBg = Color(0xFF243642)
 /**
  * Modal que sube desde abajo al presionar el micrófono para grabar audio.
  * Diseñado fielmente al mockup de la imagen 2 y conectado con Groq IA (imagen 03.B).
+ *
+ * Escucha eventos puntuales mediante [VoiceCaptureViewModel.events] ([kotlinx.coroutines.flow.SharedFlow])
+ * para mostrar advertencias con Snackbar ante audio vacío o ininteligible.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,11 +85,32 @@ fun VoiceCaptureSheet(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
         viewModel.onPermissionResult(isGranted)
+    }
+
+    // Colecta de eventos puntuales vía SharedFlow (Snackbar para audio vacío/ininteligible)
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is VoiceCaptureEvent.ShowSnackbar -> {
+                    val message = context.getString(event.messageResId)
+                    val actionLabel = event.actionLabelResId?.let { context.getString(it) }
+                    val result = snackbarHostState.showSnackbar(
+                        message = message,
+                        actionLabel = actionLabel,
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.startRecording()
+                    }
+                }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -151,15 +174,25 @@ fun VoiceCaptureSheet(
             )
         },
     ) {
-        VoiceCaptureContent(
-            uiState = uiState,
-            onRequestPermission = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-            onDiscard = viewModel::onDiscard,
-            onStopAndSave = viewModel::onStopAndSave,
-            onPauseToggle = viewModel::onPauseToggle,
-            onSwitchAiToggled = viewModel::onSwitchAiToggled,
-            modifier = Modifier.navigationBarsPadding(),
-        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            VoiceCaptureContent(
+                uiState = uiState,
+                onRequestPermission = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                onStartRecording = viewModel::startRecording,
+                onDiscard = viewModel::onDiscard,
+                onStopAndSave = viewModel::onStopAndSave,
+                onPauseToggle = viewModel::onPauseToggle,
+                onSwitchAiToggled = viewModel::onSwitchAiToggled,
+                modifier = Modifier.navigationBarsPadding(),
+            )
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp),
+            )
+        }
     }
 }
 
@@ -167,6 +200,7 @@ fun VoiceCaptureSheet(
 fun VoiceCaptureContent(
     uiState: VoiceCaptureUiState,
     onRequestPermission: () -> Unit,
+    onStartRecording: () -> Unit = {},
     onDiscard: () -> Unit,
     onStopAndSave: () -> Unit,
     onPauseToggle: () -> Unit,
@@ -202,7 +236,7 @@ fun VoiceCaptureContent(
             return
         }
 
-        // Fila superior: "🔴 Grabando" / "⏸ Pausado" a la izquierda, Temporizador "0:12" a la derecha
+        // Fila superior: "🔴 Grabando" / "⏸ Pausado" / "Listo para grabar", Temporizador "0:12" a la derecha
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -218,15 +252,21 @@ fun VoiceCaptureContent(
                     modifier = Modifier
                         .size(10.dp)
                         .background(
-                            color = if (uiState.isPaused) Color.Gray else RecordingRed,
+                            color = when {
+                                uiState.isRecording && uiState.isPaused -> Color.Gray
+                                uiState.isRecording -> RecordingRed
+                                uiState.isProcessing -> Primary
+                                else -> MaterialTheme.colorScheme.outline
+                            },
                             shape = CircleShape,
                         ),
                 )
                 Text(
-                    text = if (uiState.isPaused) {
-                        stringResource(R.string.voice_capture_paused)
-                    } else {
-                        stringResource(R.string.voice_capture_recording)
+                    text = when {
+                        uiState.isRecording && uiState.isPaused -> stringResource(R.string.voice_capture_paused)
+                        uiState.isRecording -> stringResource(R.string.voice_capture_recording)
+                        uiState.isProcessing -> stringResource(R.string.voice_capture_processing)
+                        else -> stringResource(R.string.voice_capture_ready_to_record)
                     },
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -350,7 +390,8 @@ fun VoiceCaptureContent(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Botonera de control (Descartar, Detener central, Pausar)
+        // Botonera de control (Descartar, Detener/Grabar central, Pausar)
+        val isCurrentlyRecording = uiState.isRecording
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -359,6 +400,7 @@ fun VoiceCaptureContent(
             // Botón Descartar (Basurero)
             IconButton(
                 onClick = onDiscard,
+                enabled = isCurrentlyRecording || uiState.durationSeconds > 0,
                 modifier = Modifier
                     .size(54.dp)
                     .background(ControlButtonBg, CircleShape),
@@ -366,21 +408,33 @@ fun VoiceCaptureContent(
                 Icon(
                     painter = painterResource(R.drawable.ic_delete),
                     contentDescription = stringResource(R.string.voice_capture_discard),
-                    tint = MaterialTheme.colorScheme.onSurface,
+                    tint = if (isCurrentlyRecording || uiState.durationSeconds > 0) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    },
                 )
             }
 
-            // Botón Principal Detener y Guardar (Coral/Rojo con cuadrado)
+            // Botón Principal Detener y Guardar (si graba) o Grabar (si no está grabando)
             IconButton(
-                onClick = onStopAndSave,
+                onClick = if (isCurrentlyRecording) onStopAndSave else onStartRecording,
+                enabled = !uiState.isProcessing,
                 modifier = Modifier
                     .size(72.dp)
-                    .background(StopButtonColor, CircleShape),
+                    .background(
+                        if (isCurrentlyRecording) StopButtonColor else MaterialTheme.colorScheme.primary,
+                        CircleShape,
+                    ),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_stop),
-                    contentDescription = stringResource(R.string.voice_capture_stop),
-                    tint = Color(0xFF0B141B),
+                    painter = painterResource(
+                        if (isCurrentlyRecording) R.drawable.ic_stop else R.drawable.ic_mic,
+                    ),
+                    contentDescription = stringResource(
+                        if (isCurrentlyRecording) R.string.voice_capture_stop else R.string.voice_capture_start_recording,
+                    ),
+                    tint = if (isCurrentlyRecording) Color(0xFF0B141B) else MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(28.dp),
                 )
             }
@@ -388,6 +442,7 @@ fun VoiceCaptureContent(
             // Botón Pausar / Reanudar
             IconButton(
                 onClick = onPauseToggle,
+                enabled = isCurrentlyRecording,
                 modifier = Modifier
                     .size(54.dp)
                     .background(ControlButtonBg, CircleShape),
@@ -401,7 +456,11 @@ fun VoiceCaptureContent(
                     } else {
                         stringResource(R.string.voice_capture_pause)
                     },
-                    tint = MaterialTheme.colorScheme.onSurface,
+                    tint = if (isCurrentlyRecording) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    },
                 )
             }
         }
@@ -436,6 +495,7 @@ private fun VoiceCaptureContentPreview() {
                 hasAudioPermission = true,
             ),
             onRequestPermission = {},
+            onStartRecording = {},
             onDiscard = {},
             onStopAndSave = {},
             onPauseToggle = {},

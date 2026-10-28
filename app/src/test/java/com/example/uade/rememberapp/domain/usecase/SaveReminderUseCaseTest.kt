@@ -1,8 +1,11 @@
 package com.example.uade.rememberapp.domain.usecase
 
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderStatus
+import com.example.uade.rememberapp.domain.scheduler.GeofenceRegistrar
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -17,7 +20,14 @@ class SaveReminderUseCaseTest {
 
     private val repository = FakeReminderRepository()
     private val scheduler = FakeReminderScheduler()
-    private val save = SaveReminderUseCase(repository, scheduler)
+    private val fakeGeofenceRegistrar = object : GeofenceRegistrar {
+        val registered = mutableListOf<Long>()
+        override suspend fun ensureRegistered(placeId: Long) {
+            registered.add(placeId)
+        }
+        override suspend fun remove(placeId: Long) = Unit
+    }
+    private val save = SaveReminderUseCase(repository, scheduler, fakeGeofenceRegistrar)
 
     @Test
     fun `guardar uno nuevo le asigna id y lo hace visible en observar`() = runBlocking {
@@ -56,6 +66,19 @@ class SaveReminderUseCaseTest {
         save(repository.getById(id)!!.copy(isDone = true))
 
         assertEquals(emptyList<Instant>(), scheduler.scheduledFor(id))
+    }
+
+    @Test
+    fun `guardar recordatorio con aviso por lugar registra la geofence`() = runBlocking {
+        save(
+            Reminder(
+                title = "Comprar leche",
+                places = listOf(PlaceAlert(placeId = 42L, event = PlaceAlertEvent.Arrive)),
+                createdAt = createdAt,
+            ),
+        )
+
+        assertEquals(listOf(42L), fakeGeofenceRegistrar.registered)
     }
 
     @Test

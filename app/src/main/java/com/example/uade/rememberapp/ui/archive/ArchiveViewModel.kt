@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.ReminderStatus
+import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,12 +25,19 @@ import kotlinx.coroutines.launch
  */
 class ArchiveViewModel(
     observeReminders: ObserveRemindersUseCase,
+    observePlaces: ObservePlacesUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArchiveUiState(isLoading = true))
     val uiState: StateFlow<ArchiveUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            observePlaces().collect { places ->
+                val names = places.associate { it.id to it.name }
+                _uiState.update { it.copy(placeNames = names) }
+            }
+        }
         viewModelScope.launch {
             // combine: espera un valor de cada lista y vuelve a emitir cuando cambia cualquiera.
             combine(
@@ -60,7 +68,10 @@ class ArchiveViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as RememberApp
-                ArchiveViewModel(observeReminders = app.container.observeRemindersUseCase)
+                ArchiveViewModel(
+                    observeReminders = app.container.observeRemindersUseCase,
+                    observePlaces = app.container.observePlacesUseCase,
+                )
             }
         }
     }

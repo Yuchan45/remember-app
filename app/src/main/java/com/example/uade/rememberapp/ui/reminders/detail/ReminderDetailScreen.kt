@@ -1,5 +1,14 @@
-package com.example.uade.rememberapp.ui.reminders.detail
+﻿package com.example.uade.rememberapp.ui.reminders.detail
 
+import android.Manifest
+import android.os.Build
+import androidx.compose.ui.platform.LocalContext
+import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
+import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationActionSheetActions
 import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationActionSheet
 import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
@@ -94,6 +103,8 @@ import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
+import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
@@ -148,6 +159,31 @@ fun ReminderDetailScreen(
     // Guardado con ✓: recién ahí se cierra, así no se sale antes de que termine de guardar.
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onBack()
+    }
+
+    val context = LocalContext.current
+    var showLocationPermissionDialog by remember { mutableStateOf(false) }
+
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        if (isGranted) {
+            val app = context.applicationContext as? RememberApp
+            app?.let {
+                CoroutineScope(Dispatchers.IO).launch {
+                    it.container.rescheduleRemindersUseCase()
+                }
+            }
+        }
+    }
+
+    val foregroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        if (fineGranted && !LocationPermissionHelper.hasBackgroundLocation(context)) {
+            showLocationPermissionDialog = true
+        }
     }
 
     // El selector de fotos de Android (Photo Picker): no pide permisos, porque la app solo recibe
@@ -246,7 +282,42 @@ fun ReminderDetailScreen(
             onPlaceClick = viewModel::onPlaceSelected,
             onSearchAddress = viewModel::onSearchAddress,
             onEventClick = viewModel::onPlaceEventSelected,
+            onSave = {
+                viewModel.onSavePlace()
+                if (editor.selectedPlaceId != null) {
+                    if (!LocationPermissionHelper.hasFineLocation(context)) {
+                        foregroundPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            ),
+                        )
+                    } else if (!LocationPermissionHelper.hasBackgroundLocation(context)) {
+                        showLocationPermissionDialog = true
+                    }
+                }
+            },
             onClose = viewModel::onClosePlace,
+        )
+    }
+
+    if (showLocationPermissionDialog) {
+        LocationPermissionDialog(
+            onConfirm = {
+                showLocationPermissionDialog = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    LocationPermissionHelper.openAppSettings(context)
+                }
+            },
+            onDismiss = { showLocationPermissionDialog = false },
+        )
+    }
+
+    if (uiState.isCreatingPlace) {
+        PlaceEditSheet(
+            onDismiss = viewModel::onDismissPlaceSheet,
         )
     }
 
@@ -356,6 +427,7 @@ private fun PlaceSheet(
     onPlaceClick: (Long) -> Unit,
     onSearchAddress: () -> Unit,
     onEventClick: (PlaceEvent) -> Unit,
+    onSave: () -> Unit,
     onClose: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -382,7 +454,7 @@ private fun PlaceSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onClose)
-                DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onClose)
+                DialogFilledConfirmButton(text = stringResource(R.string.reminder_alarms_save), onClick = onSave)
             }
         }
     }
@@ -1540,10 +1612,19 @@ private fun actionValue(action: NotificationAction?): String = when (action) {
 @Composable
 private fun placeValue(places: List<PlaceAlert>, placeName: String?): String {
     if (places.isEmpty()) return stringResource(R.string.reminder_detail_place_none)
+    val isLeave = places.firstOrNull()?.event == PlaceAlertEvent.Leave
     val first = if (placeName != null) {
-        stringResource(R.string.reminder_detail_place_arrive, placeName)
+        if (isLeave) {
+            stringResource(R.string.reminder_detail_place_leave, placeName)
+        } else {
+            stringResource(R.string.reminder_detail_place_arrive, placeName)
+        }
     } else {
-        stringResource(R.string.reminder_detail_place_unknown)
+        if (isLeave) {
+            stringResource(R.string.reminder_detail_place_leave_unknown)
+        } else {
+            stringResource(R.string.reminder_detail_place_unknown)
+        }
     }
     val extra = places.size - 1
     return if (extra > 0) stringResource(R.string.reminder_detail_place_more, first, extra) else first

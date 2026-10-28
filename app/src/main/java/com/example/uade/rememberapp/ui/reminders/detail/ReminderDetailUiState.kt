@@ -40,11 +40,10 @@ data class ReminderDetailUiState(
     val isLoading: Boolean = true,
     val isNew: Boolean = false,
     val reminder: Reminder? = null,
-    /**
-     * Nombre del primer lugar de aviso (PlaceAlert solo guarda el id).
-     * TODO: tomarlo de PlaceRepository cuando existan los lugares guardados.
-     */
-    val placeName: String? = null,
+    /** Nombre de cada lugar por id, para mostrar "Al llegar a Casa". */
+    val placeNames: Map<Long, String> = emptyMap(),
+    val placesDraft: List<PlaceAlert>? = null,
+    val isCreatingPlace: Boolean = false,
     val title: String = "",
     val description: String = "",
     /** Las etiquetas asignadas en el modal de etiquetas. */
@@ -82,7 +81,7 @@ data class ReminderDetailUiState(
      * Los lugares favoritos que se ofrecen en el modal "Ubicación".
      * TODO: tomarlos de PlaceRepository cuando existan los lugares guardados.
      */
-    val favoritePlaces: List<Place> = SampleQuickCapture.favoritePlaces,
+    val favoritePlaces: List<Place> = emptyList(),
     /** El modal "Ubicación" mientras está abierto (null = cerrado). */
     val placeEditor: PlaceEditor? = null,
 
@@ -130,11 +129,12 @@ data class ReminderDetailUiState(
      */
     val hasUnsavedChanges: Boolean
         get() = when {
-            isNew -> cleanTitle != null || cleanDescription != null || photoPath != null || items.isNotEmpty()
+            isNew -> cleanTitle != null || cleanDescription != null || photoPath != null || items.isNotEmpty() || alarms.isNotEmpty() || places.isNotEmpty()
             reminder != null -> cleanTitle != reminder.title ||
                 cleanDescription != reminder.description ||
                 tagIds != reminder.tags.map { it.id }.toSet() ||
                 alarms != reminder.alarms.map { it.at } ||
+                places != reminder.places ||
                 importance != reminder.importance ||
                 action != reminder.action ||
                 photos != reminder.photos ||
@@ -153,8 +153,9 @@ data class ReminderDetailUiState(
     // Lo que muestran el encabezado y el panel de opciones. Una nota nueva todavía no tiene
     // nada asignado: se ve igual que una nota sin datos.
 
-    /** Los avisos por lugar se conservan como vienen (todavía no hay modal para editarlos). */
-    val places: List<PlaceAlert> get() = reminder?.places.orEmpty()
+    /** Avisos por lugar (el borrador si se editó o el del recordatorio). */
+    val places: List<PlaceAlert> get() = placesDraft ?: reminder?.places.orEmpty()
+    val placeName: String? get() = places.firstOrNull()?.let { placeNames[it.placeId] }
 
     /**
      * Las fotos en el orden en que se apilan arriba de la descripción: primero la portada ya

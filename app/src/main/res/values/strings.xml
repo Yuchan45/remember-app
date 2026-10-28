@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">Hey!</string>
 
     <!-- Home / lista de recordatorios: header -->
@@ -87,6 +87,7 @@
     <string name="reminders_checklist_more_items">+ %1$d más</string>
     <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
     <string name="reminders_trigger_on_arrival">Al llegar a %1$s</string>
+    <string name="reminders_trigger_on_departure">Al salir de %1$s</string>
     <string name="reminders_trigger_due_soon">Aviso próximo o vencido</string>
     <!-- Hora del próximo aviso y cuántos más tiene, ej. "18:00 +2". %1$s = hora, %2$d = cantidad. -->
     <string name="reminders_trigger_more_alarms">%1$s +%2$d</string>
@@ -169,7 +170,9 @@
     <string name="reminder_detail_place_none">Sin ubicación</string>
     <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
     <string name="reminder_detail_place_arrive">Al llegar a %1$s</string>
+    <string name="reminder_detail_place_leave">Al salir de %1$s</string>
     <string name="reminder_detail_place_unknown">Al llegar a un lugar</string>
+    <string name="reminder_detail_place_leave_unknown">Al salir de un lugar</string>
     <string name="reminder_detail_behavior">Comportamiento</string>
     <string name="reminder_detail_notification_action">Acción de notificación</string>
     <string name="reminder_detail_notification_action_none">Sin acción</string>
@@ -246,9 +249,67 @@
     <string name="archive_empty_archived">Acá van a aparecer los recordatorios que archives.</string>
     <string name="archive_empty_deleted">Acá van a aparecer los recordatorios que elimines, para que puedas recuperarlos.</string>
 
-    <!-- Lugares: lista (template) -->
+    <!-- Lugares: lista y edición -->
     <string name="places_list_title">Lugares</string>
     <string name="places_list_placeholder">Acá vas a ver y administrar tus lugares guardados.</string>
+    <string name="places_list_subtitle">Tus lugares guardados para recordatorios al llegar o salir</string>
+    <string name="places_list_empty_title">Sin lugares guardados</string>
+    <string name="places_list_empty_message">Agregá lugares como tu casa, trabajo o facultad para recordatorios por ubicación.</string>
+    <string name="places_list_add">Agregar lugar</string>
+    <string name="places_list_radius_format">Radio: %1$d m</string>
+    <string name="places_list_delete_confirm_title">¿Eliminar lugar?</string>
+    <string name="places_list_delete_confirm_message">Se eliminará "%1$s" y se desvincularán los avisos de este lugar en tus recordatorios.</string>
+    <string name="places_list_delete_confirm_action">Eliminar</string>
+
+    <string name="places_edit_title_new">Nuevo lugar</string>
+    <string name="places_edit_title_edit">Editar lugar</string>
+    <string name="places_edit_name_label">Nombre del lugar</string>
+    <string name="places_edit_name_placeholder">Ej. Casa, Trabajo, Gimnasio…</string>
+    <string name="places_edit_kind_label">Tipo de lugar</string>
+    <string name="places_edit_address_label">Dirección o ubicación</string>
+    <string name="places_edit_address_placeholder">Ingresá calle, altura o zona…</string>
+    <string name="places_edit_use_current_location">Usar mi ubicación actual</string>
+    <string name="places_edit_searching">Buscando dirección…</string>
+    <string name="places_edit_no_results">No se encontraron resultados para esa dirección</string>
+    <string name="places_edit_radius_label">Radio de aviso</string>
+    <string name="places_edit_radius_chip">%1$d m</string>
+    <string name="places_edit_radius_recommended">%1$d m (Recomendado)</string>
+    <string name="places_edit_selected_location">Ubicación seleccionada</string>
+    <string name="places_edit_save">Guardar lugar</string>
+    <string name="places_edit_cancel">Cancelar</string>
+    <string name="places_edit_error_no_name">Ingresá un nombre para el lugar</string>
+    <string name="places_edit_error_no_location">Buscá una dirección o usá tu ubicación actual</string>
+
+    <string name="places_kind_home">Casa</string>
+    <string name="places_kind_work">Trabajo</string>
+    <string name="places_kind_study">Facultad</string>
+    <string name="places_kind_parking">Estacionamiento</string>
+    <string name="places_kind_other">Otro</string>
+
+    <!-- Permisos de inicio (Startup Permissions) -->
+    <string name="startup_permissions_dialog_title">Permisos para Hey!</string>
+    <string name="startup_permissions_dialog_subtitle">Para recordarte tus pendientes a tiempo y en el lugar indicado, Hey! necesita los siguientes permisos:</string>
+    <string name="startup_permissions_item_notifications_title">Notificaciones</string>
+    <string name="startup_permissions_item_notifications_desc">Para avisarte al momento exacto de tus tareas y alarmas.</string>
+    <string name="startup_permissions_item_location_title">Ubicación</string>
+    <string name="startup_permissions_item_location_desc">Para avisarte automáticamente al llegar o salir de un lugar guardado.</string>
+    <string name="startup_permissions_item_audio_title">Micrófono</string>
+    <string name="startup_permissions_item_audio_desc">Para crear recordatorios por voz y procesarlos con inteligencia artificial.</string>
+    <string name="startup_permissions_btn_continue">Continuar</string>
+    <string name="startup_permissions_btn_not_now">Ahora no</string>
+    <string name="startup_permissions_permanent_title">Permisos necesarios</string>
+    <string name="startup_permissions_permanent_desc">Algunos permisos necesarios para avisarte o grabar notas fueron deshabilitados. Podés activarlos en los Ajustes de la app.</string>
+    <string name="startup_permissions_btn_settings">Abrir Ajustes</string>
+    <string name="startup_permissions_btn_close">Entendido</string>
+
+    <!-- Permisos de ubicación para avisos por lugar -->
+    <string name="location_permission_dialog_title">Permiso de ubicación todo el tiempo</string>
+    <string name="location_permission_dialog_desc">Para avisarte al llegar o salir de un lugar incluso cuando la app esté en segundo plano o cerrada, Remember necesita el permiso de ubicación \"Permitir todo el tiempo\".</string>
+    <string name="location_permission_dialog_action_settings">Configurar</string>
+    <string name="location_permission_dialog_action_dismiss">Ahora no</string>
+    <string name="location_permission_banner_warning">Para recibir avisos al llegar o salir con la app cerrada, activá \"Permitir todo el tiempo\" en ubicación.</string>
+    <string name="location_permission_banner_action">Activar</string>
+    <string name="location_permission_gps_disabled_warning">El servicio de ubicación (GPS) está desactivado en tu teléfono. Activalo para que funcionen los avisos por lugar.</string>
 
     <!-- Ajustes (template) -->
     <string name="settings_title">Ajustes</string>
@@ -293,6 +354,10 @@
     <string name="voice_capture_resume">Reanudar</string>
     <string name="voice_capture_default_title">Nota de voz</string>
     <string name="voice_capture_attached_note">Nota de voz adjunta</string>
+    <string name="voice_capture_error_empty_or_unintelligible">El audio está vacío o no se entendió. Por favor, volvé a grabar.</string>
+    <string name="voice_capture_action_retry">Reintentar</string>
+    <string name="voice_capture_ready_to_record">Listo para grabar</string>
+    <string name="voice_capture_start_recording">Grabar</string>
 
     <!-- Notificaciones del sistema -->
     <string name="notification_channel_reminders_name">Recordatorios</string>

@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.AiProcessingStatus
 import com.example.uade.rememberapp.domain.model.Reminder
@@ -19,8 +20,11 @@ import com.example.uade.rememberapp.platform.worker.WorkManagerScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -33,6 +37,9 @@ import java.time.Instant
  * ViewModel del modal de grabación de voz.
  * Controla la grabación de audio, la medición de amplitudes para el visualizador
  * y el guardado directo o procesamiento por IA con Groq y WorkManager.
+ *
+ * Emite eventos puntuales hacia la UI mediante [events] ([SharedFlow]) como advertencias
+ * por audio vacío o ininteligible con Snackbar.
  */
 class VoiceCaptureViewModel(
     private val saveReminder: SaveReminderUseCase,
@@ -44,6 +51,9 @@ class VoiceCaptureViewModel(
 
     private val _uiState = MutableStateFlow(VoiceCaptureUiState())
     val uiState: StateFlow<VoiceCaptureUiState> = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<VoiceCaptureEvent>(extraBufferCapacity = 1)
+    val events: SharedFlow<VoiceCaptureEvent> = _events.asSharedFlow()
 
     private var recordingJob: Job? = null
     private var currentAudioFile: File? = null
@@ -119,6 +129,7 @@ class VoiceCaptureViewModel(
     fun onDiscard() {
         recordingJob?.cancel()
         audioRecorder.cancel()
+        currentAudioFile?.delete()
         currentAudioFile = null
         _uiState.update {
             it.copy(
@@ -144,13 +155,19 @@ class VoiceCaptureViewModel(
                 audioRecorder.stop() ?: currentAudioFile
             }
 
-            if (file == null || !file.exists() || file.length() == 0L) {
-                _uiState.update {
-                    it.copy(
-                        isProcessing = false,
-                        errorMessage = "La grabación fue demasiado corta o no contiene audio",
-                    )
-                }
+            val currentSeconds = _uiState.value.durationSeconds
+
+            // 1. Verificación de audio vacío o demasiado corto
+            if (file == null || !file.exists() || file.length() < 1000L || currentSeconds < 1) {
+                file?.delete()
+                currentAudioFile = null
+                resetRecordingState()
+                _events.emit(
+                    VoiceCaptureEvent.ShowSnackbar(
+                        messageResId = R.string.voice_capture_error_empty_or_unintelligible,
+                        actionLabelResId = R.string.voice_capture_action_retry,
+                    ),
+                )
                 return@launch
             }
 
@@ -192,39 +209,119 @@ class VoiceCaptureViewModel(
                     val result = processVoiceWithAi(file.absolutePath)
                     result.fold(
                         onSuccess = { analysis ->
-                            _uiState.update {
-                                it.copy(
-                                    isRecording = false,
-                                    isPaused = false,
-                                    isProcessing = false,
-                                    aiAnalysisResult = analysis,
+                            // 2. Verificación de audio ininteligible o sin texto significativo
+                            if (isTranscriptEmptyOrUnintelligible(analysis.rawTranscript)) {
+                                file.delete()
+                                currentAudioFile = null
+                                resetRecordingState()
+                                _events.emit(
+                                    VoiceCaptureEvent.ShowSnackbar(
+                                        messageResId = R.string.voice_capture_error_empty_or_unintelligible,
+                                        actionLabelResId = R.string.voice_capture_action_retry,
+                                    ),
                                 )
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isRecording = false,
+                                        isPaused = false,
+                                        isProcessing = false,
+                                        aiAnalysisResult = analysis,
+                                    )
+                                }
                             }
                         },
-                        onFailure = {
-                            val reminder = Reminder(
-                                type = ReminderType.Note,
-                                title = "Nota de voz (reintento pendiente)",
-                                audioPath = file.absolutePath,
-                                aiStatus = AiProcessingStatus.Pending,
-                                createdAt = Instant.now(),
-                            )
-                            val savedId = saveReminder(reminder)
-                            workManagerScheduler.scheduleAudioProcessing(savedId, file.absolutePath)
-                            _uiState.update {
-                                it.copy(
-                                    isRecording = false,
-                                    isPaused = false,
-                                    isProcessing = false,
-                                    errorMessage = "Error de red con Groq: se procesará automáticamente al reconectar",
-                                    offlineSavedPending = true,
+                        onFailure = { error ->
+                            if (isErrorEmptyOrUnintelligible(error)) {
+                                file.delete()
+                                currentAudioFile = null
+                                resetRecordingState()
+                                _events.emit(
+                                    VoiceCaptureEvent.ShowSnackbar(
+                                        messageResId = R.string.voice_capture_error_empty_or_unintelligible,
+                                        actionLabelResId = R.string.voice_capture_action_retry,
+                                    ),
                                 )
+                            } else {
+                                // Error de red genuino con Groq: guardamos Offline First para reintento por WorkManager
+                                val reminder = Reminder(
+                                    type = ReminderType.Note,
+                                    title = "Nota de voz (reintento pendiente)",
+                                    audioPath = file.absolutePath,
+                                    aiStatus = AiProcessingStatus.Pending,
+                                    createdAt = Instant.now(),
+                                )
+                                val savedId = saveReminder(reminder)
+                                workManagerScheduler.scheduleAudioProcessing(savedId, file.absolutePath)
+                                _uiState.update {
+                                    it.copy(
+                                        isRecording = false,
+                                        isPaused = false,
+                                        isProcessing = false,
+                                        errorMessage = "Error de red con Groq: se procesará automáticamente al reconectar",
+                                        offlineSavedPending = true,
+                                    )
+                                }
                             }
                         },
                     )
                 }
             }
         }
+    }
+
+    private fun resetRecordingState() {
+        _uiState.update {
+            it.copy(
+                isRecording = false,
+                isPaused = false,
+                isProcessing = false,
+                durationSeconds = 0,
+                amplitudes = emptyList(),
+                errorMessage = null,
+            )
+        }
+    }
+
+    private fun isTranscriptEmptyOrUnintelligible(transcript: String?): Boolean {
+        if (transcript.isNullOrBlank()) return true
+        val trimmed = transcript.trim()
+
+        // Menos de 2 letras reales (ej. ".", "?", números solos)
+        val lettersCount = trimmed.count { it.isLetter() }
+        if (lettersCount < 2) return true
+
+        // Patrones de Whisper para audio sin voz o con solo ruido/sonido ambiental
+        val noisePatterns = listOf(
+            Regex("""^\[.*\]$"""),
+            Regex("""^\(.*\)$"""),
+            Regex("""^\*.*\*$"""),
+            Regex("""(?i)^\[?(m[uú]sica|ruido|sonido|silencio|ininteligible|aplausos|risas|tos|suspiro)\]?$"""),
+        )
+        if (noisePatterns.any { it.matches(trimmed) }) {
+            return true
+        }
+
+        // Si solo contiene muletillas de relleno sin mensaje
+        val fillerWords = setOf("eh", "ah", "uh", "um", "oh", "mm", "mmm", "shh", "ay")
+        val words = trimmed.lowercase().split(Regex("""\W+""")).filter { it.isNotBlank() }
+        if (words.isNotEmpty() && words.all { it in fillerWords }) {
+            return true
+        }
+
+        return false
+    }
+
+    private fun isErrorEmptyOrUnintelligible(error: Throwable): Boolean {
+        val msg = error.message.orEmpty().lowercase()
+        return msg.contains("vacío") ||
+            msg.contains("vacio") ||
+            msg.contains("empty") ||
+            msg.contains("ininteligible") ||
+            msg.contains("too short") ||
+            msg.contains("unintelligible") ||
+            msg.contains("no speech") ||
+            msg.contains("silence")
     }
 
     private fun isNetworkAvailable(): Boolean {

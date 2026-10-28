@@ -9,26 +9,38 @@ import com.example.uade.rememberapp.data.local.MIGRATION_5_6
 import com.example.uade.rememberapp.data.local.MIGRATION_6_7
 import com.example.uade.rememberapp.data.local.MIGRATION_7_8
 import com.example.uade.rememberapp.data.local.MIGRATION_8_9
+import com.example.uade.rememberapp.data.local.MIGRATION_9_10
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
+import com.example.uade.rememberapp.data.repository.PlaceRepositoryImpl
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
 import com.example.uade.rememberapp.data.scheduler.AlarmReminderScheduler
+import com.example.uade.rememberapp.data.scheduler.GeofenceRegistrarImpl
 import com.example.uade.rememberapp.data.storage.PhotoRepositoryImpl
+import com.example.uade.rememberapp.domain.repository.AddressSearchService
 import com.example.uade.rememberapp.domain.repository.PhotoRepository
+import com.example.uade.rememberapp.domain.repository.PlaceRepository
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
+import com.example.uade.rememberapp.domain.scheduler.GeofenceRegistrar
 import com.example.uade.rememberapp.domain.scheduler.ReminderScheduler
+import com.example.uade.rememberapp.domain.usecase.DeletePlaceUseCase
+import com.example.uade.rememberapp.domain.usecase.GetCurrentLocationUseCase
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
 import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
+import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.RescheduleRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.RestoreReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveCoverUseCase
+import com.example.uade.rememberapp.domain.usecase.SavePlaceUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.SearchAddressUseCase
 import com.example.uade.rememberapp.domain.usecase.SnoozeReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.TrashReminderUseCase
 import com.example.uade.rememberapp.platform.audio.AudioRecorder
+import com.example.uade.rememberapp.platform.location.AndroidAddressSearchService
 import com.example.uade.rememberapp.data.remote.GroqApiService
 import com.example.uade.rememberapp.data.remote.GroqReminderServiceImpl
 import com.example.uade.rememberapp.domain.repository.AiReminderService
@@ -62,7 +74,15 @@ class AppContainer(context: Context) {
     private val database: AppDatabase by lazy {
         Room.databaseBuilder(appContext, AppDatabase::class.java, "hey.db")
             // Los cambios con migración escrita conservan los datos.
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+            .addMigrations(
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+                MIGRATION_8_9,
+                MIGRATION_9_10,
+            )
             // Si no hay migración (ej. desde la versión 1 o 2), borra y recrea la base. Sirve
             // mientras la app no esté publicada. TODO: escribir migraciones antes de publicar.
             .fallbackToDestructiveMigration(dropAllTables = true)
@@ -76,7 +96,13 @@ class AppContainer(context: Context) {
 
     val reminderScheduler: ReminderScheduler by lazy { AlarmReminderScheduler(appContext) }
 
-    val saveReminderUseCase: SaveReminderUseCase by lazy { SaveReminderUseCase(reminderRepository, reminderScheduler) }
+    val geofenceRegistrar: GeofenceRegistrar by lazy {
+        GeofenceRegistrarImpl(appContext, placeRepository)
+    }
+
+    val saveReminderUseCase: SaveReminderUseCase by lazy {
+        SaveReminderUseCase(reminderRepository, reminderScheduler, geofenceRegistrar)
+    }
     val observeRemindersUseCase: ObserveRemindersUseCase by lazy { ObserveRemindersUseCase(reminderRepository) }
     val getReminderUseCase: GetReminderUseCase by lazy { GetReminderUseCase(reminderRepository) }
     val trashReminderUseCase: TrashReminderUseCase by lazy { TrashReminderUseCase(reminderRepository) }
@@ -90,7 +116,7 @@ class AppContainer(context: Context) {
         SnoozeReminderUseCase(reminderRepository, reminderScheduler)
     }
     val rescheduleRemindersUseCase: RescheduleRemindersUseCase by lazy {
-        RescheduleRemindersUseCase(reminderRepository, reminderScheduler)
+        RescheduleRemindersUseCase(reminderRepository, reminderScheduler, geofenceRegistrar)
     }
 
     val photoRepository: PhotoRepository by lazy { PhotoRepositoryImpl(appContext) }
@@ -148,4 +174,19 @@ class AppContainer(context: Context) {
     val tagRepository: TagRepository by lazy {
         TagRepositoryImpl(database.tagDao())
     }
+
+    /** Repositorio de lugares para recordatorios geolocalizados. */
+    val placeRepository: PlaceRepository by lazy {
+        PlaceRepositoryImpl(database.placeDao())
+    }
+
+    val addressSearchService: AddressSearchService by lazy {
+        AndroidAddressSearchService(appContext)
+    }
+
+    val observePlacesUseCase: ObservePlacesUseCase by lazy { ObservePlacesUseCase(placeRepository) }
+    val savePlaceUseCase: SavePlaceUseCase by lazy { SavePlaceUseCase(placeRepository) }
+    val deletePlaceUseCase: DeletePlaceUseCase by lazy { DeletePlaceUseCase(placeRepository) }
+    val searchAddressUseCase: SearchAddressUseCase by lazy { SearchAddressUseCase(addressSearchService) }
+    val getCurrentLocationUseCase: GetCurrentLocationUseCase by lazy { GetCurrentLocationUseCase(addressSearchService) }
 }

@@ -1,5 +1,6 @@
 package com.example.uade.rememberapp.ui.reminders.voice
 
+import com.example.uade.rememberapp.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -26,5 +27,15 @@ class VoiceCaptureUiStateTest {
     fun `switch de IA se puede desactivar para solo guardar audio`() {
         val state = VoiceCaptureUiState(isTranscribeWithAiEnabled = false)
         assertFalse(state.isTranscribeWithAiEnabled)
+    }
+
+    @Test
+    fun `evento ShowSnackbar contiene mensaje y accion para volver a grabar`() {
+        val event = VoiceCaptureEvent.ShowSnackbar(
+            messageResId = R.string.voice_capture_error_empty_or_unintelligible,
+            actionLabelResId = R.string.voice_capture_action_retry,
+        )
+        assertEquals(R.string.voice_capture_error_empty_or_unintelligible, event.messageResId)
+        assertEquals(R.string.voice_capture_action_retry, event.actionLabelResId)
     }
 }

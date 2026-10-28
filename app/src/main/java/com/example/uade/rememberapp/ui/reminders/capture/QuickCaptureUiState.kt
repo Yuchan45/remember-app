@@ -18,11 +18,6 @@ enum class CapturePanel {
 
 /**
  * Estado del modal de captura rápida (crear una nota).
- *
- * Las listas de opciones son datos: vienen del ViewModel (por ahora de SampleQuickCapture) y
- * no están fijas en la UI, así mañana los lugares favoritos salen de la base de datos sin
- * tocar las pantallas. La selección arranca vacía; el aviso puede ser por hora, por lugar o
- * por los dos a la vez.
  */
 data class QuickCaptureUiState(
     val title: String = "",
@@ -55,6 +50,9 @@ data class QuickCaptureUiState(
 
     // Audio adjunto si viene de la captura de voz
     val audioPath: String? = null,
+
+    /** Si se está creando un nuevo lugar desde el buscador de dirección. */
+    val isCreatingPlace: Boolean = false,
 
     /** true mientras se guarda: evita guardar dos veces con un doble toque. */
     val isSaving: Boolean = false,

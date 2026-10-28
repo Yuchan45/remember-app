@@ -26,7 +26,11 @@ import com.example.uade.rememberapp.domain.usecase.SaveCoverUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.navigation.Routes
 import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
+import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.toDomain
+import com.example.uade.rememberapp.ui.reminders.model.toUi
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
@@ -65,6 +69,7 @@ class ReminderDetailViewModel(
     tagRepository: TagRepository,
     private val importPhotos: ImportPhotosUseCase,
     private val saveCover: SaveCoverUseCase,
+    observePlaces: ObservePlacesUseCase,
     private val aiReminderService: AiReminderService? = null,
     private val markReminderDone: MarkReminderDoneUseCase? = null,
     private val now: () -> Instant = Instant::now,
@@ -106,6 +111,12 @@ class ReminderDetailViewModel(
         viewModelScope.launch {
             tagRepository.observeAll().collect { tags ->
                 _uiState.update { it.copy(allTags = tags) }
+            }
+        }
+        viewModelScope.launch {
+            observePlaces().collect { places ->
+                val names = places.associate { it.id to it.name }
+                _uiState.update { it.copy(favoritePlaces = places, placeNames = names) }
             }
         }
     }
@@ -363,12 +374,18 @@ class ReminderDetailViewModel(
     }
 
     // --- Modal "Ubicación" --------------------------------------------------------------------
-    // TODO: por ahora solo se puede marcar un lugar y el momento; "Guardar" cierra sin cambiar
-    // los avisos por lugar (falta PlaceRepository y la geofence).
 
-    /** Tocar "Ubicación" abre el modal sin nada marcado (avisando al llegar). */
+    /** Tocar "Ubicación" abre el modal con la alerta existente seleccionada (o vacío). */
     fun onPlaceClick() {
-        _uiState.update { it.copy(placeEditor = PlaceEditor()) }
+        val currentAlert = _uiState.value.places.firstOrNull()
+        _uiState.update {
+            it.copy(
+                placeEditor = PlaceEditor(
+                    selectedPlaceId = currentAlert?.placeId,
+                    event = currentAlert?.event?.toUi() ?: PlaceEvent.Arrive,
+                ),
+            )
+        }
     }
 
     /** Tocar un lugar lo marca; tocar el marcado lo desmarca. */
@@ -380,10 +397,31 @@ class ReminderDetailViewModel(
         updatePlaceEditor { it.copy(event = event) }
     }
 
-    /** TODO: abrir el buscador de direcciones. */
-    fun onSearchAddress() = Unit
+    fun onSearchAddress() {
+        _uiState.update { it.copy(isCreatingPlace = true) }
+    }
 
-    /** "Cancelar", "Guardar" o cerrar el modal: por ahora todos solo lo cierran. */
+    fun onDismissPlaceSheet() {
+        _uiState.update { it.copy(isCreatingPlace = false) }
+    }
+
+    /** "Guardar": pasa la selección del modal al borrador de lugares. */
+    fun onSavePlace() {
+        val editor = _uiState.value.placeEditor
+        val newPlaces = if (editor?.selectedPlaceId != null) {
+            listOf(PlaceAlert(placeId = editor.selectedPlaceId, event = editor.event.toDomain()))
+        } else {
+            emptyList()
+        }
+        _uiState.update {
+            it.copy(
+                placeEditor = null,
+                placesDraft = newPlaces,
+            )
+        }
+    }
+
+    /** "Cancelar" o cerrar el modal descarta los cambios no guardados. */
     fun onClosePlace() {
         _uiState.update { it.copy(placeEditor = null) }
     }
@@ -738,13 +776,14 @@ class ReminderDetailViewModel(
                 items = validItems,
                 tags = state.tags,
                 alarms = state.alarmsToSave,
+                places = state.places,
                 importance = state.importance,
                 action = state.action,
                 photoPath = state.photoPath,
                 photos = state.photos,
                 createdAt = now(),
             )
-            reminder != null && (title != null || description != null || state.photoPath != null || validItems.isNotEmpty()) ->
+            reminder != null && (title != null || description != null || state.photoPath != null || validItems.isNotEmpty() || state.places.isNotEmpty() || state.alarms.isNotEmpty()) ->
                 // Los avisos por lugar quedan como estaban (copy los conserva).
                 reminder.copy(
                     type = state.type,
@@ -753,6 +792,7 @@ class ReminderDetailViewModel(
                     items = validItems,
                     tags = state.tags,
                     alarms = state.alarmsToSave,
+                    places = state.places,
                     importance = state.importance,
                     action = state.action,
                     photoPath = state.photoPath,
@@ -790,6 +830,7 @@ class ReminderDetailViewModel(
                     items = validItems,
                     tags = state.tags,
                     alarms = state.alarmsToSave,
+                    places = state.places,
                     importance = state.importance,
                     action = state.action,
                     photoPath = state.photoPath,
@@ -806,6 +847,7 @@ class ReminderDetailViewModel(
                     items = validItems,
                     tags = state.tags,
                     alarms = state.alarmsToSave,
+                    places = state.places,
                     importance = state.importance,
                     action = state.action,
                     photoPath = state.photoPath,
@@ -834,6 +876,7 @@ class ReminderDetailViewModel(
                     tagRepository = app.container.tagRepository,
                     importPhotos = app.container.importPhotosUseCase,
                     saveCover = app.container.saveCoverUseCase,
+                    observePlaces = app.container.observePlacesUseCase,
                     aiReminderService = app.container.aiReminderService,
                     markReminderDone = app.container.markReminderDoneUseCase,
                 )

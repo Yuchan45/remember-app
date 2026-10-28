@@ -10,6 +10,8 @@ import androidx.core.app.NotificationManagerCompat
 import java.time.Instant
 import com.example.uade.rememberapp.MainActivity
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.Place
+import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.platform.receiver.ReminderActionReceiver
 
@@ -129,6 +131,77 @@ object NotificationHelper {
             notificationManager.notify(reminder.id.toInt(), builder.build())
         } catch (_: SecurityException) {
             // En Android 13+, si el usuario denegó POST_NOTIFICATIONS
+        }
+    }
+
+    /**
+     * Muestra la notificación de aviso por geolocalización al llegar o salir de un lugar.
+     */
+    fun showPlaceReminderNotification(
+        context: Context,
+        reminder: Reminder,
+        place: Place,
+        event: PlaceAlertEvent,
+    ) {
+        createNotificationChannel(context)
+
+        val contentIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_NAVIGATE_TO_REMINDER_ID, reminder.id)
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            reminder.id.hashCode(),
+            contentIntent,
+            PENDING_INTENT_FLAGS,
+        )
+
+        // Acción: "Hecho"
+        val doneIntent = Intent(context, ReminderActionReceiver::class.java).apply {
+            action = ReminderActionReceiver.ACTION_MARK_DONE
+            putExtra(ReminderActionReceiver.EXTRA_REMINDER_ID, reminder.id)
+        }
+        val donePendingIntent = PendingIntent.getBroadcast(
+            context,
+            (reminder.id * 31 + 1).hashCode(),
+            doneIntent,
+            PENDING_INTENT_FLAGS,
+        )
+
+        val title = reminder.title.takeUnless { it.isNullOrBlank() }
+            ?: context.getString(R.string.notification_default_title)
+
+        val eventSubtitle = when (event) {
+            PlaceAlertEvent.Arrive -> context.getString(R.string.reminders_capture_trigger_arrive_at, place.name)
+            PlaceAlertEvent.Leave -> context.getString(R.string.reminders_capture_trigger_leave_from, place.name)
+        }
+
+        val text = if (!reminder.description.isNullOrBlank()) {
+            "$eventSubtitle • ${reminder.description}"
+        } else {
+            eventSubtitle
+        }
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_location_on)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(contentPendingIntent)
+            .addAction(
+                R.drawable.ic_check,
+                context.getString(R.string.notification_action_done),
+                donePendingIntent,
+            )
+
+        val notificationManager = NotificationManagerCompat.from(context)
+        try {
+            notificationManager.notify(reminder.id.toInt(), builder.build())
+            android.util.Log.d("NotificationHelper", "Notificación de lugar emitida para recordatorio id=${reminder.id}")
+        } catch (e: SecurityException) {
+            android.util.Log.e("NotificationHelper", "No se pudo emitir la notificación para recordatorio id=${reminder.id}: permiso POST_NOTIFICATIONS denegado", e)
         }
     }
 
