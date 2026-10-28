@@ -644,24 +644,35 @@ class ReminderDetailViewModel(
         viewModelScope.launch {
             try {
                 val result = aiReminderService?.analyzeText(rawText, now().toString())
+                val firstProposal = result?.getOrNull()?.proposedReminders?.firstOrNull()
                 val extracted = result?.getOrNull()?.let { analysis ->
                     analysis.proposedReminders.flatMap { p ->
                         if (p.items.isNotEmpty()) {
                             p.items
                         } else {
-                            listOf(ChecklistItem(text = p.title, note = p.description))
+                            listOf(ChecklistItem(text = p.title, note = null))
                         }
                     }
                 }?.ifEmpty { null } ?: fallbackParseChecklist(rawText)
 
                 _uiState.update { state ->
-                    val detectedListName = result?.getOrNull()?.proposedReminders?.firstOrNull()?.listName
-                    val newTitle = if (state.title.isBlank() && !detectedListName.isNullOrBlank()) {
-                        detectedListName
+                    val detectedListName = firstProposal?.listName
+                    val proposalTitle = firstProposal?.title
+                    val newTitle = if (state.title.isBlank()) {
+                        if (!proposalTitle.isNullOrBlank() && proposalTitle != "Nuevo recordatorio") {
+                            proposalTitle
+                        } else if (!detectedListName.isNullOrBlank()) {
+                            detectedListName
+                        } else {
+                            state.title
+                        }
                     } else state.title
+                    val proposedAlarms = firstProposal?.alarms.orEmpty().map { it.at }
+                    val updatedAlarms = if (state.alarms.isEmpty() && proposedAlarms.isNotEmpty()) proposedAlarms else state.alarms
                     state.copy(
                         items = state.items + extracted,
                         title = newTitle,
+                        alarms = updatedAlarms,
                         isGeneratingItems = false,
                     )
                 }
@@ -677,24 +688,35 @@ class ReminderDetailViewModel(
         viewModelScope.launch {
             try {
                 val result = aiReminderService?.processAudio(audioFilePath, now().toString())
+                val firstProposal = result?.getOrNull()?.proposedReminders?.firstOrNull()
                 val extracted = result?.getOrNull()?.let { analysis ->
                     analysis.proposedReminders.flatMap { p ->
                         if (p.items.isNotEmpty()) {
                             p.items
                         } else {
-                            listOf(ChecklistItem(text = p.title, note = p.description))
+                            listOf(ChecklistItem(text = p.title, note = null))
                         }
                     }
                 } ?: emptyList()
 
                 _uiState.update { state ->
-                    val detectedListName = result?.getOrNull()?.proposedReminders?.firstOrNull()?.listName
-                    val newTitle = if (state.title.isBlank() && !detectedListName.isNullOrBlank()) {
-                        detectedListName
+                    val detectedListName = firstProposal?.listName
+                    val proposalTitle = firstProposal?.title
+                    val newTitle = if (state.title.isBlank()) {
+                        if (!proposalTitle.isNullOrBlank() && proposalTitle != "Nuevo recordatorio") {
+                            proposalTitle
+                        } else if (!detectedListName.isNullOrBlank()) {
+                            detectedListName
+                        } else {
+                            state.title
+                        }
                     } else state.title
+                    val proposedAlarms = firstProposal?.alarms.orEmpty().map { it.at }
+                    val updatedAlarms = if (state.alarms.isEmpty() && proposedAlarms.isNotEmpty()) proposedAlarms else state.alarms
                     state.copy(
                         items = state.items + extracted,
                         title = newTitle,
+                        alarms = updatedAlarms,
                         isGeneratingItems = false,
                     )
                 }
@@ -705,25 +727,35 @@ class ReminderDetailViewModel(
     }
 
     fun onAiAnalysisItemsReady(result: AiAnalysisResult) {
+        val firstProposal = result.proposedReminders.firstOrNull()
         val extracted = result.proposedReminders.flatMap { p ->
             if (p.items.isNotEmpty()) {
                 p.items
             } else {
-                listOf(ChecklistItem(text = p.title, note = p.description))
+                listOf(ChecklistItem(text = p.title, note = null))
             }
         }.ifEmpty {
             fallbackParseChecklist(result.rawTranscript)
         }
 
         _uiState.update { state ->
-            val detectedListName = result.proposedReminders.firstOrNull()?.listName
-            val newTitle = if (state.title.isBlank() && !detectedListName.isNullOrBlank()) {
-                detectedListName
+            val detectedListName = firstProposal?.listName
+            val proposalTitle = firstProposal?.title
+            val newTitle = if (state.title.isBlank()) {
+                if (!proposalTitle.isNullOrBlank() && proposalTitle != "Nuevo recordatorio") {
+                    proposalTitle
+                } else if (!detectedListName.isNullOrBlank()) {
+                    detectedListName
+                } else {
+                    state.title
+                }
             } else state.title
-
+            val proposedAlarms = firstProposal?.alarms.orEmpty().map { it.at }
+            val updatedAlarms = if (state.alarms.isEmpty() && proposedAlarms.isNotEmpty()) proposedAlarms else state.alarms
             state.copy(
                 items = state.items + extracted,
                 title = newTitle,
+                alarms = updatedAlarms,
                 isVoiceCaptureOpen = false,
                 isGeneratingItems = false,
             )

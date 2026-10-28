@@ -21,6 +21,8 @@ import java.io.File
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 /**
@@ -43,9 +45,14 @@ class GroqReminderServiceImpl(
         }
 
         if (apiKey.isBlank()) {
-            // Modo demo / sin API key aún configurada en local.properties:
-            return@withContext Result.success(
-                "Mañana a las 9 viene el técnico del aire y después tengo que acordarme de comprar papas en el super",
+            return@withContext Result.failure(
+                IllegalStateException("No se pudo procesar el audio: clave de API de Groq no configurada"),
+            )
+        }
+
+        if (file.length() < 1200L) {
+            return@withContext Result.failure(
+                IllegalArgumentException("El archivo de audio está vacío o es demasiado corto"),
             )
         }
 
@@ -58,8 +65,8 @@ class GroqReminderServiceImpl(
 
             val response = apiService.transcribeAudio(authHeader, body, model, language)
             val text = response.text.trim()
-            if (text.isBlank()) {
-                Result.failure(IllegalStateException("La transcripción de Groq devolvió texto vacío"))
+            if (text.isBlank() || isTranscriptBlankOrNoise(text)) {
+                Result.failure(IllegalStateException("No se pudo procesar el audio: el audio está vacío o es ininteligible"))
             } else {
                 Result.success(text)
             }
@@ -70,8 +77,8 @@ class GroqReminderServiceImpl(
 
     override suspend fun analyzeText(text: String, referenceDateTimeIso: String): Result<AiAnalysisResult> =
         withContext(Dispatchers.IO) {
-            if (text.isBlank()) {
-                return@withContext Result.failure(IllegalArgumentException("El texto a analizar no puede estar vacío"))
+            if (text.isBlank() || isTranscriptBlankOrNoise(text)) {
+                return@withContext Result.failure(IllegalArgumentException("El texto a analizar está vacío o es ininteligible"))
             }
 
             if (apiKey.isBlank()) {
@@ -164,7 +171,12 @@ class GroqReminderServiceImpl(
         }
 
         val proposals = adjustedReminders.map { r ->
-            val alarms = parseAlarms(r.triggerType, r.triggerIso)
+            val resolvedTriggerIso = if (r.triggerType.equals("TIME", ignoreCase = true) && r.triggerIso.isNullOrBlank() && !r.triggerDisplay.isNullOrBlank()) {
+                inferIsoTime(r.triggerDisplay!!.lowercase(), rawTranscript)
+            } else {
+                r.triggerIso
+            }
+            val alarms = parseAlarms(r.triggerType, resolvedTriggerIso ?: r.triggerIso)
             val isChecklist = r.type.equals("Checklist", ignoreCase = true) || r.items.isNotEmpty()
             val reminderType = if (isChecklist) {
                 ReminderType.Checklist
@@ -172,7 +184,7 @@ class GroqReminderServiceImpl(
                 ReminderType.Note
             }
             val checklistItems = r.items.map { itemText ->
-                ChecklistItem(text = itemText.trim().replaceFirstChar { it.uppercase() })
+                ChecklistItem(text = cleanChecklistItem(itemText))
             }
 
             // Separación limpia de Título vs Descripción
@@ -426,22 +438,37 @@ class GroqReminderServiceImpl(
             lower.contains("para el viaje") || lower.contains("para las vacaciones") ||
             lower.contains("llevar") || lower.contains("traer") || lower.contains("necesito")
 
-        // Extraer candidatos a ítems dividiendo por comas, puntos y comas, o ' y ' / ' e '
+        // Extraer candidatos a ítems dividiendo por comas, puntos y comas, o conectores secuenciales
         val itemsSource = if (trimmed.contains(":")) {
             trimmed.substringAfter(":").trim()
         } else {
             trimmed.replace(Regex("""^(?:tengo\s+que\s+comprar|hay\s+que\s+comprar|comprar|necesito\s+comprar|necesito|llevar|traer|lista\s*(?:de\s*)?)\s*""", RegexOption.IGNORE_CASE), "").trim()
         }
 
-        val itemCandidates = itemsSource.split(Regex("""[,;\n]|\s+y\s+|\s+e\s+"""))
-            .map { it.trim().trim('.').replaceFirstChar { c -> c.uppercase() } }
+        val itemCandidates = itemsSource.split(Regex("""[,;
+]|\s+y\s+despu[ée]s\s+|\s+despu[ée]s\s+|\s+y\s+luego\s+|\s+luego\s+|\s+y\s+|\s+e\s+""", RegexOption.IGNORE_CASE))
+            .map { it.trim().trim('.') }
             .filter { it.isNotBlank() && it.length > 1 }
 
         val hasChecklistIntent = trimmed.contains(":") || (isShoppingOrList && itemCandidates.size >= 2) || itemCandidates.size >= 3
 
         if (hasChecklistIntent) {
+            val temporalTitle = when {
+                lower.contains("a la noche") || lower.contains("esta noche") || lower.contains("de noche") -> "Qué hacer a la noche"
+                lower.contains("a la tarde") || lower.contains("de la tarde") -> "Qué hacer a la tarde"
+                lower.contains("al mediodía") || lower.contains("al medio día") -> "Qué hacer al mediodía"
+                lower.contains("mañana a la noche") -> "Qué hacer mañana a la noche"
+                lower.contains("mañana a la tarde") -> "Qué hacer mañana a la tarde"
+                lower.contains("mañana a la mañana") -> "Qué hacer mañana a la mañana"
+                lower.contains("mañana") -> "Qué hacer mañana"
+                lower.contains("hoy") -> "Qué hacer hoy"
+                else -> null
+            }
+
             val title: String = if (trimmed.contains(":")) {
                 trimmed.substringBefore(":").trim().replaceFirstChar { it.uppercase() }
+            } else if (temporalTitle != null) {
+                temporalTitle
             } else if (lower.contains("super") || lower.contains("compra") || lower.contains("supermercado")) {
                 "Compras"
             } else if (lower.contains("viaje")) {
@@ -467,13 +494,17 @@ class GroqReminderServiceImpl(
                         description = itemDesc,
                         type = ReminderType.Note,
                         triggerDisplayTime = inferDisplayTime(itemLower),
+                        alarms = inferAlarms(itemLower, referenceIso),
                         isSeparateItem = true,
                         isSelected = true,
                     )
                 } else {
-                    checklistItems.add(ChecklistItem(text = cleanTaskTitle(item)))
+                    checklistItems.add(ChecklistItem(text = cleanChecklistItem(item)))
                 }
             }
+
+            val timeDisplay = inferDisplayTime(lower)
+            val alarms = inferAlarms(lower, referenceIso)
 
             val mainChecklist = ProposedReminder(
                 tempId = UUID.randomUUID().toString(),
@@ -481,6 +512,9 @@ class GroqReminderServiceImpl(
                 description = trimmed,
                 type = ReminderType.Checklist,
                 items = checklistItems,
+                alarms = alarms,
+                triggerDisplayTime = if (timeDisplay != "Sin fecha") timeDisplay else null,
+                placeName = if (lower.contains("super") || lower.contains("súper")) "Al pasar por Súper" else null,
                 listName = if (lower.contains("super") || lower.contains("compra")) "Súper" else if (lower.contains("viaje")) "Viaje" else null,
                 isSelected = true,
             )
@@ -505,7 +539,7 @@ class GroqReminderServiceImpl(
 
         if (segments.size >= 2) {
             val proposals = segments.map { segment ->
-                buildProposalFromText(segment)
+                buildProposalFromText(segment, referenceIso)
             }
             return AiAnalysisResult(
                 rawTranscript = trimmed,
@@ -516,7 +550,7 @@ class GroqReminderServiceImpl(
         }
 
         // Caso individual general
-        val singleProposal = buildProposalFromText(trimmed)
+        val singleProposal = buildProposalFromText(trimmed, referenceIso)
         return AiAnalysisResult(
             rawTranscript = trimmed,
             summaryBadge = "Detecté 1 recordatorio en tu audio.",
@@ -525,9 +559,10 @@ class GroqReminderServiceImpl(
         )
     }
 
-    private fun buildProposalFromText(rawText: String): ProposedReminder {
+    private fun buildProposalFromText(rawText: String, referenceIso: String): ProposedReminder {
         val lower = rawText.lowercase()
         val timeDisplay = inferDisplayTime(lower)
+        val alarms = inferAlarms(lower, referenceIso)
         val place = inferPlace(lower)
         val list = inferList(lower)
         val priority = inferPriority(lower)
@@ -538,6 +573,7 @@ class GroqReminderServiceImpl(
             title = cleanTitle.ifBlank { rawText.replaceFirstChar { it.uppercase() } },
             description = description,
             type = ReminderType.Note,
+            alarms = alarms,
             triggerDisplayTime = timeDisplay,
             placeName = place,
             priorityName = priority,
@@ -622,6 +658,93 @@ class GroqReminderServiceImpl(
         } catch (_: Throwable) {
             // Ignorar en entorno de test unitario JVM
         }
+    }
+
+    private fun isTranscriptBlankOrNoise(text: String): Boolean {
+        if (text.isBlank()) return true
+        val trimmed = text.trim()
+        val lettersCount = trimmed.count { it.isLetter() }
+        if (lettersCount < 2) return true
+
+        val noisePatterns = listOf(
+            Regex("""^\[.*\]$"""),
+            Regex("""^\(.*\)$"""),
+            Regex("""^\*.*\*$"""),
+            Regex("""^[\p{Punct}\s]+$"""),
+            Regex("""(?i)^\[?(?:m[uú]sica|ruido|sonido|silencio|ininteligible|aplausos|risas|tos|suspiro|campana|pitido|bip|est[aá]tica)\]?\.?$"""),
+            Regex("""(?i).*(?:subt[íi]tulos\s+(?:por|realizados)|amara\.org|gracias\s+por\s+ver|suscr[íi]bete|like\s+y\s+suscr[íi]bete).*"""),
+        )
+        if (noisePatterns.any { it.matches(trimmed) }) return true
+
+        val fillerWords = setOf("eh", "ah", "uh", "um", "oh", "mm", "mmm", "shh", "ay")
+        val words = trimmed.lowercase().split(Regex("""\W+""")).filter { it.isNotBlank() }
+        if (words.isNotEmpty() && words.all { it in fillerWords }) return true
+
+        return false
+    }
+
+    private fun cleanChecklistItem(item: String): String {
+        var text = item.trim().trimEnd('.', ',', ';')
+
+        // 1. Quitar marcadores temporales iniciales
+        val timeRegex = Regex(
+            """^(?:a\s+la\s+noche|esta\s+noche|de\s+noche|a\s+la\s+tarde|de\s+la\s+tarde|al\s+mediod[ií]a|a\s+la\s+mañana|mañana\s+a\s+la\s+noche|mañana\s+a\s+la\s+tarde|mañana\s+a\s+la\s+mañana|mañana|hoy)\s+""",
+            RegexOption.IGNORE_CASE,
+        )
+        text = text.replace(timeRegex, "").trim()
+
+        // 2. Quitar conectores iniciales
+        val connectorRegex = Regex(
+            """^(?:y\s+despu[ée]s|despu[ée]s|y\s+luego|luego|y\s+m[áa]s\s+tarde|m[áa]s\s+tarde|y\s+tambi[ée]n|y\s+adem[áa]s|y|e)\s+""",
+            RegexOption.IGNORE_CASE,
+        )
+        text = text.replace(connectorRegex, "").trim()
+
+        // 3. Quitar fórmulas de obligación verbales
+        val formulaRegex = Regex(
+            """^(?:tengo\s+que|hay\s+que|debo|necesito|acordarme\s+de|recordar\s+que|recordar)\s+""",
+            RegexOption.IGNORE_CASE,
+        )
+        text = text.replace(formulaRegex, "").trim()
+
+        // 4. Quitar envoltura de desplazamiento para compras ("ir al super a/para comprar", "pasar por el super a comprar", etc.)
+        val shoppingTripRegex = Regex(
+            """^(?:(?:ir|pasar)\s+(?:al|a\s+la|por\s+el|por\s+la)\s+(?:s[uú]per|supermercado|almac[ée]n|kiosco|verduler[íi]a|panader[íi]a|farmacia|chino|tienda)\s+(?:a|para)\s+(?:comprar|buscar|traer|conseguir)\s+|(?:a|para)\s+comprar\s+)""",
+            RegexOption.IGNORE_CASE,
+        )
+        text = text.replace(shoppingTripRegex, "").trim()
+
+        if (text.isBlank()) return item.trim().replaceFirstChar { it.uppercase() }
+        return text.replaceFirstChar { it.uppercase() }
+    }
+
+    private fun inferAlarms(lower: String, referenceIso: String): List<Alarm> {
+        val iso = inferIsoTime(lower, referenceIso) ?: return emptyList()
+        return parseAlarms("TIME", iso)
+    }
+
+    private fun inferIsoTime(lower: String, referenceIso: String): String? {
+        val base = try {
+            OffsetDateTime.parse(referenceIso)
+        } catch (_: Exception) {
+            try {
+                Instant.parse(referenceIso).atZone(ZoneId.systemDefault()).toOffsetDateTime()
+            } catch (_: Exception) {
+                OffsetDateTime.now()
+            }
+        }
+
+        val target = when {
+            lower.contains("mañana a la noche") -> base.plusDays(1).withHour(21).withMinute(0).withSecond(0).withNano(0)
+            lower.contains("mañana a la tarde") -> base.plusDays(1).withHour(16).withMinute(0).withSecond(0).withNano(0)
+            lower.contains("mañana a la mañana") || lower.contains("mañana") -> base.plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0)
+            lower.contains("a la noche") || lower.contains("esta noche") || lower.contains("de noche") -> base.withHour(21).withMinute(0).withSecond(0).withNano(0)
+            lower.contains("a la tarde") || lower.contains("de la tarde") -> base.withHour(17).withMinute(0).withSecond(0).withNano(0)
+            lower.contains("al mediodía") || lower.contains("al medio día") -> base.withHour(13).withMinute(0).withSecond(0).withNano(0)
+            lower.contains("hoy") -> base.withHour(20).withMinute(0).withSecond(0).withNano(0)
+            else -> null
+        }
+        return target?.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
     }
 
     companion object {

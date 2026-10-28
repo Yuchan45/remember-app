@@ -491,7 +491,7 @@ private fun VoiceCaptureContentPreview() {
                 durationSeconds = 12,
                 amplitudes = listOf(0.1f, 0.4f, 0.8f, 0.5f, 0.3f, 0.7f, 0.9f, 0.4f),
                 isTranscribeWithAiEnabled = true,
-                liveTranscription = "Mañana a las 9 viene el técnico del aire y después tengo que acordarme de comprar papas...",
+                liveTranscription = "Comprar verduras y llamar al dentista a las 5...",
                 hasAudioPermission = true,
             ),
             onRequestPermission = {},
