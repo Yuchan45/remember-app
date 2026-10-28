@@ -334,4 +334,26 @@ class GroqReminderServiceImplTest {
         assertTrue(resultBlank.isFailure)
         assertTrue(resultNoise.isFailure)
     }
+
+    @Test
+    fun `analyzeText en modo heuristico con tareas a la noche y lista de super genera checklist inteligente con titulo y alarma`() = runBlocking {
+        val service = GroqReminderServiceImpl(fakeApiService, apiKey = "", gson = Gson())
+        val text = "A la noche tengo que hacer la tarea e ir al super a comprar leche, huevo y harina"
+        val refIso = "2026-10-28T15:00:00Z"
+        val result = service.analyzeText(text, refIso)
+
+        assertTrue(result.isSuccess)
+        val analysis = result.getOrNull()!!
+        assertTrue(analysis.isChecklistCandidate)
+        assertEquals(1, analysis.proposedReminders.size)
+
+        val checklist = analysis.proposedReminders[0]
+        assertEquals("Qué hacer a la noche", checklist.title)
+        assertEquals(com.example.uade.rememberapp.domain.model.ReminderType.Checklist, checklist.type)
+        assertEquals("Hoy 21:00", checklist.triggerDisplayTime)
+        assertTrue(checklist.alarms.isNotEmpty())
+
+        val items = checklist.items.map { it.text }
+        assertEquals(listOf("Hacer la tarea", "Leche", "Huevo", "Harina"), items)
+    }
 }
