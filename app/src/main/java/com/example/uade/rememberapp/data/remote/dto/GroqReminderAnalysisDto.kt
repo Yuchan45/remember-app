@@ -3,7 +3,7 @@ package com.example.uade.rememberapp.data.remote.dto
 import com.google.gson.annotations.SerializedName
 
 /**
- * Estructura del JSON que devuelve el modelo de Groq (Llama 3.3) al estructurar un recordatorio.
+ * Estructura del JSON que devuelve el modelo de Groq (gpt-oss-120b) al estructurar un recordatorio.
  */
 data class GroqReminderAnalysisDto(
     @SerializedName("summary_badge")

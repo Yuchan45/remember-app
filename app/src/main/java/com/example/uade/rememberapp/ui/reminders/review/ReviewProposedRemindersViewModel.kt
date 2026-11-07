@@ -8,28 +8,27 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.AiAnalysisResult
 import com.example.uade.rememberapp.domain.model.AiProcessingStatus
+import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.ChecklistItem
+import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.ProposedReminder
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.domain.usecase.DetectSimilarRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase
-import com.example.uade.rememberapp.domain.usecase.ObserveRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.SplitProposedReminderUseCase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import com.example.uade.rememberapp.domain.model.Alarm
-import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.ui.reminders.components.formatReminderTime
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.Locale
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * Controla el estado y las acciones del flujo de revisión de recordatorios propuestos por la IA.
@@ -39,14 +38,22 @@ class ReviewProposedRemindersViewModel(
     private val saveReminder: SaveReminderUseCase,
     private val mergeProposedReminders: MergeProposedRemindersUseCase,
     private val splitProposedReminder: SplitProposedReminderUseCase,
-    private val detectSimilarReminders: DetectSimilarRemindersUseCase,
-    private val observeReminders: ObserveRemindersUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReviewProposedRemindersUiState())
     val uiState: StateFlow<ReviewProposedRemindersUiState> = _uiState.asStateFlow()
 
+    /** El análisis con el que ya se cargó la pantalla (ver [initialize]). */
+    private var loadedResult: AiAnalysisResult? = null
+
+    /**
+     * Carga las propuestas del análisis, una sola vez por análisis. La pantalla lo llama cada vez
+     * que se vuelve a mostrar (ej. al volver a la app después de minimizarla): sin este control,
+     * todo volvía a como lo armó la IA y se perdía lo que el usuario había cambiado.
+     */
     fun initialize(result: AiAnalysisResult) {
+        if (loadedResult == result) return
+        loadedResult = result
         _uiState.update {
             it.copy(
                 rawTranscript = result.rawTranscript,
@@ -55,8 +62,8 @@ class ReviewProposedRemindersViewModel(
                 isChecklistCandidate = result.isChecklistCandidate,
                 isChecklistView = true,
                 isSaved = false,
-                similarMergeProposal = null,
                 editingProposal = null,
+                groupedSnapshot = null,
             )
         }
     }
@@ -86,10 +93,28 @@ class ReviewProposedRemindersViewModel(
         }
     }
 
+    /**
+     * El selector "Checklist / Separados". Tiene que poder ir y volver sin perder nada:
+     * - "Separados" separa las listas en un recordatorio por ítem, y antes guarda cómo estaban
+     *   agrupadas ([ReviewProposedRemindersUiState.groupedSnapshot]).
+     * - "Checklist" vuelve a esa agrupación tal cual. Antes unía TODO en una sola lista, así que de
+     *   dos listas quedaba una (parecía que una había desaparecido).
+     *
+     * Lo que se edite estando en "Separados" no pasa a la vista "Checklist": se vuelve a como
+     * estaba antes de separar.
+     */
     fun onSetChecklistView(isChecklist: Boolean) {
-        if (isChecklist == _uiState.value.isChecklistView) return
+        val state = _uiState.value
+        if (isChecklist == state.isChecklistView) return
         if (isChecklist) {
-            onMergeAllIntoOne()
+            _uiState.update {
+                it.copy(
+                    proposals = it.groupedSnapshot ?: it.proposals,
+                    groupedSnapshot = null,
+                    isChecklistView = true,
+                    summaryBadge = "Tareas agrupadas como las armó la IA.",
+                )
+            }
         } else {
             onUnmergeSelected()
         }
@@ -108,6 +133,8 @@ class ReviewProposedRemindersViewModel(
                 summaryBadge = "Recordatorios unidos en una única checklist.",
                 isChecklistCandidate = true,
                 isChecklistView = true,
+                // "Unir en uno" es una agrupación nueva elegida por el usuario: pasa a ser la base.
+                groupedSnapshot = null,
             )
         }
     }
@@ -133,6 +160,9 @@ class ReviewProposedRemindersViewModel(
                 proposals = newProposals,
                 summaryBadge = "Tareas desunidas en recordatorios individuales.",
                 isChecklistView = false,
+                // La agrupación de antes de separar, para que "Checklist" la devuelva tal cual. Si
+                // ya había una guardada (se separó en varios pasos), se queda la primera.
+                groupedSnapshot = state.groupedSnapshot ?: currentProposals,
             )
         }
     }
@@ -156,6 +186,7 @@ class ReviewProposedRemindersViewModel(
                 proposals = newProposals,
                 summaryBadge = "Recordatorio desunido en ${unmerged.size} tareas individuales.",
                 isChecklistView = false,
+                groupedSnapshot = state.groupedSnapshot ?: currentProposals,
             )
         }
     }
@@ -176,100 +207,87 @@ class ReviewProposedRemindersViewModel(
         _uiState.update { it.copy(editingProposal = proposal) }
     }
 
-    fun onSaveEdit(updatedProposal: ProposedReminder) {
+    /**
+     * El recordatorio que se abre en el editor de detalle para [proposal]: el que ya se editó
+     * antes, o uno armado con lo que propuso la IA (con la nota de voz y su transcripción).
+     */
+    fun draftFor(proposal: ProposedReminder): Reminder =
+        proposal.draft ?: proposal.toReminder()
+
+    /**
+     * Volvió el editor con [edited]: la propuesta guarda el borrador completo (para crearlo tal
+     * cual) y actualiza lo que muestra su tarjeta.
+     */
+    fun onDraftEdited(tempId: String, edited: Reminder) {
         _uiState.update { state ->
             val updated = state.proposals.map { p ->
-                if (p.tempId == updatedProposal.tempId) updatedProposal else p
+                if (p.tempId != tempId) return@map p
+                p.copy(
+                    draft = edited,
+                    title = edited.title.orEmpty().ifBlank { p.title },
+                    description = edited.description,
+                    type = edited.type,
+                    items = edited.items,
+                    alarms = edited.alarms,
+                    triggerDisplayTime = edited.alarms.minByOrNull { it.at }
+                        ?.let { formatReminderTime(it.at, Instant.now(), Locale.forLanguageTag("es-AR")) },
+                    priorityName = when (edited.importance) {
+                        Importance.Low -> "Baja"
+                        Importance.Default -> "Normal"
+                        Importance.High -> "Alta"
+                        Importance.Critical -> "Crítica"
+                    },
+                )
             }
             state.copy(proposals = updated, editingProposal = null)
         }
+    }
+
+    /**
+     * La propuesta como recordatorio, con lo que la IA pudo deducir. La grabación y lo que se
+     * transcribió van en todos los que salen del mismo audio, para poder volver a escucharlo.
+     */
+    private fun ProposedReminder.toReminder(): Reminder {
+        val importance = when (priorityName?.lowercase()) {
+            "alta" -> Importance.High
+            "urgente", "crítica" -> Importance.Critical
+            "baja" -> Importance.Low
+            else -> Importance.Default
+        }
+        return Reminder(
+            type = type,
+            // Un Reminder necesita algo de contenido: si la IA dejó el título vacío, se pone uno.
+            title = title.ifBlank { "Recordatorio" },
+            description = description,
+            items = items,
+            alarms = alarms.ifEmpty { parseDisplayTimeToAlarm(triggerDisplayTime) },
+            importance = importance,
+            audioPath = loadedResult?.audioPath,
+            transcript = _uiState.value.rawTranscript.ifBlank { null },
+            aiStatus = AiProcessingStatus.Completed,
+            createdAt = Instant.now(),
+        )
     }
 
     fun onDismissEdit() {
         _uiState.update { it.copy(editingProposal = null) }
     }
 
+    /**
+     * "Crear": guarda las propuestas marcadas. Ya no busca recordatorios parecidos entre los que
+     * el usuario tenía de antes para ofrecer unirlos: mezclaba lo recién dictado con cosas de otras
+     * sesiones. "Unir todo" entre las propuestas de este mismo audio sigue disponible.
+     */
     fun onCreateClick() {
         val activeProposals = _uiState.value.proposals.filter { it.isSelected }
         if (activeProposals.isEmpty()) return
-
-        viewModelScope.launch {
-            val existingReminders = observeReminders().first()
-
-            // Verificamos si alguna de las propuestas activa la sugerencia de merge (03.C)
-            var foundMergeProposal: com.example.uade.rememberapp.domain.model.SimilarReminderMergeProposal? = null
-            for (proposal in activeProposals) {
-                val merge = detectSimilarReminders(proposal, existingReminders)
-                if (merge != null) {
-                    foundMergeProposal = merge
-                    break
-                }
-            }
-
-            if (foundMergeProposal != null) {
-                _uiState.update { it.copy(similarMergeProposal = foundMergeProposal) }
-            } else {
-                saveAllProposals(activeProposals)
-            }
-        }
-    }
-
-    fun onConfirmMergeSimilar() {
-        val proposal = _uiState.value.similarMergeProposal ?: return
-        viewModelScope.launch {
-            // Actualizamos el existente en Room con los items fusionados
-            val updatedExisting = proposal.existingReminder.copy(
-                type = ReminderType.Checklist,
-                title = proposal.mergedTitle,
-                items = proposal.checklistItems,
-                alarms = proposal.mergedAlarms,
-                aiStatus = AiProcessingStatus.Completed,
-            )
-            saveReminder(updatedExisting)
-
-            // Guardamos el resto de las propuestas seleccionadas que no sean la fusionada
-            val remaining = _uiState.value.proposals
-                .filter { it.isSelected && it.tempId != proposal.newReminder.tempId }
-            saveAllProposals(remaining)
-
-            _uiState.update { it.copy(similarMergeProposal = null, isSaved = true) }
-        }
-    }
-
-    fun onKeepSeparateSimilar() {
-        val activeProposals = _uiState.value.proposals.filter { it.isSelected }
-        viewModelScope.launch {
-            _uiState.update { it.copy(similarMergeProposal = null) }
-            saveAllProposals(activeProposals)
-        }
+        viewModelScope.launch { saveAllProposals(activeProposals) }
     }
 
     private suspend fun saveAllProposals(proposals: List<ProposedReminder>) {
         for (p in proposals) {
-            val importance = when (p.priorityName?.lowercase()) {
-                "alta" -> Importance.High
-                "urgente", "crítica" -> Importance.Critical
-                "baja" -> Importance.Low
-                else -> Importance.Default
-            }
-
-            val alarms = if (p.alarms.isNotEmpty()) {
-                p.alarms
-            } else {
-                parseDisplayTimeToAlarm(p.triggerDisplayTime)
-            }
-
-            val reminder = Reminder(
-                type = p.type,
-                title = p.title,
-                description = p.description,
-                items = p.items,
-                alarms = alarms,
-                importance = importance,
-                aiStatus = AiProcessingStatus.Completed,
-                createdAt = Instant.now(),
-            )
-            saveReminder(reminder)
+            // Si se editó en el editor de detalle, se crea tal cual quedó; si no, con lo de la IA.
+            saveReminder(p.draft ?: p.toReminder())
         }
         _uiState.update { it.copy(isSaved = true) }
     }
@@ -322,8 +340,6 @@ class ReviewProposedRemindersViewModel(
                     saveReminder = app.container.saveReminderUseCase,
                     mergeProposedReminders = app.container.mergeProposedRemindersUseCase,
                     splitProposedReminder = app.container.splitProposedReminderUseCase,
-                    detectSimilarReminders = app.container.detectSimilarRemindersUseCase,
-                    observeReminders = app.container.observeRemindersUseCase,
                 )
             }
         }

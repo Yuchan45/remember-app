@@ -3,32 +3,19 @@ package com.example.uade.rememberapp.ui.reminders.capture
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import com.example.uade.rememberapp.RememberApp
-import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
-import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
-import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
-import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
-import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -38,18 +25,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -59,12 +46,13 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -72,7 +60,9 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
@@ -80,23 +70,34 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
+import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
 import com.example.uade.rememberapp.ui.components.FadedDivider
+import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
 import com.example.uade.rememberapp.ui.components.observeVerticalDrag
-import com.example.uade.rememberapp.ui.tags.TagPickerContent
-import com.example.uade.rememberapp.ui.tags.TagPickerActions
-import com.example.uade.rememberapp.ui.tags.TagPickerPanel
-import com.example.uade.rememberapp.ui.tags.previewTagPickerState
+import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
+import com.example.uade.rememberapp.ui.reminders.capture.components.CapturePhotosRow
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureTriggerRow
 import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
-import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
 import com.example.uade.rememberapp.ui.reminders.components.TimeOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
+import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
+import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
+import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
+import com.example.uade.rememberapp.ui.tags.TagPickerActions
+import com.example.uade.rememberapp.ui.tags.TagPickerContent
+import com.example.uade.rememberapp.ui.tags.TagPickerPanel
+import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
-import kotlinx.coroutines.launch
 import kotlin.math.exp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /** Margen lateral del contenido del modal. */
 private val SheetPadding = 16.dp
@@ -113,6 +114,13 @@ private val SheetPadding = 16.dp
 fun QuickCaptureSheet(
     onDismiss: () -> Unit,
     initialAudioPath: String? = null,
+    /**
+     * Fotos ya elegidas antes de abrir el modal (🖼 de la barra plegada de la Home): se copian y
+     * aparecen como miniaturas, igual que si se eligieran desde el modal.
+     */
+    initialPhotoUris: List<String> = emptyList(),
+    /** Abre el editor completo con una lista (botón de lista), con el título ya escrito. */
+    onOpenListEditor: (title: String?) -> Unit = {},
     viewModel: QuickCaptureViewModel = viewModel(factory = QuickCaptureViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -124,6 +132,15 @@ fun QuickCaptureSheet(
             viewModel.initFromAudio(initialAudioPath)
         }
     }
+    LaunchedEffect(initialPhotoUris) {
+        viewModel.onPhotosPicked(initialPhotoUris)
+    }
+
+    // 🖼: el selector de fotos de Android (Photo Picker). No pide permisos: la app solo recibe
+    // las fotos que el usuario elige.
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_PHOTOS),
+    ) { uris -> viewModel.onPhotosPicked(uris.map { it.toString() }) }
 
     // Guardado: baja el modal con su animación y recién después lo saca (y reinicia el estado).
     LaunchedEffect(uiState.isSaved) {
@@ -220,10 +237,23 @@ fun QuickCaptureSheet(
                 onImportanceSelected = viewModel::onImportanceSelected,
                 onSearchAddress = viewModel::onSearchAddress,
                 onVoice = viewModel::onVoiceClick,
-                onPhoto = viewModel::onPhotoClick,
-                onChecklist = viewModel::onChecklistClick,
+                onPhoto = {
+                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onChecklist = {
+                    // Las listas se arman en el editor completo: se baja el modal y se abre la
+                    // nota con lo ya escrito como título.
+                    val title = uiState.title.trim().ifBlank { null }
+                    scope.launch {
+                        sheetState.hide()
+                        viewModel.onDismissed()
+                        onDismiss()
+                        onOpenListEditor(title)
+                    }
+                },
                 onToggleFullScreen = viewModel::onFullScreenToggle,
                 onRemoveAudio = viewModel::onRemoveAudio,
+                onRemovePhoto = viewModel::onRemovePhoto,
                 onSave = {
                     viewModel.onSave()
                     if (uiState.selectedPlaceId != null) {
@@ -366,6 +396,7 @@ data class QuickCaptureActions(
     val onChecklist: () -> Unit = {},
     val onToggleFullScreen: () -> Unit = {},
     val onRemoveAudio: () -> Unit = {},
+    val onRemovePhoto: (path: String) -> Unit = {},
     val onSave: () -> Unit = {},
 )
 
@@ -444,6 +475,14 @@ fun QuickCaptureContent(
                     }
                 }
             }
+        }
+
+        if (uiState.hasPhotos || uiState.isImportingPhotos) {
+            CapturePhotosRow(
+                photoPaths = uiState.photoPaths,
+                isImporting = uiState.isImportingPhotos,
+                onRemove = actions.onRemovePhoto,
+            )
         }
 
         // Separa lo que se escribe (el título) de las opciones de abajo.

@@ -3,6 +3,7 @@ package com.example.uade.rememberapp
 import android.app.Application
 import android.content.Context
 import com.example.uade.rememberapp.platform.notification.NotificationHelper
+import com.example.uade.rememberapp.platform.worker.PurgeRemindersWorker
 import org.osmdroid.config.Configuration
 import java.io.File
 
@@ -19,6 +20,7 @@ class RememberApp : Application() {
         initOsmDroid()
         container = AppContainer(this)
         NotificationHelper.createNotificationChannel(this)
+        PurgeRemindersWorker.schedule(this)
     }
 
     private fun initOsmDroid() {

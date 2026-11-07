@@ -20,8 +20,8 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
  * La base de datos de la app (un archivo SQLite). Lista todas las tablas (`entities`) y expone
  * un DAO por cada una. Room genera la clase concreta (`AppDatabase_Impl`).
  *
- * Al agregar una tabla o cambiar columnas hay que subir `version`. Mientras la app no esté
- * publicada, el AppContainer borra y recrea la base en ese caso (se pierden los datos).
+ * Al agregar una tabla o cambiar columnas hay que subir [VERSION] y escribir la migración. Sin
+ * migración la app se cierra con un error (no se borra nada); ver AppContainer y DatabaseBackup.
  *
  * Versiones:
  * - 1: `reminders`.
@@ -35,6 +35,10 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
  * - 8: `audioPath` y `aiStatus` en `reminders`, para grabaciones de voz y estado de IA (ver MIGRATION_7_8).
  * - 9: `reminder_checklist_items`, ítems de una lista (con migración, ver MIGRATION_8_9).
  * - 10: `places`, lugares guardados para geolocalización (con migración, ver MIGRATION_9_10).
+ * - 11: `statusChangedAtMillis` en `reminders`, para borrar solos los hechos y eliminados (ver
+ *   MIGRATION_10_11).
+ * - 12: `repeat` en `reminder_alarms`, la repetición de cada aviso (ver MIGRATION_11_12).
+ * - 13: `transcript` en `reminders`, el texto de la nota de voz (ver MIGRATION_12_13).
  */
 @Database(
     entities = [
@@ -48,10 +52,15 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
         ChecklistItemEntity::class,
         PlaceEntity::class,
     ],
-    version = 10,
+    version = AppDatabase.VERSION,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
+    companion object {
+        /** La versión del esquema. Subirla al cambiar tablas o columnas, con su migración. */
+        const val VERSION = 13
+    }
+
     abstract fun reminderDao(): ReminderDao
     abstract fun tagDao(): TagDao
     abstract fun placeDao(): PlaceDao

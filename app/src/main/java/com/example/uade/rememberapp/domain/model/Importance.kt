@@ -3,8 +3,8 @@ package com.example.uade.rememberapp.domain.model
 /**
  * Qué tan insistente es el aviso de un recordatorio.
  *
- * TODO: por ahora solo se guarda. Usarlo para elegir el canal de notificación (silencioso,
- * con sonido, emergente o alarma que se repite).
+ * Cada nivel tiene su canal de notificación (ver NotificationHelper): ahí se decide el sonido,
+ * la vibración y si aparece arriba de la pantalla. El usuario los puede ajustar en Android.
  */
 enum class Importance {
     /** Silencioso: sin sonido, vibración ni ícono en la barra de estado. */

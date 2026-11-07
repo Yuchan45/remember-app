@@ -3,6 +3,7 @@ package com.example.uade.rememberapp
 import android.content.Context
 import androidx.room.Room
 import com.example.uade.rememberapp.data.local.AppDatabase
+import com.example.uade.rememberapp.data.local.DatabaseBackup
 import com.example.uade.rememberapp.data.local.MIGRATION_3_4
 import com.example.uade.rememberapp.data.local.MIGRATION_4_5
 import com.example.uade.rememberapp.data.local.MIGRATION_5_6
@@ -10,6 +11,9 @@ import com.example.uade.rememberapp.data.local.MIGRATION_6_7
 import com.example.uade.rememberapp.data.local.MIGRATION_7_8
 import com.example.uade.rememberapp.data.local.MIGRATION_8_9
 import com.example.uade.rememberapp.data.local.MIGRATION_9_10
+import com.example.uade.rememberapp.data.local.MIGRATION_10_11
+import com.example.uade.rememberapp.data.local.MIGRATION_11_12
+import com.example.uade.rememberapp.data.local.MIGRATION_12_13
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
 import com.example.uade.rememberapp.data.repository.DataManagementRepositoryImpl
 import com.example.uade.rememberapp.data.repository.PlaceRepositoryImpl
@@ -28,7 +32,11 @@ import com.example.uade.rememberapp.domain.repository.SettingsRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.scheduler.GeofenceRegistrar
 import com.example.uade.rememberapp.domain.scheduler.ReminderScheduler
+import com.example.uade.rememberapp.domain.usecase.AdvanceRepeatingAlarmUseCase
+import com.example.uade.rememberapp.domain.usecase.ArchiveReminderUseCase
+import com.example.uade.rememberapp.domain.usecase.CompleteFromNotificationUseCase
 import com.example.uade.rememberapp.domain.usecase.DeletePlaceUseCase
+import com.example.uade.rememberapp.domain.usecase.DeleteRemindersForeverUseCase
 import com.example.uade.rememberapp.domain.usecase.GetCurrentLocationUseCase
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
@@ -48,9 +56,9 @@ import com.example.uade.rememberapp.platform.location.AndroidAddressSearchServic
 import com.example.uade.rememberapp.data.remote.GroqApiService
 import com.example.uade.rememberapp.data.remote.GroqReminderServiceImpl
 import com.example.uade.rememberapp.domain.repository.AiReminderService
-import com.example.uade.rememberapp.domain.usecase.DetectSimilarRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.ProcessVoiceWithAiUseCase
+import com.example.uade.rememberapp.domain.usecase.PurgeExpiredRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.SplitProposedReminderUseCase
 import com.example.uade.rememberapp.platform.worker.WorkManagerScheduler
 import com.google.gson.Gson
@@ -76,6 +84,9 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
 
     private val database: AppDatabase by lazy {
+        // Antes de que Room migre, una copia del archivo si cambió la versión: si algo sale mal,
+        // los recordatorios se pueden recuperar.
+        DatabaseBackup.backupIfVersionChanged(appContext, "hey.db", AppDatabase.VERSION)
         Room.databaseBuilder(appContext, AppDatabase::class.java, "hey.db")
             // Los cambios con migración escrita conservan los datos.
             .addMigrations(
@@ -86,10 +97,14 @@ class AppContainer(context: Context) {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
+                MIGRATION_10_11,
+                MIGRATION_11_12,
+                MIGRATION_12_13,
             )
-            // Si no hay migración (ej. desde la versión 1 o 2), borra y recrea la base. Sirve
-            // mientras la app no esté publicada. TODO: escribir migraciones antes de publicar.
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            // Sin fallbackToDestructiveMigration a propósito: si falta una migración (o se instala
+            // una versión más vieja de la app, ej. al cambiar de rama), Room cierra la app con un
+            // error en vez de borrar todos los recordatorios en silencio. Los datos quedan intactos
+            // en el archivo y vuelven al instalar la versión correcta.
             .addCallback(SeedTagsCallback())
             .build()
     }
@@ -109,8 +124,23 @@ class AppContainer(context: Context) {
     }
     val observeRemindersUseCase: ObserveRemindersUseCase by lazy { ObserveRemindersUseCase(reminderRepository) }
     val getReminderUseCase: GetReminderUseCase by lazy { GetReminderUseCase(reminderRepository) }
-    val trashReminderUseCase: TrashReminderUseCase by lazy { TrashReminderUseCase(reminderRepository) }
-    val restoreReminderUseCase: RestoreReminderUseCase by lazy { RestoreReminderUseCase(reminderRepository) }
+    val trashReminderUseCase: TrashReminderUseCase by lazy {
+        TrashReminderUseCase(reminderRepository, saveReminderUseCase)
+    }
+    val archiveReminderUseCase: ArchiveReminderUseCase by lazy {
+        ArchiveReminderUseCase(reminderRepository, saveReminderUseCase)
+    }
+    val restoreReminderUseCase: RestoreReminderUseCase by lazy {
+        RestoreReminderUseCase(reminderRepository, saveReminderUseCase)
+    }
+
+    // Historial: borrar para siempre (a mano con "Vaciar" o solo, al vencer el plazo).
+    val deleteRemindersForeverUseCase: DeleteRemindersForeverUseCase by lazy {
+        DeleteRemindersForeverUseCase(reminderRepository, reminderScheduler, photoRepository)
+    }
+    val purgeExpiredRemindersUseCase: PurgeExpiredRemindersUseCase by lazy {
+        PurgeExpiredRemindersUseCase(reminderRepository, deleteRemindersForeverUseCase)
+    }
 
     // Acciones de la notificación y reinicio del teléfono (alertas).
     val markReminderDoneUseCase: MarkReminderDoneUseCase by lazy {
@@ -121,6 +151,12 @@ class AppContainer(context: Context) {
     }
     val rescheduleRemindersUseCase: RescheduleRemindersUseCase by lazy {
         RescheduleRemindersUseCase(reminderRepository, reminderScheduler, geofenceRegistrar)
+    }
+    val advanceRepeatingAlarmUseCase: AdvanceRepeatingAlarmUseCase by lazy {
+        AdvanceRepeatingAlarmUseCase(reminderRepository, reminderScheduler)
+    }
+    val completeFromNotificationUseCase: CompleteFromNotificationUseCase by lazy {
+        CompleteFromNotificationUseCase(reminderRepository, markReminderDoneUseCase)
     }
 
     val photoRepository: PhotoRepository by lazy { PhotoRepositoryImpl(appContext) }
@@ -170,9 +206,6 @@ class AppContainer(context: Context) {
         SplitProposedReminderUseCase()
     }
 
-    val detectSimilarRemindersUseCase: DetectSimilarRemindersUseCase by lazy {
-        DetectSimilarRemindersUseCase()
-    }
 
     /** Arranca con las etiquetas de ejemplo que carga [SeedTagsCallback] al crear la base. */
     val tagRepository: TagRepository by lazy {

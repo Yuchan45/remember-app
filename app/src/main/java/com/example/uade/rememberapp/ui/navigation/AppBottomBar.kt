@@ -40,8 +40,8 @@ enum class AppDestination(
 ) {
     Home(R.drawable.ic_notes, R.string.nav_home),
 
-    /** Recordatorios archivados y eliminados. */
-    Archive(R.drawable.ic_archive, R.string.nav_archive),
+    /** Recordatorios hechos, archivados y eliminados. */
+    History(R.drawable.ic_history, R.string.nav_history),
     Places(R.drawable.ic_location_on, R.string.nav_places),
     Settings(R.drawable.ic_settings, R.string.nav_settings),
 }

@@ -38,12 +38,15 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -86,11 +89,27 @@ fun VoiceCaptureSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    // LocalResources y no context.resources: se actualiza si cambia la configuración (ej. idioma).
+    val resources = LocalResources.current
 
+    // Se graba recién al tocar el botón de grabar, no al abrir el modal: así se puede pensar qué
+    // decir (o cerrarlo) sin que ya esté grabando. Si falta el permiso del micrófono, se pide en
+    // ese momento y, si lo da, la grabación arranca sola (no hace falta tocar de nuevo).
+    var startAfterPermission by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
         viewModel.onPermissionResult(isGranted)
+        if (isGranted && startAfterPermission) viewModel.startRecording()
+        startAfterPermission = false
+    }
+    val onRecordClick = {
+        if (uiState.hasAudioPermission) {
+            viewModel.startRecording()
+        } else {
+            startAfterPermission = true
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     // Colecta de eventos puntuales vía SharedFlow (Snackbar para audio vacío/ininteligible)
@@ -98,30 +117,26 @@ fun VoiceCaptureSheet(
         viewModel.events.collect { event ->
             when (event) {
                 is VoiceCaptureEvent.ShowSnackbar -> {
-                    val message = context.getString(event.messageResId)
-                    val actionLabel = event.actionLabelResId?.let { context.getString(it) }
+                    val message = resources.getString(event.messageResId)
+                    val actionLabel = event.actionLabelResId?.let { resources.getString(it) }
                     val result = snackbarHostState.showSnackbar(
                         message = message,
                         actionLabel = actionLabel,
                         duration = SnackbarDuration.Short,
                     )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        viewModel.startRecording()
-                    }
+                    if (result == SnackbarResult.ActionPerformed) onRecordClick()
                 }
             }
         }
     }
 
+    // Al abrir solo se fija si ya hay permiso; pedirlo queda para cuando se toque grabar.
     LaunchedEffect(Unit) {
         val hasPerm = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.RECORD_AUDIO,
         ) == PackageManager.PERMISSION_GRANTED
         viewModel.onPermissionResult(hasPerm)
-        if (!hasPerm) {
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
     }
 
     LaunchedEffect(uiState.isSaved) {
@@ -178,7 +193,7 @@ fun VoiceCaptureSheet(
             VoiceCaptureContent(
                 uiState = uiState,
                 onRequestPermission = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-                onStartRecording = viewModel::startRecording,
+                onStartRecording = onRecordClick,
                 onDiscard = viewModel::onDiscard,
                 onStopAndSave = viewModel::onStopAndSave,
                 onPauseToggle = viewModel::onPauseToggle,

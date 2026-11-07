@@ -14,7 +14,7 @@ import retrofit2.http.Part
 /**
  * Cliente Retrofit para interactuar con la API oficial de Groq:
  * 1. Whisper API (audio/transcriptions) para convertir voz a texto.
- * 2. Llama 3.3 (chat/completions) para extraer y estructurar recordatorios en JSON.
+ * 2. gpt-oss-120b (chat/completions) para extraer y estructurar recordatorios en JSON.
  */
 interface GroqApiService {
 
@@ -25,6 +25,10 @@ interface GroqApiService {
         @Part file: MultipartBody.Part,
         @Part("model") model: RequestBody,
         @Part("language") language: RequestBody? = null,
+        /** 0 = la transcripción más probable (ver GroqReminderServiceImpl). */
+        @Part("temperature") temperature: RequestBody? = null,
+        /** Contexto para Whisper: palabras que espera oír, mejora el reconocimiento. */
+        @Part("prompt") prompt: RequestBody? = null,
     ): GroqTranscriptionResponse
 
     @POST("openai/v1/chat/completions")

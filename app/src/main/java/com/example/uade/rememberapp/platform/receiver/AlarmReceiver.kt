@@ -36,6 +36,10 @@ class AlarmReceiver : BroadcastReceiver() {
                 // posponer y la alarma igual sonó, no se muestra.
                 val stillExists = reminder?.alarms?.any { it.at == alarmAt } == true
                 if (reminder != null && stillExists && !reminder.isDone && reminder.status == ReminderStatus.Active) {
+                    // Si se repite, primero se programa la próxima vez: así, aunque no se toque la
+                    // notificación, mañana vuelve a sonar. Antes de mostrarla, para que "Posponer"
+                    // (que reemplaza los avisos hasta este) no borre la próxima.
+                    app.container.advanceRepeatingAlarmUseCase(reminderId, alarmAt)
                     NotificationHelper.showReminderNotification(context, reminder, alarmAt)
                 }
             } finally {

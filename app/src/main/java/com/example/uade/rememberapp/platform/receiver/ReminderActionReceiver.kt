@@ -32,7 +32,7 @@ class ReminderActionReceiver : BroadcastReceiver() {
             try {
                 when (intent.action) {
                     ACTION_MARK_DONE -> {
-                        app.container.markReminderDoneUseCase(reminderId)
+                        app.container.completeFromNotificationUseCase(reminderId)
                     }
                     ACTION_SNOOZE -> {
                         // Pospone 15 minutos a partir del aviso que sonó (reemplaza a ese y a los anteriores).
