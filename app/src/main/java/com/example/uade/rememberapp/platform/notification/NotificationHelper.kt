@@ -14,6 +14,8 @@ import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.platform.message.MessageLauncherHelper
 import com.example.uade.rememberapp.platform.receiver.ReminderActionReceiver
 
 /**
@@ -118,8 +120,14 @@ object NotificationHelper {
         val title = reminder.title.takeUnless { it.isNullOrBlank() }
             ?: context.getString(R.string.notification_default_title)
 
+        val smallIcon = if (reminder.type == ReminderType.ScheduledMessage) {
+            reminder.action?.let { MessageLauncherHelper.getActionIcon(it) } ?: R.drawable.ic_send
+        } else {
+            R.drawable.ic_alarm
+        }
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_alarm)
+            .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .apply {
                 if (!reminder.description.isNullOrBlank()) {
@@ -147,6 +155,24 @@ object NotificationHelper {
                 context.getString(R.string.notification_action_snooze),
                 snoozePendingIntent,
             )
+            .apply {
+                reminder.action?.let { action ->
+                    val sendIntent = MessageLauncherHelper.createSendIntent(context, action, reminder.description)
+                    if (sendIntent != null) {
+                        val sendPendingIntent = PendingIntent.getActivity(
+                            context,
+                            (reminder.id * 31 + 3).hashCode(),
+                            sendIntent,
+                            PENDING_INTENT_FLAGS,
+                        )
+                        addAction(
+                            MessageLauncherHelper.getActionIcon(action),
+                            MessageLauncherHelper.getActionLabel(context, action),
+                            sendPendingIntent,
+                        )
+                    }
+                }
+            }
 
         val notificationManager = NotificationManagerCompat.from(context)
         try {
@@ -217,8 +243,14 @@ object NotificationHelper {
             eventSubtitle
         }
 
+        val smallIcon = if (reminder.type == ReminderType.ScheduledMessage) {
+            reminder.action?.let { MessageLauncherHelper.getActionIcon(it) } ?: R.drawable.ic_send
+        } else {
+            R.drawable.ic_location_on
+        }
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_location_on)
+            .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .setContentText(text)
             .apply {
@@ -239,6 +271,24 @@ object NotificationHelper {
                 context.getString(R.string.notification_action_done),
                 donePendingIntent,
             )
+            .apply {
+                reminder.action?.let { action ->
+                    val sendIntent = MessageLauncherHelper.createSendIntent(context, action, reminder.description)
+                    if (sendIntent != null) {
+                        val sendPendingIntent = PendingIntent.getActivity(
+                            context,
+                            (reminder.id * 31 + 3).hashCode(),
+                            sendIntent,
+                            PENDING_INTENT_FLAGS,
+                        )
+                        addAction(
+                            MessageLauncherHelper.getActionIcon(action),
+                            MessageLauncherHelper.getActionLabel(context, action),
+                            sendPendingIntent,
+                        )
+                    }
+                }
+            }
 
         val notificationManager = NotificationManagerCompat.from(context)
         try {

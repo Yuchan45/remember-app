@@ -51,6 +51,7 @@ const val MAX_PHOTOS = 15
 enum class ReminderType {
     Note,
     Checklist,
+    ScheduledMessage,
 }
 
 /**
