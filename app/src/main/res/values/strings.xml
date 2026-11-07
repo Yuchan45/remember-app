@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">Hey!</string>
 
     <!-- Home / lista de recordatorios: header -->
@@ -295,6 +295,8 @@
     <string name="startup_permissions_item_location_desc">Para avisarte automáticamente al llegar o salir de un lugar guardado.</string>
     <string name="startup_permissions_item_audio_title">Micrófono</string>
     <string name="startup_permissions_item_audio_desc">Para crear recordatorios por voz y procesarlos con inteligencia artificial.</string>
+    <string name="startup_permissions_item_biometric_title">Seguridad biométrica</string>
+    <string name="startup_permissions_item_biometric_desc">Para proteger el acceso a tus notas y recordatorios con tu huella o rostro.</string>
     <string name="startup_permissions_btn_continue">Continuar</string>
     <string name="startup_permissions_btn_not_now">Ahora no</string>
     <string name="startup_permissions_permanent_title">Permisos necesarios</string>
@@ -311,9 +313,106 @@
     <string name="location_permission_banner_action">Activar</string>
     <string name="location_permission_gps_disabled_warning">El servicio de ubicación (GPS) está desactivado en tu teléfono. Activalo para que funcionen los avisos por lugar.</string>
 
-    <!-- Ajustes (template) -->
+    <!-- Ajustes: General y secciones -->
     <string name="settings_title">Ajustes</string>
-    <string name="settings_placeholder">Acá van a estar las preferencias de la app.</string>
+    <string name="settings_action_collapse_all">Colapsar todas las secciones</string>
+    <string name="settings_action_expand_all">Expandir todas las secciones</string>
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="settings_section_appearance_desc">Tema, colores, tipografía y accesibilidad visual</string>
+    <string name="settings_section_notifications">Notificaciones</string>
+    <string name="settings_section_notifications_desc">Canales de aviso, vibración y recordatorios silenciosos</string>
+    <string name="settings_section_security">Seguridad y privacidad</string>
+    <string name="settings_section_security_desc">Bloqueo de la app con contraseña, PIN o biometría</string>
+    <string name="settings_section_data">Datos y almacenamiento</string>
+    <string name="settings_section_data_desc">Copia de seguridad, exportación y limpieza de caché</string>
+    <string name="settings_section_about">Acerca de Hey!</string>
+    <string name="settings_section_about_desc">Versión 1.0 · TP Desarrollo de Aplicaciones I (UADE)</string>
+    <string name="settings_section_coming_soon">Próximamente disponible</string>
+
+    <!-- Ajustes: Apariencia - Modo de tema -->
+    <string name="settings_theme_mode_system">Sistema</string>
+    <string name="settings_theme_mode_light">Claro</string>
+    <string name="settings_theme_mode_dark">Oscuro</string>
+    <string name="settings_theme_pure_black">Usar tema oscuro negro puro</string>
+    <string name="settings_theme_pure_black_desc">Negro absoluto para pantallas AMOLED</string>
+
+    <!-- Ajustes: Apariencia - Paleta -->
+    <string name="settings_palette_title">Paleta</string>
+    <string name="settings_palette_dynamic">Material You</string>
+    <string name="settings_palette_hey_blue">Azul Hey!</string>
+    <string name="settings_palette_emerald_green">Verde Esmeralda</string>
+    <string name="settings_palette_coral_orange">Naranja Coral</string>
+    <string name="settings_palette_olive_earth">Oliva &amp; Naturaleza</string>
+    <string name="settings_palette_amber_gold">Ámbar &amp; Miel</string>
+    <string name="settings_palette_purple_lavender">Violeta &amp; Lavanda</string>
+    <string name="settings_palette_rose_pink">Rosa &amp; Frambuesa</string>
+
+    <!-- Ajustes: Apariencia - Vista previa de colores -->
+    <string name="settings_palette_preview_title">Vista previa · %1$s</string>
+    <string name="settings_palette_primary">primario</string>
+    <string name="settings_palette_secondary">secundario</string>
+    <string name="settings_palette_tertiary">terciario</string>
+    <string name="settings_palette_tone_lowest">más bajo</string>
+    <string name="settings_palette_tone_surface">superficie</string>
+    <string name="settings_palette_tone_low">bajo</string>
+    <string name="settings_palette_tone_base">base</string>
+    <string name="settings_palette_tone_high">alto</string>
+    <string name="settings_palette_tone_highest">más alto</string>
+
+    <!-- Ajustes: Apariencia - Tamaño de texto / Escala -->
+    <string name="settings_font_scale_title">Escala de la interfaz</string>
+    <string name="settings_font_scale_desc">Ajusta el tamaño del texto para mejorar la lectura</string>
+    <string name="settings_font_scale_small">Pequeña</string>
+    <string name="settings_font_scale_default">Predeterminada</string>
+    <string name="settings_font_scale_medium">Mediana</string>
+    <string name="settings_font_scale_large">Grande</string>
+    <string name="settings_font_scale_preview_sample">El veloz murciélago hindú comía feliz cardillo y kiwi.</string>
+
+    <!-- Ajustes: Apariencia - Tipo de fuente (Accesibilidad) -->
+    <string name="settings_font_family_title">Tipo de fuente (Accesibilidad)</string>
+    <string name="settings_font_family_desc">Elige una tipografía legible y cómoda para tus ojos</string>
+    <string name="settings_font_family_system">Sistema</string>
+    <string name="settings_font_family_system_desc">Tipografía estándar de Android</string>
+    <string name="settings_font_family_atkinson">Atkinson Hiperlegible</string>
+    <string name="settings_font_family_atkinson_desc">Diseñada por Braille Institute para máxima legibilidad</string>
+    <string name="settings_font_family_sans_serif">Sans Serif</string>
+    <string name="settings_font_family_sans_serif_desc">Moderna, limpia y con formas geométricas abiertas</string>
+    <string name="settings_font_family_serif">Serif</string>
+    <string name="settings_font_family_serif_desc">Con remates tradicionales que guían la lectura fluida</string>
+    <string name="settings_font_family_monospace">Monoespacio</string>
+    <string name="settings_font_family_monospace_desc">Ancho uniforme entre letras, evita confusiones entre 0/O y 1/l</string>
+
+    <!-- Ajustes: Apariencia - Efectos visuales -->
+    <string name="settings_gradient_bg_title">Fondo degradado</string>
+    <string name="settings_gradient_bg_desc">Mostrar un degradado de acento sutil detrás de la aplicación</string>
+
+    <!-- Ajustes: Notificaciones -->
+    <string name="settings_notif_system_alerts_title">Alertas del sistema</string>
+    <string name="settings_notif_system_alerts_desc">Elige qué avisos generarán alertas visibles del sistema</string>
+    <string name="settings_notif_time_alerts">Avisos por fecha y hora</string>
+    <string name="settings_notif_time_alerts_desc">Notificar recordatorios a la hora programada</string>
+    <string name="settings_notif_place_alerts">Avisos por lugar</string>
+    <string name="settings_notif_place_alerts_desc">Notificar al llegar o salir de un lugar geolocalizado</string>
+    <string name="settings_notif_high_priority_only">Solo alta importancia o crítica</string>
+    <string name="settings_notif_high_priority_only_desc">Silenciar recordatorios de baja prioridad y mostrar solo los urgentes</string>
+
+    <string name="settings_notif_reliable_title">Recordatorios fiables</string>
+    <string name="settings_notif_reliable_desc">Saltea las optimizaciones de batería de Android para que los avisos suenen al segundo exacto aun con el teléfono en reposo prolongado (Doze mode)</string>
+    <string name="settings_notif_reliable_battery_action">Configurar optimización de batería</string>
+    <string name="settings_notif_reliable_active">Optimización desactivada (Fiable)</string>
+    <string name="settings_notif_reliable_inactive">Batería optimizada (Puede demorarse)</string>
+
+    <string name="settings_notif_overdue_title">Recordatorios vencidos</string>
+    <string name="settings_notif_overdue_desc">Enviar un recordatorio adicional si la hora programada ya pasó y la tarea continúa pendiente</string>
+
+    <string name="settings_notif_sound_title">Tipo de alarma y vibración</string>
+    <string name="settings_notif_sound_desc">Configura la persistencia del sonido y la respuesta háptica</string>
+    <string name="settings_notif_sound_short">Timbre corto</string>
+    <string name="settings_notif_sound_short_desc">Un único tono breve de notificación</string>
+    <string name="settings_notif_sound_one_minute">Alarma de 1 minuto</string>
+    <string name="settings_notif_sound_one_minute_desc">Sonido insistente y continuo durante un minuto entero</string>
+    <string name="settings_notif_vibration">Vibración</string>
+    <string name="settings_notif_vibration_desc">Vibrar el teléfono cuando suene un aviso</string>
 
     <!-- Comunes: diálogos, calendario y reloj (ui/components) -->
     <string name="common_cancel">Cancelar</string>
@@ -365,4 +464,114 @@
     <string name="notification_action_done">Hecho</string>
     <string name="notification_action_snooze">Posponer (15 min)</string>
     <string name="notification_default_title">Recordatorio</string>
+    <!-- Ajustes: Seguridad -->
+    <string name="settings_security_lock_title">Bloqueo de la aplicación</string>
+    <string name="settings_security_lock_desc">Exige autenticación cada vez que ingreses o vuelvas a la aplicación</string>
+    <string name="settings_security_lock_type_title">Método de desbloqueo</string>
+    <string name="settings_security_lock_type_pin">Código PIN</string>
+    <string name="settings_security_lock_type_pin_desc">4 a 6 dígitos numéricos</string>
+    <string name="settings_security_lock_type_password">Contraseña</string>
+    <string name="settings_security_lock_type_password_desc">Alfanumérica (mínimo 4 caracteres)</string>
+    <string name="settings_security_status_configured">Configurado y protegido</string>
+    <string name="settings_security_status_not_configured">Pendiente de configurar</string>
+    <string name="settings_security_action_change_pin">Cambiar PIN</string>
+    <string name="settings_security_action_change_password">Cambiar contraseña</string>
+    <string name="settings_security_action_setup_pin">Configurar PIN</string>
+    <string name="settings_security_action_setup_password">Configurar contraseña</string>
+
+    <string name="settings_security_biometric_title">Desbloqueo biométrico</string>
+    <string name="settings_security_biometric_desc">Permite ingresar rápidamente con tu huella dactilar o reconocimiento facial</string>
+    <string name="settings_security_biometric_no_hardware">Tu dispositivo no cuenta con sensor biométrico compatible</string>
+    <string name="settings_security_biometric_not_enrolled">No hay huellas o datos biométricos configurados en Android</string>
+    <string name="settings_security_biometric_setup_action">Configurar en Android</string>
+
+    <string name="settings_security_timeout_title">Bloquear automáticamente</string>
+    <string name="settings_security_timeout_desc">Tiempo de espera tras salir o minimizar la aplicación</string>
+    <string name="settings_security_timeout_immediate">Inmediatamente</string>
+    <string name="settings_security_timeout_1min">Tras 1 minuto</string>
+    <string name="settings_security_timeout_5min">Tras 5 minutos</string>
+
+    <!-- Diálogo de configuración de PIN / Contraseña -->
+    <string name="security_dialog_setup_pin_title">Configurar PIN de acceso</string>
+    <string name="security_dialog_change_pin_title">Cambiar PIN de acceso</string>
+    <string name="security_dialog_setup_password_title">Configurar contraseña</string>
+    <string name="security_dialog_change_password_title">Cambiar contraseña</string>
+    <string name="security_dialog_current_pin">PIN actual</string>
+    <string name="security_dialog_current_password">Contraseña actual</string>
+    <string name="security_dialog_new_pin">Nuevo PIN (4 a 6 números)</string>
+    <string name="security_dialog_new_password">Nueva contraseña</string>
+    <string name="security_dialog_confirm_pin">Confirmar nuevo PIN</string>
+    <string name="security_dialog_confirm_password">Confirmar nueva contraseña</string>
+    <string name="security_dialog_error_mismatch">Los códigos ingresados no coinciden</string>
+    <string name="security_dialog_error_invalid_current">El código actual es incorrecto</string>
+    <string name="security_dialog_error_too_short_pin">El PIN debe contener entre 4 y 6 números</string>
+    <string name="security_dialog_error_too_short_pwd">La contraseña debe tener al menos 4 caracteres</string>
+    <string name="security_dialog_btn_save">Guardar</string>
+    <string name="security_dialog_btn_cancel">Cancelar</string>
+
+    <!-- Pantalla de bloqueo (Lock Screen) -->
+    <string name="lock_screen_title">Hey! está bloqueado</string>
+    <string name="lock_screen_subtitle_pin">Ingresa tu código PIN para continuar</string>
+    <string name="lock_screen_subtitle_password">Ingresa tu contraseña para continuar</string>
+    <string name="lock_screen_pin_placeholder">••••</string>
+    <string name="lock_screen_password_placeholder">Ingresa tu contraseña</string>
+    <string name="lock_screen_btn_unlock">Desbloquear</string>
+    <string name="lock_screen_btn_biometric">Usar biometría</string>
+    <string name="lock_screen_biometric_prompt_title">Desbloquear Hey!</string>
+    <string name="lock_screen_biometric_prompt_subtitle">Confirma tu huella o rostro para ingresar</string>
+    <string name="lock_screen_biometric_prompt_cancel">Usar PIN o contraseña</string>
+    <string name="lock_screen_error_wrong_code">Código incorrecto. Vuelve a intentarlo.</string>
+    <!-- Ajustes: Datos y almacenamiento -->
+    <string name="settings_data_backup_title">Copia de seguridad local</string>
+    <string name="settings_data_backup_desc">Guarda una copia completa de tus notas, tareas y lugares en el almacenamiento del dispositivo</string>
+    <string name="settings_data_backup_create_btn">Crear copia ahora</string>
+    <string name="settings_data_backup_restore_btn">Restaurar copia</string>
+    <string name="settings_data_backup_latest_title">Última copia local</string>
+    <string name="settings_data_backup_none">No hay copias de seguridad locales disponibles</string>
+    <string name="settings_data_backup_success">Copia de seguridad creada correctamente</string>
+    <string name="settings_data_restore_success">Copia restaurada: %1$d recordatorios recuperados</string>
+
+    <string name="settings_data_transfer_title">Exportación e importación</string>
+    <string name="settings_data_transfer_desc">Comparte o transfiere tus datos en formato de archivo JSON</string>
+    <string name="settings_data_export_btn">Exportar datos</string>
+    <string name="settings_data_import_btn">Importar archivo</string>
+    <string name="settings_data_export_chooser_title">Compartir o guardar copia de Hey!</string>
+    <string name="settings_data_import_success">Importación finalizada: %1$d recordatorios, %2$d lugares y %3$d etiquetas</string>
+    <string name="settings_data_import_error">No se pudo importar el archivo. Verifica que sea un respaldo válido de Hey!.</string>
+
+    <string name="settings_data_cache_title">Limpieza de caché</string>
+    <string name="settings_data_cache_desc">Mapas sin conexión, fotos temporales y archivos en caché</string>
+    <string name="settings_data_cache_size_label">Tamaño actual</string>
+    <string name="settings_data_cache_clean_btn">Liberar caché</string>
+    <string name="settings_data_cache_cleared_msg">Caché liberada correctamente (%1$s)</string>
+
+    <string name="settings_data_reset_title">Restablecer la aplicación</string>
+    <string name="settings_data_reset_desc">Elimina de forma irreversible todos los recordatorios, notas, fotos y preferencias</string>
+    <string name="settings_data_reset_btn">Borrar todos los datos</string>
+
+    <!-- Diálogo de confirmación para borrar datos -->
+    <string name="settings_dialog_reset_title">¿Eliminar todos los datos?</string>
+    <string name="settings_dialog_reset_message">Esta acción borrará de manera definitiva todos tus recordatorios, grabaciones de voz, fotos adjuntas, lugares guardados, etiquetas y ajustes.\n\nEsta operación es irreversible y no se podrá recuperar.</string>
+    <string name="settings_dialog_reset_confirm">Eliminar definitivamente</string>
+    <string name="settings_dialog_reset_cancel">Cancelar</string>
+    <string name="settings_data_reset_success">Todos los datos de la app han sido eliminados</string>
+
+    <!-- Ajustes: Acerca de Hey! -->
+    <string name="settings_about_app_name">Hey! Recordatorios y Notas</string>
+    <string name="settings_about_app_tagline">Recordá todo, estés donde estés y a tiempo.</string>
+    <string name="settings_about_version_label">Versión %1$s (Build %2$d)</string>
+
+    <string name="settings_about_updates_title">Actualizaciones de la aplicación</string>
+    <string name="settings_about_updates_desc">Comprueba si cuentas con la versión más reciente disponible</string>
+    <string name="settings_about_updates_btn_check">Buscar actualización</string>
+    <string name="settings_about_updates_checking">Buscando actualizaciones…</string>
+    <string name="settings_about_updates_up_to_date">¡Estás al día! Hey! v%1$s es la última versión disponible.</string>
+
+    <string name="settings_about_project_title">Proyecto Académico UADE</string>
+    <string name="settings_about_project_university">Universidad Argentina de la Empresa (UADE)</string>
+    <string name="settings_about_project_course">Desarrollo de Aplicaciones I</string>
+    <string name="settings_about_project_desc">Aplicación nativa moderna desarrollada con Jetpack Compose, Material 3, Room SQLite, geocercas en segundo plano, biometría y procesamiento por voz con IA.</string>
+
+    <string name="settings_about_privacy_title">Privacidad y código abierto</string>
+    <string name="settings_about_privacy_desc">Tus notas, recordatorios, fotos y lugares permanecen almacenados de forma local y privada en tu dispositivo. Desarrollado con las directrices de accesibilidad y tipografía Atkinson Hyperlegible.</string>
 </resources>

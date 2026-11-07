@@ -1,13 +1,25 @@
 package com.example.uade.rememberapp.ui.theme
 
 import androidx.compose.foundation.background
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Brush
 
-private val AppBackgroundBrush = Brush.verticalGradient(listOf(BackgroundTop, Background))
+val LocalUseGradientBackground = compositionLocalOf { true }
 
 /**
- * Fondo en degradé de las pantallas principales. Cada pantalla lo aplica sobre su raíz (con
- * el Scaffold en `containerColor = Color.Transparent`), así también se ve en sus previews.
+ * Fondo de las pantallas principales: degradado sutil adaptado a la paleta elegida o color
+ * plano según la preferencia del usuario configurada en Ajustes -> Apariencia.
  */
-fun Modifier.appBackground(): Modifier = background(AppBackgroundBrush)
+fun Modifier.appBackground(): Modifier = composed {
+    val useGradient = LocalUseGradientBackground.current
+    val backgroundColors = LocalAppBackgroundColors.current
+
+    if (useGradient) {
+        val brush = Brush.verticalGradient(listOf(backgroundColors.top, backgroundColors.bottom))
+        background(brush)
+    } else {
+        background(backgroundColors.bottom)
+    }
+}

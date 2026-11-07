@@ -1,50 +1,67 @@
 package com.example.uade.rememberapp.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalContext
+import com.example.uade.rememberapp.domain.model.AppSettings
+import com.example.uade.rememberapp.domain.model.ThemeMode
 
 /**
- * Esquema oscuro del diseño. Los "surfaceContainer*" son los que usan por defecto Card,
- * chips y barras de Material3, por eso se pisan con el color de las cards.
- */
-private val DarkColorScheme = darkColorScheme(
-    primary = Primary,
-    onPrimary = OnPrimary,
-    primaryContainer = PrimaryContainer,
-    onPrimaryContainer = OnPrimaryContainer,
-    background = Background,
-    onBackground = OnSurface,
-    surface = Background,
-    onSurface = OnSurface,
-    surfaceVariant = SurfaceVariant,
-    onSurfaceVariant = OnSurfaceVariant,
-    surfaceContainerLowest = Background,
-    surfaceContainerLow = CardSurface,
-    surfaceContainer = CardSurface,
-    surfaceContainerHigh = SurfaceVariant,
-    surfaceContainerHighest = SurfaceVariant,
-    outline = Outline,
-    outlineVariant = Outline,
-    // Los "inverse" los usa el Snackbar: claro sobre la app oscura, con la acción en azul.
-    inverseSurface = OnSurface,
-    inverseOnSurface = Background,
-    inversePrimary = PrimaryContainer,
-)
-
-/**
- * Por ahora la app es siempre oscura y sin color dinámico: con dynamic color, Android 12+
- * reemplaza la paleta del diseño por la del fondo de pantalla del usuario.
+ * Tema principal de Hey!.
  *
- * TODO: esquema claro cuando esté diseñado; ahí volver a usar isSystemInDarkTheme().
+ * Aplica de forma reactiva el esquema de color (paleta elegida, modo claro/oscuro/sistema,
+ * negro puro AMOLED), la tipografía accesible con escala de texto, el fondo degradado adaptado
+ * y los colores accesibles de la barra inferior.
  */
 @Composable
 fun RememberAppTheme(
+    settings: AppSettings = AppSettings(),
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography = Typography,
-        content = content,
+    val context = LocalContext.current
+    val isDarkTheme = when (settings.themeMode) {
+        ThemeMode.System -> isSystemInDarkTheme()
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
+    }
+
+    val colorScheme = buildColorScheme(
+        context = context,
+        palette = settings.palette,
+        isDarkTheme = isDarkTheme,
+        usePureBlack = settings.usePureBlack,
     )
+
+    val backgroundColors = buildBackgroundColors(
+        palette = settings.palette,
+        isDarkTheme = isDarkTheme,
+        usePureBlack = settings.usePureBlack,
+        colorScheme = colorScheme,
+    )
+
+    val navBarColors = buildNavBarColors(
+        palette = settings.palette,
+        isDarkTheme = isDarkTheme,
+        colorScheme = colorScheme,
+    )
+
+    val typography = createAppTypography(
+        fontFamily = settings.fontFamily,
+        fontScale = settings.fontScale,
+    )
+
+    CompositionLocalProvider(
+        LocalUseGradientBackground provides settings.useGradientBackground,
+        LocalAppBackgroundColors provides backgroundColors,
+        LocalAppNavBarColors provides navBarColors,
+        LocalIsDarkTheme provides isDarkTheme,
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            content = content,
+        )
+    }
 }

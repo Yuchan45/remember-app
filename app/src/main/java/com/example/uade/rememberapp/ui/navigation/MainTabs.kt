@@ -126,8 +126,8 @@ fun MainTabs(
                     // Mismo alto que la barra (48dp de destino + 4dp de margen arriba y abajo).
                     size = 56.dp,
                     shape = CookieShape,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = com.example.uade.rememberapp.ui.theme.LocalAppNavBarColors.current.container,
+                    contentColor = com.example.uade.rememberapp.ui.theme.LocalAppNavBarColors.current.unselectedContent,
                 )
             }
         },
