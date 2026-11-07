@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.domain.model.AiProcessingError
 import com.example.uade.rememberapp.domain.model.AiProcessingStatus
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
@@ -58,11 +59,9 @@ class VoiceCaptureViewModel(
     private var recordingJob: Job? = null
     private var currentAudioFile: File? = null
 
+    /** Solo anota si hay permiso: grabar lo decide el usuario con el botón (ver VoiceCaptureSheet). */
     fun onPermissionResult(granted: Boolean) {
         _uiState.update { it.copy(hasAudioPermission = granted) }
-        if (granted && !_uiState.value.isRecording) {
-            startRecording()
-        }
     }
 
     fun startRecording() {
@@ -226,13 +225,37 @@ class VoiceCaptureViewModel(
                                         isRecording = false,
                                         isPaused = false,
                                         isProcessing = false,
-                                        aiAnalysisResult = analysis,
+                                        // Con la ruta del audio: la revisión la guarda en los recordatorios que se creen.
+                                        aiAnalysisResult = analysis.copy(audioPath = file.absolutePath),
                                     )
                                 }
                             }
                         },
                         onFailure = { error ->
-                            if (isErrorEmptyOrUnintelligible(error)) {
+                            if (error is AiProcessingError.MissingApiKey || error is AiProcessingError.InvalidApiKey) {
+                                // No es culpa del audio: nunca se pudo mandar (falta la clave o es
+                                // inválida). Se guarda como nota de voz sin transcribir, así lo
+                                // grabado no se pierde, y se dice qué pasó de verdad.
+                                saveReminder(
+                                    Reminder(
+                                        type = ReminderType.Note,
+                                        title = "Nota de voz",
+                                        audioPath = file.absolutePath,
+                                        createdAt = Instant.now(),
+                                    ),
+                                )
+                                currentAudioFile = null
+                                resetRecordingState()
+                                _events.emit(
+                                    VoiceCaptureEvent.ShowSnackbar(
+                                        messageResId = if (error is AiProcessingError.MissingApiKey) {
+                                            R.string.voice_capture_error_missing_key
+                                        } else {
+                                            R.string.voice_capture_error_invalid_key
+                                        },
+                                    ),
+                                )
+                            } else if (error is AiProcessingError.Unintelligible) {
                                 file.delete()
                                 currentAudioFile = null
                                 resetRecordingState()
@@ -312,35 +335,6 @@ class VoiceCaptureViewModel(
         }
 
         return false
-    }
-
-    private fun isErrorEmptyOrUnintelligible(error: Throwable): Boolean {
-        if (error is retrofit2.HttpException) {
-            val code = error.code()
-            if (code == 400 || code == 401 || code == 403 || code == 422) {
-                return true
-            }
-        }
-        val msg = error.message.orEmpty().lowercase()
-        return msg.contains("vacío") ||
-            msg.contains("vacio") ||
-            msg.contains("empty") ||
-            msg.contains("ininteligible") ||
-            msg.contains("unintelligible") ||
-            msg.contains("too short") ||
-            msg.contains("demasiado corto") ||
-            msg.contains("corto") ||
-            msg.contains("no speech") ||
-            msg.contains("silence") ||
-            msg.contains("silencio") ||
-            msg.contains("no se pudo procesar") ||
-            msg.contains("clave de api") ||
-            msg.contains("api key") ||
-            msg.contains("400") ||
-            msg.contains("bad request") ||
-            msg.contains("sin texto") ||
-            msg.contains("texto vacío") ||
-            msg.contains("texto vacio")
     }
 
     private fun isNetworkAvailable(): Boolean {

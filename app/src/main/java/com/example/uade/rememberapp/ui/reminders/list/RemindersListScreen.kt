@@ -1,5 +1,8 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,16 +30,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
-import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutside
 import com.example.uade.rememberapp.ui.reminders.components.rememberSwipeRevealGroupState
 import com.example.uade.rememberapp.ui.reminders.list.components.HomeHeader
 import com.example.uade.rememberapp.ui.reminders.list.components.QuickCaptureBar
 import com.example.uade.rememberapp.ui.reminders.list.components.ReminderFilterBar
 import com.example.uade.rememberapp.ui.reminders.list.components.ReminderSectionHeader
+import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
+import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import com.example.uade.rememberapp.ui.theme.appBackground
 import java.time.Instant
@@ -56,8 +61,15 @@ fun RemindersListScreen(
     viewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
     contentPadding: PaddingValues = PaddingValues(),
     onReminderClick: (id: Long, type: ReminderType) -> Unit = { _, _ -> },
+    onReminderSectionClick: (id: Long, section: ReminderDetailSection) -> Unit = { _, _ -> },
+    /** El botón de lista de la nota rápida: abre el editor completo con lo ya escrito. */
+    onOpenListEditor: (title: String?) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // 🖼 de la barra plegada: elegir fotos y abrir la nota rápida con ellas.
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_PHOTOS),
+    ) { uris -> viewModel.onPhotosPickedForCapture(uris.map { it.toString() }) }
     // "Ahora" fijo mientras la pantalla está abierta: decide qué es "hoy" y cuándo mostrar el "!".
     // TODO: que lo provea el ViewModel y se actualice con el paso del tiempo.
     val now = remember { Instant.now() }
@@ -76,20 +88,27 @@ fun RemindersListScreen(
                 onSortClick = viewModel::onSortClick,
                 onSectionToggle = viewModel::onSectionToggle,
                 onReminderClick = onReminderClick,
+                onReminderSectionClick = onReminderSectionClick,
                 onReminderDone = viewModel::onReminderDone,
                 onReminderArchive = viewModel::onReminderArchive,
                 onReminderTrash = viewModel::onReminderTrash,
                 onToggleChecklistItem = viewModel::onToggleChecklistItem,
+                onCheckAllItems = viewModel::onCheckAllItems,
+                onToggleExpanded = viewModel::onToggleExpanded,
                 onQuickCaptureClick = viewModel::onQuickCaptureClick,
                 onVoiceCapture = viewModel::onVoiceCaptureClick,
-                onPhotoCapture = viewModel::onPhotoCaptureClick,
+                onPhotoCapture = {
+                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
             ),
         )
 
         if (uiState.isQuickCaptureOpen) {
             QuickCaptureSheet(
                 initialAudioPath = uiState.capturedAudioPath,
+                initialPhotoUris = uiState.capturedPhotoUris,
                 onDismiss = viewModel::onQuickCaptureDismiss,
+                onOpenListEditor = onOpenListEditor,
             )
         }
 
@@ -126,10 +145,14 @@ data class RemindersListActions(
     val onSortClick: () -> Unit = {},
     val onSectionToggle: (ReminderSectionKey) -> Unit = {},
     val onReminderClick: (id: Long, type: ReminderType) -> Unit = { _, _ -> },
+    /** Tocar un chip de la card (hora, lugar, etiquetas): abre el detalle con ese modal. */
+    val onReminderSectionClick: (id: Long, section: ReminderDetailSection) -> Unit = { _, _ -> },
     val onReminderDone: (id: Long) -> Unit = {},
     val onReminderArchive: (id: Long) -> Unit = {},
     val onReminderTrash: (id: Long) -> Unit = {},
     val onToggleChecklistItem: (reminderId: Long, itemId: Long, index: Int) -> Unit = { _, _, _ -> },
+    val onCheckAllItems: (reminderId: Long) -> Unit = {},
+    val onToggleExpanded: (reminderId: Long) -> Unit = {},
     val onQuickCaptureClick: () -> Unit = {},
     val onVoiceCapture: () -> Unit = {},
     val onPhotoCapture: () -> Unit = {},
@@ -171,7 +194,9 @@ private fun RemindersListContent(
                 modifier = Modifier.padding(
                     start = ScreenPadding,
                     end = ScreenPadding,
-                    bottom = contentPadding.calculateBottomPadding() + 12.dp,
+                    // contentPadding ya incluye los 20dp de aire que la barra de navegación tiene arriba
+                    // (su degradé, ver MainTabs): se le restan 12 para que quede a 8dp de la barra.
+                    bottom = (contentPadding.calculateBottomPadding() - 12.dp).coerceAtLeast(0.dp),
                 ),
             )
         },
@@ -192,7 +217,6 @@ private fun RemindersListContent(
         ) {
             item(key = "header") {
                 HomeHeader(
-                    userName = uiState.userName,
                     onToggleLayout = actions.onToggleLayout,
                     onCollapseAll = actions.onCollapseAll,
                     onSearch = actions.onSearch,
@@ -248,13 +272,20 @@ private fun RemindersListContent(
                                 ?.let { uiState.placeNames[it.placeId] },
                             now = now,
                             onClick = { actions.onReminderClick(reminder.id, reminder.type) },
+                            onSectionClick = { section -> actions.onReminderSectionClick(reminder.id, section) },
                             onDone = { actions.onReminderDone(reminder.id) },
                             onArchive = { actions.onReminderArchive(reminder.id) },
                             onTrash = { actions.onReminderTrash(reminder.id) },
                             onToggleChecklistItem = { itemId, index ->
                                 actions.onToggleChecklistItem(reminder.id, itemId, index)
                             },
-                            modifier = Modifier.padding(horizontal = ScreenPadding),
+                            onCheckAllItems = { actions.onCheckAllItems(reminder.id) },
+                            isExpanded = uiState.expandedReminderId == reminder.id,
+                            onToggleExpanded = { actions.onToggleExpanded(reminder.id) },
+                            // animateItem: al expandir o achicar una card, las de abajo se corren animadas.
+                            modifier = Modifier
+                                .padding(horizontal = ScreenPadding)
+                                .animateItem(),
                             revealGroup = revealGroup,
                         )
                     }
@@ -282,7 +313,7 @@ private fun RemindersListContentPreview() {
 private fun RemindersListContentEmptyPreview() {
     RememberAppTheme {
         RemindersListContent(
-            uiState = RemindersListUiState(userName = "Yu"),
+            uiState = RemindersListUiState(),
             now = Instant.now(),
             actions = RemindersListActions(),
         )

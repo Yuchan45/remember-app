@@ -20,4 +20,10 @@ data class ProposedReminder(
     val isSelected: Boolean = true,
     val isSeparateItem: Boolean = false,
     val originalProposals: List<ProposedReminder>? = null,
+    /**
+     * El recordatorio completo, si el usuario lo editó en el editor de detalle desde la revisión.
+     * Tiene todo lo que ese editor permite (etiquetas, fotos, acción, repetición…), que los
+     * campos de arriba no alcanzan a guardar: al crear se usa este tal cual.
+     */
+    val draft: Reminder? = null,
 )

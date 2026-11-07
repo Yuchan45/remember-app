@@ -3,6 +3,7 @@ package com.example.uade.rememberapp.data.repository
 import android.content.Context
 import com.example.uade.rememberapp.data.local.AppDatabase
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.AlarmRepeat
 import com.example.uade.rememberapp.domain.model.AppSettings
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.Importance
@@ -187,6 +188,7 @@ class DataManagementRepositoryImpl(
                     Alarm(
                         at = Instant.ofEpochMilli(it.atEpochMilli),
                         isSnooze = it.isSnooze,
+                        repeat = runCatching { AlarmRepeat.valueOf(it.repeat ?: "") }.getOrDefault(AlarmRepeat.None),
                     )
                 }
 
@@ -227,6 +229,8 @@ class DataManagementRepositoryImpl(
                     alarms = alarms,
                     items = checklistItems,
                     action = action,
+                    statusChangedAt = reminderDto.statusChangedAtEpochMilli?.let(Instant::ofEpochMilli),
+                    transcript = reminderDto.transcript,
                     createdAt = Instant.ofEpochMilli(reminderDto.createdAtEpochMilli),
                 )
 
@@ -325,7 +329,11 @@ class DataManagementRepositoryImpl(
         importance = importance.name,
         createdAtEpochMilli = createdAt.toEpochMilli(),
         tagNames = tags.map { it.name },
-        alarms = alarms.map { AlarmBackupDto(atEpochMilli = it.at.toEpochMilli(), isSnooze = it.isSnooze) },
+        alarms = alarms.map {
+            AlarmBackupDto(atEpochMilli = it.at.toEpochMilli(), isSnooze = it.isSnooze, repeat = it.repeat.name)
+        },
+        statusChangedAtEpochMilli = statusChangedAt?.toEpochMilli(),
+        transcript = transcript,
         placeAlerts = places.mapNotNull { alert ->
             placesMapById[alert.placeId]?.let { place ->
                 PlaceAlertBackupDto(

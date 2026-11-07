@@ -4,6 +4,7 @@ import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderBucket
 import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.scheduler.GeofenceRegistrar
 import kotlinx.coroutines.flow.first
@@ -89,6 +90,6 @@ class SaveReminderUseCaseTest {
         val observe = ObserveRemindersUseCase(repository)
 
         assertEquals(listOf("Activa"), observe().first().map { it.title })
-        assertEquals(listOf("Archivada"), observe(ReminderStatus.Archived).first().map { it.title })
+        assertEquals(listOf("Archivada"), observe(ReminderBucket.Archived).first().map { it.title })
     }
 }

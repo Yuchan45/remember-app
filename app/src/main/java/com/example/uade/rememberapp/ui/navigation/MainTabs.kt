@@ -1,21 +1,25 @@
 package com.example.uade.rememberapp.ui.navigation
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,22 +28,32 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.ui.archive.ArchiveScreen
+import com.example.uade.rememberapp.ui.components.AppDialogDefaults
 import com.example.uade.rememberapp.ui.components.CircleIconButton
 import com.example.uade.rememberapp.ui.components.CookieShape
+import com.example.uade.rememberapp.ui.components.DialogDismissButton
+import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
+import com.example.uade.rememberapp.ui.components.NavigationBarFadeColor
+import com.example.uade.rememberapp.ui.components.UndoSnackbarEffect
+import com.example.uade.rememberapp.ui.history.HistoryScreen
 import com.example.uade.rememberapp.ui.places.list.PlacesListScreen
 import com.example.uade.rememberapp.ui.reminders.create.CreateReminderOption
 import com.example.uade.rememberapp.ui.reminders.create.CreateReminderSheet
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListScreen
 import com.example.uade.rememberapp.ui.reminders.list.RemindersListViewModel
+import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
 import com.example.uade.rememberapp.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
@@ -62,9 +76,12 @@ import kotlinx.coroutines.launch
 fun MainTabs(
     modifier: Modifier = Modifier,
     remindersViewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
+    /** Tocar una card: el tipo decide la pantalla (un mensaje programado tiene la suya). */
     onReminderClick: (id: Long, type: ReminderType) -> Unit = { _, _ -> },
-    onCreateNote: () -> Unit = {},
-    onCreateChecklist: () -> Unit = {},
+    /** Tocar un chip de una card (hora, lugar, etiquetas): el detalle con ese modal abierto. */
+    onReminderSectionClick: (id: Long, section: ReminderDetailSection) -> Unit = { _, _ -> },
+    /** Abre el editor de una nota nueva; con `withList`, ya con una lista para escribir. */
+    onCreateNote: (withList: Boolean, title: String?) -> Unit = { _, _ -> },
     onCreateScheduledMessage: () -> Unit = {},
 ) {
     val remindersState by remindersViewModel.uiState.collectAsStateWithLifecycle()
@@ -80,24 +97,54 @@ fun MainTabs(
         scope.launch { pagerState.animateScrollToPage(AppDestination.Home.ordinal) }
     }
 
+    // Uno solo para toda la app: lo usan la Home y el Historial, y el Scaffold lo dibuja encima
+    // de la barra inferior.
     val snackbarHostState = remember { SnackbarHostState() }
-    TrashedReminderSnackbar(
-        trashedReminderId = remindersState.trashedReminderId,
+    val undoLabel = stringResource(R.string.reminders_undo)
+    UndoSnackbarEffect(
+        targetId = remindersState.trashedReminderId,
+        message = pluralStringResource(R.plurals.reminders_trashed, 1, 1),
+        actionLabel = undoLabel,
         snackbarHostState = snackbarHostState,
-        onUndo = remindersViewModel::onUndoTrash,
+        onAction = remindersViewModel::onUndoTrash,
         onDone = remindersViewModel::onTrashNoticeDone,
     )
-    CompletedReminderSnackbar(
-        completedReminderId = remindersState.completedReminderId,
+    UndoSnackbarEffect(
+        targetId = remindersState.archivedReminderId,
+        message = stringResource(R.string.reminders_archived),
+        actionLabel = undoLabel,
         snackbarHostState = snackbarHostState,
-        onUndo = remindersViewModel::onUndoDone,
+        onAction = remindersViewModel::onUndoArchive,
+        onDone = remindersViewModel::onArchiveNoticeDone,
+    )
+    UndoSnackbarEffect(
+        targetId = remindersState.checkedAllReminderId,
+        message = stringResource(R.string.reminders_checklist_all_checked),
+        actionLabel = undoLabel,
+        snackbarHostState = snackbarHostState,
+        onAction = remindersViewModel::onUndoCheckAll,
+        onDone = remindersViewModel::onCheckAllNoticeDone,
+    )
+    UndoSnackbarEffect(
+        targetId = remindersState.completedReminderId,
+        message = stringResource(R.string.reminder_completed),
+        actionLabel = undoLabel,
+        snackbarHostState = snackbarHostState,
+        onAction = remindersViewModel::onUndoDone,
         onDone = remindersViewModel::onDoneNoticeDone,
     )
-    ChecklistNoticeSnackbar(
-        notice = remindersState.checklistIncompleteNotice,
-        snackbarHostState = snackbarHostState,
-        onDismiss = remindersViewModel::onChecklistNoticeDismissed,
-    )
+    if (remindersState.incompleteChecklistReminderId != null) {
+        IncompleteChecklistDialog(
+            onCompleteAndDone = remindersViewModel::onCompleteChecklistAndDone,
+            onDismiss = remindersViewModel::onIncompleteChecklistDismiss,
+        )
+    }
+    if (remindersState.pendingCheckAllReminderId != null) {
+        CheckAllConfirmDialog(
+            onConfirm = remindersViewModel::onConfirmCheckAll,
+            onDismiss = remindersViewModel::onCheckAllDismiss,
+        )
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -107,11 +154,23 @@ fun MainTabs(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             // Barra y "+" juntos, centrados como grupo (no repartidos a los extremos).
+            // Detrás, un degradé de transparente a negro translúcido: el contenido que pasa por
+            // debajo se va oscureciendo, y abajo empalma con el velo de la barra del sistema
+            // (NavigationBarScrim, en MainActivity), que sigue oscureciendo hasta el borde.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    // Primero el inset: el degradé termina justo arriba de la barra del sistema.
                     .navigationBarsPadding()
-                    .padding(bottom = 8.dp),
+                    // Solo en tema oscuro (como el velo de MainActivity): en el claro, el negro desentona.
+                    .then(
+                        if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
+                            Modifier.background(Brush.verticalGradient(listOf(Color.Transparent, NavigationBarFadeColor)))
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .padding(top = 20.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -144,7 +203,10 @@ fun MainTabs(
             MainTabPage(
                 destination = destinations[page],
                 contentPadding = contentPadding,
+                snackbarHostState = snackbarHostState,
                 onReminderClick = onReminderClick,
+                onReminderSectionClick = onReminderSectionClick,
+                onCreateNote = onCreateNote,
             )
         }
     }
@@ -159,8 +221,7 @@ fun MainTabs(
             onOptionClick = { option ->
                 remindersViewModel.onCreateMenuDismiss()
                 when (option) {
-                    CreateReminderOption.Note -> onCreateNote()
-                    CreateReminderOption.Checklist -> onCreateChecklist()
+                    CreateReminderOption.Note -> onCreateNote(false, null)
                     CreateReminderOption.ScheduledMessage -> onCreateScheduledMessage()
                     else -> remindersViewModel.onCreateOptionClick(option)
                 }
@@ -171,96 +232,117 @@ fun MainTabs(
 }
 
 /**
- * Muestra "1 movido a la papelera · Deshacer ✕" unos segundos cada vez que [trashedReminderId]
- * pasa a tener un recordatorio. "Deshacer" avisa por [onUndo]; al terminar el aviso (por deshacer, cerrar con
- * la ✕ o vencerse) avisa por [onDone] para que el ViewModel lo olvide.
- *
- * Si se manda otro a la papelera mientras se ve el aviso, el LaunchedEffect se reinicia con el
- * id nuevo: el aviso anterior se cierra y el nuevo ofrece deshacer el último.
+ * Al marcar como hecho una nota con ítems sin tildar:
+ * ```
+ * La lista no está completa
+ * Para finalizar el recordatorio se debe marcar toda la checklist.
+ *              [Cancelar]  [Marcar todo y mover a Hecho]
+ * ```
+ * Va en un diálogo (y no en un snackbar) porque ofrece una acción que cambia los datos.
  */
 @Composable
-private fun TrashedReminderSnackbar(
-    trashedReminderId: Long?,
-    snackbarHostState: SnackbarHostState,
-    onUndo: (Long) -> Unit,
-    onDone: (Long) -> Unit,
-) {
-    val message = pluralStringResource(R.plurals.reminders_trashed, 1, 1)
-    val undoLabel = stringResource(R.string.reminders_undo)
-    val currentOnUndo by rememberUpdatedState(onUndo)
-    val currentOnDone by rememberUpdatedState(onDone)
-
-    LaunchedEffect(trashedReminderId) {
-        val id = trashedReminderId ?: return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(
-            message = message,
-            actionLabel = undoLabel,
-            withDismissAction = true,
-            // Corto (4s): es informativo, para deshacer rápido un error.
-            duration = SnackbarDuration.Short,
-        )
-        if (result == SnackbarResult.ActionPerformed) currentOnUndo(id)
-        currentOnDone(id)
-    }
-}
-
-@Composable
-private fun CompletedReminderSnackbar(
-    completedReminderId: Long?,
-    snackbarHostState: SnackbarHostState,
-    onUndo: (Long) -> Unit,
-    onDone: (Long) -> Unit,
-) {
-    val message = stringResource(R.string.reminder_completed)
-    val undoLabel = stringResource(R.string.reminders_undo)
-    val currentOnUndo by rememberUpdatedState(onUndo)
-    val currentOnDone by rememberUpdatedState(onDone)
-
-    LaunchedEffect(completedReminderId) {
-        val id = completedReminderId ?: return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(
-            message = message,
-            actionLabel = undoLabel,
-            withDismissAction = true,
-            duration = SnackbarDuration.Short,
-        )
-        if (result == SnackbarResult.ActionPerformed) currentOnUndo(id)
-        currentOnDone(id)
-    }
-}
-
-@Composable
-private fun ChecklistNoticeSnackbar(
-    notice: String?,
-    snackbarHostState: SnackbarHostState,
+private fun IncompleteChecklistDialog(
+    onCompleteAndDone: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
-
-    LaunchedEffect(notice) {
-        val msg = notice ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(
-            message = msg,
-            withDismissAction = true,
-            duration = SnackbarDuration.Short,
-        )
-        currentOnDismiss()
-    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = AppDialogDefaults.shape,
+        containerColor = AppDialogDefaults.containerColor,
+        icon = { Icon(painterResource(R.drawable.ic_done_all), contentDescription = null) },
+        title = {
+            Text(
+                text = stringResource(R.string.checklist_incomplete_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.checklist_incomplete_for_done),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            DialogFilledConfirmButton(
+                text = stringResource(R.string.checklist_incomplete_complete_and_done),
+                onClick = onCompleteAndDone,
+            )
+        },
+        dismissButton = {
+            DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onDismiss)
+        },
+    )
 }
 
 @Composable
 private fun MainTabPage(
     destination: AppDestination,
     contentPadding: PaddingValues,
+    snackbarHostState: SnackbarHostState,
     onReminderClick: (id: Long, type: ReminderType) -> Unit,
+    onReminderSectionClick: (id: Long, section: ReminderDetailSection) -> Unit,
+    onCreateNote: (withList: Boolean, title: String?) -> Unit,
 ) {
     when (destination) {
         AppDestination.Home -> RemindersListScreen(
             contentPadding = contentPadding,
             onReminderClick = onReminderClick,
+            onReminderSectionClick = onReminderSectionClick,
+            onOpenListEditor = { title -> onCreateNote(true, title) },
         )
-        AppDestination.Archive -> ArchiveScreen(contentPadding = contentPadding)
+        AppDestination.History -> HistoryScreen(
+            contentPadding = contentPadding,
+            snackbarHostState = snackbarHostState,
+            onReminderClick = onReminderClick,
+        )
         AppDestination.Places -> PlacesListScreen(contentPadding = contentPadding)
         AppDestination.Settings -> SettingsScreen(contentPadding = contentPadding)
     }
+}
+
+/**
+ * Confirmación de "Marcar todo" en una card:
+ * ```
+ * ¿Marcar toda la lista?
+ * Se van a tildar todos los ítems de este recordatorio.
+ *                              [Cancelar]  [Marcar todo]
+ * ```
+ * Igual queda el "Deshacer" del aviso después, por si se confirmó sin querer.
+ */
+@Composable
+private fun CheckAllConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = AppDialogDefaults.shape,
+        containerColor = AppDialogDefaults.containerColor,
+        icon = { Icon(painterResource(R.drawable.ic_done_all), contentDescription = null) },
+        title = {
+            Text(
+                text = stringResource(R.string.reminders_checklist_check_all_confirm_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.reminders_checklist_check_all_confirm_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            DialogFilledConfirmButton(
+                text = stringResource(R.string.reminders_checklist_check_all),
+                onClick = onConfirm,
+            )
+        },
+        dismissButton = {
+            DialogDismissButton(text = stringResource(R.string.common_cancel), onClick = onDismiss)
+        },
+    )
 }

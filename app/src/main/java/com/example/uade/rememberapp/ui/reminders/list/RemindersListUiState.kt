@@ -52,7 +52,6 @@ data class ReminderSection(
  */
 data class RemindersListUiState(
     val isLoading: Boolean = false,
-    val userName: String = "",
     val typeFilter: ReminderTypeFilter = ReminderTypeFilter.All,
     val grouping: ReminderGrouping = ReminderGrouping.Date,
     val sort: ReminderSort = ReminderSort.Upcoming,
@@ -66,6 +65,8 @@ data class RemindersListUiState(
     val isVoiceCaptureOpen: Boolean = false,
     /** Ruta de audio temporal grabado para pasar a la ventana de configuración rápida. */
     val capturedAudioPath: String? = null,
+    /** Fotos elegidas con 🖼 de la barra plegada, para abrir la nota rápida con ellas adjuntas. */
+    val capturedPhotoUris: List<String> = emptyList(),
     /** Si el menú "Crear" está abierto. Lo abre el botón "+" de la barra inferior. */
     val isCreateMenuOpen: Boolean = false,
     /** Resultado de análisis de Groq IA para abrir la pantalla de revisión de recordatorios (03.B). */
@@ -79,8 +80,19 @@ data class RemindersListUiState(
     val trashedReminderId: Long? = null,
     /** Id del recordatorio marcado como completado/hecho para mostrar snackbar con opción de Deshacer. */
     val completedReminderId: Long? = null,
-    /** Mensaje de aviso cuando se intenta finalizar una checklist sin haber marcado todos los ítems. */
-    val checklistIncompleteNotice: String? = null,
+    /** El recordatorio al que se le pidió "Marcar todo", con su diálogo de confirmación abierto. */
+    val pendingCheckAllReminderId: Long? = null,
+    /** Id del recordatorio al que se le marcó toda la lista, para "Lista completa · Deshacer". */
+    val checkedAllReminderId: Long? = null,
+    /** Id del recordatorio recién archivado, para el snackbar "Archivado · Deshacer". */
+    val archivedReminderId: Long? = null,
+    /**
+     * El recordatorio que se quiso marcar como hecho con ítems sin tildar: mientras no sea null,
+     * se ve el diálogo "¿Marcar todo como listo y mover a Hecho?".
+     */
+    val incompleteChecklistReminderId: Long? = null,
+    /** El recordatorio expandido en la Home (todo su contenido a la vista); como mucho uno. */
+    val expandedReminderId: Long? = null,
 ) {
     val isEmpty: Boolean get() = !isLoading && sections.all { it.reminders.isEmpty() }
 }

@@ -4,6 +4,8 @@ import com.example.uade.rememberapp.data.local.dao.ReminderDao
 import com.example.uade.rememberapp.data.local.mapper.toDomain
 import com.example.uade.rememberapp.data.local.mapper.toEntity
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderBucket
+import com.example.uade.rememberapp.domain.model.ReminderStatus
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -21,6 +23,16 @@ class ReminderRepositoryImpl(
 
     override fun observeAll(): Flow<List<Reminder>> =
         dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeByBucket(bucket: ReminderBucket): Flow<List<Reminder>> {
+        val (status, isDone) = bucket.toState()
+        return dao.observeByState(status, isDone).map { rows -> rows.map { it.toDomain() } }
+    }
+
+    override suspend fun getByBucket(bucket: ReminderBucket): List<Reminder> {
+        val (status, isDone) = bucket.toState()
+        return dao.getByState(status, isDone).map { it.toDomain() }
+    }
 
     override fun observePendingForPlace(placeId: Long): Flow<List<Reminder>> =
         dao.observePendingForPlace(placeId).map { rows -> rows.map { it.toDomain() } }
@@ -40,4 +52,15 @@ class ReminderRepositoryImpl(
         )
 
     override suspend fun delete(id: Long) = dao.deleteById(id)
+}
+
+/**
+ * Cómo se guarda cada sección en la base: el `status` y, para los activos, si están hechos
+ * (null = no importa). Es lo inverso de `Reminder.bucket`.
+ */
+private fun ReminderBucket.toState(): Pair<String, Boolean?> = when (this) {
+    ReminderBucket.Active -> ReminderStatus.Active.name to false
+    ReminderBucket.Done -> ReminderStatus.Active.name to true
+    ReminderBucket.Archived -> ReminderStatus.Archived.name to null
+    ReminderBucket.Deleted -> ReminderStatus.Deleted.name to null
 }

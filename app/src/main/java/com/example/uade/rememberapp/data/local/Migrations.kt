@@ -196,3 +196,41 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         )
     }
 }
+
+/**
+ * 10 → 11: `statusChangedAtMillis`, desde cuándo un recordatorio está hecho, archivado o
+ * eliminado (para borrarlo solo después de unos días).
+ *
+ * Los que ya estaban hechos, archivados o eliminados no tenían fecha: se les pone "ahora", así
+ * no se borran apenas se actualiza la app sino recién cuando se cumpla el plazo completo.
+ */
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Nullable y sin DEFAULT, igual que ReminderEntity.statusChangedAtMillis.
+        db.execSQL("ALTER TABLE reminders ADD COLUMN statusChangedAtMillis INTEGER")
+        db.execSQL(
+            "UPDATE reminders SET statusChangedAtMillis = ? WHERE isDone = 1 OR status != 'Active'",
+            arrayOf<Any>(System.currentTimeMillis()),
+        )
+    }
+}
+
+/**
+ * 11 → 12: `repeat` en `reminder_alarms`, cada cuánto se repite el aviso (ver AlarmRepeat). Los
+ * avisos que ya existían quedan sin repetición ('None'), igual que el default de AlarmEntity.
+ */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE reminder_alarms ADD COLUMN `repeat` TEXT NOT NULL DEFAULT 'None'")
+    }
+}
+
+/**
+ * 12 → 13: `transcript` en `reminders`, el texto que se transcribió de la nota de voz (para poder
+ * leerlo junto con el audio). Nullable: los que ya existían quedan sin transcripción.
+ */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE reminders ADD COLUMN transcript TEXT")
+    }
+}

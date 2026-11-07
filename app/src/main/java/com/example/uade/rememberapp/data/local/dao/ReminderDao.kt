@@ -33,6 +33,22 @@ abstract class ReminderDao {
     @Query("SELECT * FROM reminders ORDER BY createdAtMillis DESC")
     abstract fun observeAll(): Flow<List<ReminderWithDetails>>
 
+    /**
+     * Los que tienen cierto [status]; con [isDone] distinto de null, además solo los hechos o los
+     * pendientes (la Home y "Hechos" son los dos `Active`, separados por isDone).
+     */
+    @Transaction
+    @Query(
+        "SELECT * FROM reminders WHERE status = :status AND (:isDone IS NULL OR isDone = :isDone) " +
+            "ORDER BY COALESCE(statusChangedAtMillis, createdAtMillis) DESC",
+    )
+    abstract fun observeByState(status: String, isDone: Boolean?): Flow<List<ReminderWithDetails>>
+
+    /** Lo mismo que [observeByState], una sola vez. */
+    @Transaction
+    @Query("SELECT * FROM reminders WHERE status = :status AND (:isDone IS NULL OR isDone = :isDone)")
+    abstract suspend fun getByState(status: String, isDone: Boolean?): List<ReminderWithDetails>
+
     /** Los pendientes con aviso en [placeId] (para la geofence de ese lugar). */
     @Transaction
     @Query(

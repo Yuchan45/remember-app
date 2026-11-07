@@ -2,6 +2,7 @@ package com.example.uade.rememberapp.ui.reminders.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,21 +22,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.MessageChannel
 import com.example.uade.rememberapp.domain.model.NotificationAction
@@ -43,11 +50,11 @@ import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.ui.components.TagChip
+import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
 import com.example.uade.rememberapp.ui.theme.PhotoBackground
 import com.example.uade.rememberapp.ui.theme.PhotoScrim
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
-import coil3.compose.AsyncImage
 import java.io.File
 import java.time.Instant
 
@@ -75,6 +82,10 @@ fun ReminderCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onToggleChecklistItem: ((itemId: Long, index: Int) -> Unit)? = null,
+    onCheckAllItems: (() -> Unit)? = null,
+    isExpanded: Boolean = false,
+    onToggleExpanded: (() -> Unit)? = null,
+    onSectionClick: ((ReminderDetailSection) -> Unit)? = null,
 ) {
     val accentBrush = remember(reminder.tags) { accentBrush(reminder.tags) }
     val hasPhoto = reminder.photoPath != null
@@ -103,6 +114,10 @@ fun ReminderCard(
                     placeName = placeName,
                     now = now,
                     onToggleChecklistItem = onToggleChecklistItem,
+                    onCheckAllItems = onCheckAllItems,
+                    isExpanded = isExpanded,
+                    onToggleExpanded = onToggleExpanded,
+                    onSectionClick = onSectionClick,
                     modifier = Modifier
                         .weight(1f)
                         // Una card de solo foto no tiene texto: se le da alto para que la foto se vea.
@@ -120,6 +135,10 @@ private fun ReminderCardContent(
     placeName: String?,
     now: Instant,
     onToggleChecklistItem: ((itemId: Long, index: Int) -> Unit)? = null,
+    onCheckAllItems: (() -> Unit)? = null,
+    isExpanded: Boolean = false,
+    onToggleExpanded: (() -> Unit)? = null,
+    onSectionClick: ((ReminderDetailSection) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -136,49 +155,79 @@ private fun ReminderCardContent(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
-            reminder.title?.takeIf { it.isNotBlank() }?.let { title ->
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Text(
+                text = reminder.title?.takeIf { it.isNotBlank() }.orEmpty(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                // weight: el título toma lo que sobra y "Marcar todo" queda pegado a la derecha.
+                modifier = Modifier.weight(1f),
+            )
+            // Arriba a la derecha, lejos de los checkbox de los ítems; pide confirmación antes.
+            if (onCheckAllItems != null && reminder.items.any { !it.isChecked }) {
+                CheckAllChip(onClick = onCheckAllItems)
             }
         }
 
+        // Si la descripción no entra en 2 líneas (y no hay lista que ya tenga su "+N más"), se
+        // ofrece "Ver más". Se sabe recién al medir el texto: onTextLayout avisa si se cortó.
+        var descriptionOverflows by remember(reminder.description) { mutableStateOf(false) }
         reminder.description?.takeIf { it.isNotBlank() }?.let { description ->
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
+                maxLines = if (isExpanded) Int.MAX_VALUE else 2,
                 overflow = TextOverflow.Ellipsis,
+                onTextLayout = { if (!isExpanded) descriptionOverflows = it.hasVisualOverflow },
             )
         }
 
-        if (reminder.type == ReminderType.Checklist && reminder.items.isNotEmpty()) {
+        if (reminder.items.isNotEmpty()) {
             ChecklistPreview(
                 items = reminder.items,
                 onToggleItem = onToggleChecklistItem,
+                isExpanded = isExpanded,
+                onToggleExpanded = onToggleExpanded,
                 modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        // Con más de 2 ítems el "+N más" / "Ver menos" de la lista ya expande todo; si no, este
+        // aparece solo cuando la descripción no entra.
+        if (onToggleExpanded != null && reminder.items.size <= 2 && (descriptionOverflows || isExpanded)) {
+            ExpandToggle(
+                text = stringResource(
+                    if (isExpanded) R.string.reminders_card_show_less else R.string.reminders_card_show_more,
+                ),
+                onClick = onToggleExpanded,
             )
         }
 
         if (reminder.tags.isNotEmpty() || hasVisibleTrigger(reminder, placeName)) {
             Spacer(Modifier.weight(1f))
-            ReminderCardFooter(reminder = reminder, placeName = placeName, now = now)
+            ReminderCardFooter(
+                reminder = reminder,
+                placeName = placeName,
+                now = now,
+                onSectionClick = onSectionClick,
+            )
         }
     }
 }
 
+/**
+ * Etiquetas a la izquierda y cuándo avisa a la derecha. Con [onSectionClick], cada parte se puede
+ * tocar para abrir el detalle con su modal ya abierto (las etiquetas como un solo grupo).
+ */
 @Composable
 private fun ReminderCardFooter(
     reminder: Reminder,
     placeName: String?,
     now: Instant,
     modifier: Modifier = Modifier,
+    onSectionClick: ((ReminderDetailSection) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -187,7 +236,17 @@ private fun ReminderCardFooter(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (onSectionClick != null && reminder.tags.isNotEmpty()) {
+                        Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(role = Role.Button) { onSectionClick(ReminderDetailSection.Tags) }
+                    } else {
+                        Modifier
+                    },
+                ),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             reminder.tags.forEach { tag ->
@@ -198,6 +257,8 @@ private fun ReminderCardFooter(
             reminder = reminder,
             placeName = placeName,
             now = now,
+            onTimeClick = onSectionClick?.let { { it(ReminderDetailSection.Time) } },
+            onPlaceClick = onSectionClick?.let { { it(ReminderDetailSection.Place) } },
         )
     }
 }
@@ -233,10 +294,14 @@ internal fun ReminderPhotoBackground(
             )
         }
         if (scrim) {
+            // Dos capas: un velo parejo sobre toda la foto (así ninguna parte queda muy clara, ni
+            // a la derecha donde van la hora y el lugar) y encima un degradé más fuerte a la
+            // izquierda, donde están el título, el texto y los ítems.
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .background(Brush.horizontalGradient(listOf(PhotoScrim, Color.Transparent))),
+                    .background(Color.Black.copy(alpha = 0.35f))
+                    .background(Brush.horizontalGradient(listOf(PhotoScrim, PhotoScrim.copy(alpha = 0.3f)))),
             )
         }
     }
@@ -269,7 +334,8 @@ internal fun Reminder.typeIcon(): Int = when {
         }
         null -> R.drawable.ic_send
     }
-    type == ReminderType.Checklist -> R.drawable.ic_checklist
+    // Una nota con lista: lo decide el contenido, no el tipo (ver ReminderType).
+    items.isNotEmpty() -> R.drawable.ic_checklist
     alarms.isEmpty() && places.isNotEmpty() -> R.drawable.ic_location_on
     else -> R.drawable.ic_description
 }

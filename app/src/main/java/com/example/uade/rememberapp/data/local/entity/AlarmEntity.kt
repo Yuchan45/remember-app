@@ -31,4 +31,10 @@ data class AlarmEntity(
     /** Si lo creó "Posponer" (ver Alarm.isSnooze). El default coincide con el de MIGRATION_6_7. */
     @ColumnInfo(defaultValue = "0")
     val isSnooze: Boolean = false,
+    /**
+     * Cada cuánto se repite, por nombre (ver AlarmRepeat). El default coincide con el de
+     * MIGRATION_11_12: los avisos que ya existían quedan sin repetición.
+     */
+    @ColumnInfo(defaultValue = "None")
+    val repeat: String = "None",
 )

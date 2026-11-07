@@ -60,11 +60,17 @@ data class ReminderBackupDto(
     val placeAlerts: List<PlaceAlertBackupDto> = emptyList(),
     val checklistItems: List<ChecklistItemBackupDto> = emptyList(),
     val action: NotificationActionBackupDto? = null,
+    /** Desde cuándo está hecho, archivado o eliminado (para que se siga borrando solo). Nullable: los backups viejos no lo tienen. */
+    val statusChangedAtEpochMilli: Long? = null,
+    /** Lo que se transcribió si se creó por voz (el audio en sí no viaja en el backup). */
+    val transcript: String? = null,
 )
 
 data class AlarmBackupDto(
     val atEpochMilli: Long,
     val isSnooze: Boolean = false,
+    /** Cada cuánto se repite (nombre de AlarmRepeat). Nullable: los backups viejos no lo tienen. */
+    val repeat: String? = null,
 )
 
 data class PlaceAlertBackupDto(

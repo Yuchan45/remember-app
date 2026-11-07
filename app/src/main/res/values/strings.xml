@@ -3,7 +3,6 @@
 
     <!-- Home / lista de recordatorios: header -->
     <!-- %1$s = nombre del usuario. -->
-    <string name="reminders_home_greeting">Hola, %1$s</string>
     <string name="reminders_list_title">Recordatorios</string>
     <string name="reminders_home_action_toggle_layout">Cambiar vista</string>
     <string name="reminders_home_action_collapse_all">Colapsar todo</string>
@@ -38,6 +37,7 @@
     <string name="reminders_quick_capture_new">Nuevo recordatorio</string>
     <string name="reminders_quick_capture_voice">Dictar recordatorio</string>
     <string name="reminders_quick_capture_photo">Agregar foto</string>
+    <string name="reminders_capture_remove_photo">Quitar foto</string>
 
     <!-- Captura rápida: modal para crear una nota -->
     <string name="reminders_capture_title_hint">Crea un recordatorio rápido</string>
@@ -85,6 +85,8 @@
     <!-- Card de recordatorio -->
     <!-- %1$d = cantidad de ítems de la lista que no se muestran. -->
     <string name="reminders_checklist_more_items">+ %1$d más</string>
+    <string name="reminders_card_show_more">Ver más</string>
+    <string name="reminders_card_show_less">Ver menos</string>
     <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
     <string name="reminders_trigger_on_arrival">Al llegar a %1$s</string>
     <string name="reminders_trigger_on_departure">Al salir de %1$s</string>
@@ -101,13 +103,9 @@
     <!-- Menú "Crear" (botón +) -->
     <string name="reminders_create_title">Crear</string>
     <string name="reminders_create_note">Nota</string>
-    <string name="reminders_create_note_description">Texto, imagen o ambos</string>
-    <string name="reminders_create_checklist">Checklist</string>
-    <string name="reminders_create_checklist_description">Ítems tildables</string>
+    <string name="reminders_create_note_description">Texto, listas e imágenes</string>
     <string name="reminders_create_audio">Audio</string>
     <string name="reminders_create_audio_description">Transcripción con Groq</string>
-    <string name="reminders_create_long_text">Texto largo</string>
-    <string name="reminders_create_long_text_description">La IA separa en recordatorios</string>
     <string name="reminders_create_scheduled_message">Mensaje programado</string>
     <string name="reminders_create_scheduled_message_description">WhatsApp, SMS o mail</string>
 
@@ -145,8 +143,52 @@
         <item quantity="other">%d movidos a la papelera</item>
     </plurals>
     <string name="reminder_completed">Recordatorio completado</string>
-    <string name="checklist_incomplete_for_done">Para finalizar el recordatorio se debe marcar toda la checklist</string>
+    <string name="reminders_archived">Archivado</string>
+    <string name="checklist_incomplete_for_done">Para finalizar el recordatorio se debe marcar toda la checklist.</string>
+    <string name="checklist_incomplete_title">La lista no está completa</string>
+    <string name="checklist_incomplete_complete_and_done">Marcar todo y mover a Hecho</string>
     <string name="checklist_all_completed_banner">¡Toda la checklist completada! Toca para finalizar</string>
+
+    <!-- Detalle de un recordatorio: lista dentro de la nota -->
+    <string name="reminders_checklist_add_list">Agregar lista</string>
+    <string name="reminders_checklist_add_item">Añadir elemento</string>
+    <string name="reminders_checklist_dictate">Dictar ítems</string>
+    <string name="reminders_checklist_paste">Pegar texto</string>
+    <string name="reminders_checklist_generating">Generando ítems con IA…</string>
+    <string name="reminders_checklist_completed_header">COMPLETADOS (%1$d)</string>
+    <string name="reminders_checklist_mark_done">Marcar como terminado</string>
+    <string name="reminders_checklist_unmark">Desmarcar ítem</string>
+    <string name="reminders_checklist_item_hint">Elemento</string>
+    <string name="reminders_checklist_note_hint">Nota (opcional)</string>
+    <string name="reminders_checklist_hide_note">Ocultar nota</string>
+    <string name="reminders_checklist_add_note">Agregar nota</string>
+    <string name="reminders_checklist_delete_item">Eliminar</string>
+    <string name="reminders_checklist_paste_example">Ej:\nVacío 5kg (en el Coto)\nAsado 3kg (en Res)\nChorizo y morcilla</string>
+    <string name="reminders_checklist_generate">Generar ítems</string>
+    <string name="reminders_checklist_paste_description">Pega un mensaje, lista de compras o ingredientes. La IA detectará los ítems automáticamente.</string>
+    <string name="reminders_checklist_check_all">Marcar todo</string>
+    <string name="reminders_checklist_check_all_confirm_title">¿Marcar toda la lista?</string>
+    <string name="reminders_checklist_check_all_confirm_message">Se van a tildar todos los ítems de este recordatorio.</string>
+    <string name="reminders_checklist_reorder">Mantener apretado y arrastrar para reordenar</string>
+    <string name="reminders_checklist_all_checked">Lista completa</string>
+
+    <!-- Detalle de un recordatorio: banner (portada) -->
+    <string name="reminder_detail_add_banner">Agregar banner</string>
+
+    <!-- Detalle de un recordatorio: la nota de voz de la que salió -->
+    <string name="reminder_detail_voice_note">Nota de voz</string>
+    <string name="reminder_detail_show_transcript">Ver transcripción</string>
+    <string name="reminder_detail_hide_transcript">Ocultar transcripción</string>
+    <string name="reminder_detail_play_audio">Reproducir la nota de voz</string>
+    <string name="reminder_detail_pause_audio">Pausar la nota de voz</string>
+    <string name="reminder_detail_options_hide">Ocultar opciones</string>
+    <string name="reminder_detail_options_show">Mostrar opciones</string>
+
+    <!-- Detalle de un recordatorio: salir con cambios sin guardar -->
+    <string name="reminder_detail_unsaved_title">¿Guardar los cambios?</string>
+    <string name="reminder_detail_unsaved_message">Tenés cambios sin guardar. Si salís sin guardar, se pierden.</string>
+    <string name="reminder_detail_unsaved_save">Guardar</string>
+    <string name="reminder_detail_unsaved_discard">Descartar</string>
 
     <!-- Detalle de un recordatorio: barra superior y estados -->
     <string name="reminder_detail_back">Volver</string>
@@ -166,6 +208,8 @@
     <string name="reminder_detail_time_today">Hoy %1$s</string>
     <!-- %1$s = cuándo suena, ej. "Hoy 18:00" o "Sáb 10:00". -->
     <string name="reminder_detail_time_value">%1$s · No se repite</string>
+    <!-- %1$s = cuándo (ej. "Hoy 08:00"), %2$s = cada cuánto (ej. "Diario"). -->
+    <string name="reminder_detail_time_repeat">%1$s · %2$s</string>
     <string name="reminder_detail_place">Ubicación</string>
     <string name="reminder_detail_place_none">Sin ubicación</string>
     <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
@@ -242,12 +286,42 @@
     <!-- %1$d = número de la foto, ej. "Foto 2". -->
     <string name="reminder_photos_item">Foto %1$d</string>
 
-    <!-- Archivo: recordatorios archivados y eliminados -->
-    <string name="archive_title">Archivo</string>
-    <string name="archive_tab_archived">Archivados</string>
-    <string name="archive_tab_deleted">Eliminados</string>
-    <string name="archive_empty_archived">Acá van a aparecer los recordatorios que archives.</string>
-    <string name="archive_empty_deleted">Acá van a aparecer los recordatorios que elimines, para que puedas recuperarlos.</string>
+    <!-- Historial: recordatorios hechos, archivados y eliminados -->
+    <string name="history_title">Historial</string>
+    <string name="history_tab_done">Hechos</string>
+    <string name="history_tab_archived">Archivados</string>
+    <string name="history_tab_deleted">Papelera</string>
+    <string name="history_empty_done">Acá van a aparecer los recordatorios que completes.</string>
+    <string name="history_empty_archived">Acá van a aparecer los recordatorios que archives.</string>
+    <string name="history_empty_deleted">La papelera está vacía. Lo que elimines queda acá unos días por si querés recuperarlo.</string>
+    <string name="history_retention_done">Se borran solos 7 días después de completarse.</string>
+    <string name="history_retention_archived">Los archivados se guardan hasta que los restaures o los borres.</string>
+    <string name="history_retention_deleted">Lo que está en la papelera se borra solo a los 15 días.</string>
+    <plurals name="history_expires_in">
+        <item quantity="one">Se borra en %d día</item>
+        <item quantity="other">Se borra en %d días</item>
+    </plurals>
+    <string name="history_expires_today">Se borra hoy</string>
+    <string name="history_action_restore">Restaurar</string>
+    <string name="history_action_delete_forever">Borrar</string>
+    <string name="history_action_empty">Vaciar</string>
+    <string name="history_restored">Restaurado</string>
+    <!-- Historial: confirmaciones -->
+    <string name="history_empty_confirm_title">¿Vaciar %1$s?</string>
+    <plurals name="history_empty_confirm_message">
+        <item quantity="one">Se va a borrar %d recordatorio para siempre, con sus fotos y audios.</item>
+        <item quantity="other">Se van a borrar %d recordatorios para siempre, con sus fotos y audios.</item>
+    </plurals>
+    <string name="history_empty_confirm_continue">Continuar</string>
+    <string name="history_empty_final_title">¿Seguro?</string>
+    <string name="history_empty_final_message">Esta acción no se puede deshacer.</string>
+    <plurals name="history_empty_final_confirm">
+        <item quantity="one">Borrar %d</item>
+        <item quantity="other">Borrar %d</item>
+    </plurals>
+    <string name="history_delete_one_title">¿Borrar para siempre?</string>
+    <string name="history_delete_one_message">Se borra con sus fotos y audios, y no se puede deshacer.</string>
+    <string name="history_cancel">Cancelar</string>
 
     <!-- Lugares: lista y edición -->
     <string name="places_list_title">Lugares</string>
@@ -431,7 +505,7 @@
 
     <!-- Barra de navegación inferior -->
     <string name="nav_home">Inicio</string>
-    <string name="nav_archive">Archivo</string>
+    <string name="nav_history">Historial</string>
     <string name="nav_places">Lugares</string>
     <string name="nav_settings">Ajustes</string>
 
@@ -454,14 +528,38 @@
     <string name="voice_capture_default_title">Nota de voz</string>
     <string name="voice_capture_attached_note">Nota de voz adjunta</string>
     <string name="voice_capture_error_empty_or_unintelligible">No se pudo procesar el audio (vacío o ininteligible). Por favor, volvé a grabar.</string>
+
+    <!-- Revisión de los recordatorios que armó la IA: confirmar antes de cerrar -->
+    <string name="review_discard_title">¿Descartar los recordatorios?</string>
+    <plurals name="review_discard_message">
+        <item quantity="one">Se va a perder el recordatorio que armó la IA con tu audio.</item>
+        <item quantity="other">Se van a perder los %d recordatorios que armó la IA con tu audio.</item>
+    </plurals>
+    <string name="review_discard_keep">Seguir revisando</string>
+    <string name="review_discard_confirm">Descartar</string>
+    <!-- Botón principal de la revisión: cuántos recordatorios se van a crear. -->
+    <plurals name="review_create_button">
+        <item quantity="one">✓ Crear %d recordatorio</item>
+        <item quantity="other">✓ Crear %d recordatorios</item>
+    </plurals>
+    <string name="voice_capture_error_missing_key">No se pudo transcribir: falta configurar la clave de Groq. Se guardó como nota de voz.</string>
+    <string name="voice_capture_error_invalid_key">No se pudo transcribir: la clave de Groq es inválida. Se guardó como nota de voz.</string>
     <string name="voice_capture_action_retry">Reintentar</string>
     <string name="voice_capture_ready_to_record">Listo para grabar</string>
     <string name="voice_capture_start_recording">Grabar</string>
 
     <!-- Notificaciones del sistema -->
-    <string name="notification_channel_reminders_name">Recordatorios</string>
-    <string name="notification_channel_reminders_desc">Avisos y alarmas de tareas programadas</string>
+    <!-- Un canal por importancia: el usuario puede ajustar cada uno en los Ajustes de Android. -->
+    <string name="notification_channel_low_name">Recordatorios silenciosos</string>
+    <string name="notification_channel_low_desc">Importancia baja: sin sonido ni vibración</string>
+    <string name="notification_channel_default_name">Recordatorios</string>
+    <string name="notification_channel_default_desc">Importancia predeterminada: con sonido y vibración</string>
+    <string name="notification_channel_high_name">Recordatorios importantes</string>
+    <string name="notification_channel_high_desc">Importancia alta: aparecen arriba de la pantalla</string>
+    <string name="notification_channel_critical_name">Recordatorios críticos</string>
+    <string name="notification_channel_critical_desc">Importancia crítica: suenan como alarma y se repiten hasta marcarlos hechos</string>
     <string name="notification_action_done">Hecho</string>
+    <string name="notification_action_complete_all">Marcar todo y finalizar</string>
     <string name="notification_action_snooze">Posponer (15 min)</string>
     <string name="notification_default_title">Recordatorio</string>
     <!-- Ajustes: Seguridad -->
