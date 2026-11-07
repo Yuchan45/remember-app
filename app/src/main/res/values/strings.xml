@@ -574,4 +574,47 @@
 
     <string name="settings_about_privacy_title">Privacidad y código abierto</string>
     <string name="settings_about_privacy_desc">Tus notas, recordatorios, fotos y lugares permanecen almacenados de forma local y privada en tu dispositivo. Desarrollado con las directrices de accesibilidad y tipografía Atkinson Hyperlegible.</string>
+
+    <!-- Mensajes programados -->
+    <string name="scheduled_message_title_new">Mensaje programado</string>
+    <string name="scheduled_message_title_edit">Editar mensaje programado</string>
+    <string name="scheduled_message_section_channel">Enviar por</string>
+    <string name="scheduled_message_channel_whatsapp">WhatsApp</string>
+    <string name="scheduled_message_channel_sms">SMS</string>
+    <string name="scheduled_message_channel_email">Correo</string>
+    <string name="scheduled_message_section_recipient">Destinatario</string>
+    <string name="scheduled_message_field_phone">Número de teléfono</string>
+    <string name="scheduled_message_field_phone_placeholder">+54 9 11 1234-5678</string>
+    <string name="scheduled_message_field_email">Correo electrónico</string>
+    <string name="scheduled_message_field_email_placeholder">persona@ejemplo.com</string>
+    <string name="scheduled_message_section_message">Contenido del mensaje</string>
+    <string name="scheduled_message_field_subject">Asunto (opcional)</string>
+    <string name="scheduled_message_field_subject_placeholder">Ej: Aviso importante</string>
+    <string name="scheduled_message_field_text">Mensaje</string>
+    <string name="scheduled_message_field_text_placeholder">Escribe el mensaje a enviar…</string>
+    <string name="scheduled_message_section_when">¿Cuándo enviar?</string>
+    <string name="scheduled_message_trigger_time">Por fecha y hora</string>
+    <string name="scheduled_message_trigger_location">Por ubicación</string>
+    <string name="scheduled_message_time_in_15_min">En 15 min</string>
+    <string name="scheduled_message_time_in_1_hour">En 1 hora</string>
+    <string name="scheduled_message_time_tonight">Esta noche (21:00)</string>
+    <string name="scheduled_message_time_tomorrow">Mañana (09:00)</string>
+    <string name="scheduled_message_date_picker_label">Fecha de envío</string>
+    <string name="scheduled_message_time_picker_label">Hora de envío</string>
+    <string name="scheduled_message_location_no_places">No tienes lugares guardados. Ve a la pestaña Lugares para agregar uno.</string>
+    <string name="scheduled_message_btn_send_now">Enviar ahora</string>
+    <string name="scheduled_message_btn_schedule">Programar mensaje</string>
+    <string name="scheduled_message_btn_save_changes">Guardar cambios</string>
+    <string name="scheduled_message_app_not_installed">La aplicación correspondiente no está disponible en este dispositivo</string>
+    <string name="scheduled_message_summary_time">Se avisará el %1$s a las %2$s</string>
+    <string name="scheduled_message_summary_location_arrive">Se avisará al llegar a %1$s</string>
+    <string name="scheduled_message_summary_location_leave">Se avisará al salir de %1$s</string>
+    <string name="scheduled_message_default_title_whatsapp">WhatsApp a %1$s</string>
+    <string name="scheduled_message_default_title_sms">SMS a %1$s</string>
+    <string name="scheduled_message_default_title_email">Correo a %1$s</string>
+    <string name="scheduled_message_badge">Mensaje programado</string>
+    <string name="notification_action_send_whatsapp">Enviar WhatsApp</string>
+    <string name="notification_action_send_sms">Enviar SMS</string>
+    <string name="notification_action_send_email">Enviar correo</string>
+    <string name="notification_action_call">Llamar</string>
 </resources>

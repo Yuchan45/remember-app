@@ -30,4 +30,15 @@ object Routes {
      * Checklist nuevo ("+" → "Lista"): la pantalla de checklist vacía lista para agregar ítems.
      */
     const val NEW_CHECKLIST = "checklists/new"
+
+    /**
+     * Mensaje programado nuevo ("+" → "Mensaje programado").
+     */
+    const val NEW_SCHEDULED_MESSAGE = "messages/new"
+
+    /** Detalle / edición de un mensaje programado. Para navegar, usar [scheduledMessageDetail]. */
+    const val SCHEDULED_MESSAGE_DETAIL = "messages/{$ARG_REMINDER_ID}"
+
+    /** La ruta del mensaje programado con el id ya puesto, ej. "messages/7". */
+    fun scheduledMessageDetail(id: Long): String = "messages/$id"
 }
