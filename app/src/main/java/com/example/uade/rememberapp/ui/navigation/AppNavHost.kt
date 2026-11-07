@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.ui.reminders.detail.ReminderDetailScreen
+import com.example.uade.rememberapp.ui.reminders.message.ScheduledMessageScreen
 
 /**
  * Raíz de la app: el grafo de navegación.
@@ -21,6 +22,8 @@ import com.example.uade.rememberapp.ui.reminders.detail.ReminderDetailScreen
  *   card de la Home.
  * - [Routes.NEW_NOTE]: una nota nueva ("+" → "Nota"), con la misma pantalla que el detalle.
  * - [Routes.NEW_CHECKLIST]: una lista nueva ("+" → "Lista").
+ * - [Routes.NEW_SCHEDULED_MESSAGE]: un mensaje programado nuevo ("+" → "Mensaje programado").
+ * - [Routes.SCHEDULED_MESSAGE_DETAIL]: detalle/edición de un mensaje programado.
  *
  * Es el único lugar que conoce el [NavHostController]; las pantallas reciben la navegación
  * como lambdas.
@@ -37,15 +40,22 @@ fun AppNavHost(
     ) {
         composable(Routes.MAIN) {
             MainTabs(
-                onReminderClick = { id ->
-                    // launchSingleTop: un doble toque rápido no abre el detalle dos veces.
-                    navController.navigate(Routes.reminderDetail(id)) { launchSingleTop = true }
+                onReminderClick = { id, type ->
+                    val route = if (type == ReminderType.ScheduledMessage) {
+                        Routes.scheduledMessageDetail(id)
+                    } else {
+                        Routes.reminderDetail(id)
+                    }
+                    navController.navigate(route) { launchSingleTop = true }
                 },
                 onCreateNote = {
                     navController.navigate(Routes.NEW_NOTE) { launchSingleTop = true }
                 },
                 onCreateChecklist = {
                     navController.navigate(Routes.NEW_CHECKLIST) { launchSingleTop = true }
+                },
+                onCreateScheduledMessage = {
+                    navController.navigate(Routes.NEW_SCHEDULED_MESSAGE) { launchSingleTop = true }
                 },
             )
         }
@@ -60,6 +70,19 @@ fun AppNavHost(
             ReminderDetailScreen(
                 onBack = { navController.navigateUp() },
                 initialType = ReminderType.Checklist,
+            )
+        }
+        composable(Routes.NEW_SCHEDULED_MESSAGE) {
+            ScheduledMessageScreen(
+                onBack = { navController.navigateUp() },
+            )
+        }
+        composable(
+            route = Routes.SCHEDULED_MESSAGE_DETAIL,
+            arguments = listOf(navArgument(Routes.ARG_REMINDER_ID) { type = NavType.LongType }),
+        ) {
+            ScheduledMessageScreen(
+                onBack = { navController.navigateUp() },
             )
         }
         composable(

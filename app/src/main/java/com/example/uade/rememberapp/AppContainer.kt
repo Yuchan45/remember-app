@@ -11,16 +11,20 @@ import com.example.uade.rememberapp.data.local.MIGRATION_7_8
 import com.example.uade.rememberapp.data.local.MIGRATION_8_9
 import com.example.uade.rememberapp.data.local.MIGRATION_9_10
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
+import com.example.uade.rememberapp.data.repository.DataManagementRepositoryImpl
 import com.example.uade.rememberapp.data.repository.PlaceRepositoryImpl
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
+import com.example.uade.rememberapp.data.repository.SettingsRepositoryImpl
 import com.example.uade.rememberapp.data.repository.TagRepositoryImpl
 import com.example.uade.rememberapp.data.scheduler.AlarmReminderScheduler
 import com.example.uade.rememberapp.data.scheduler.GeofenceRegistrarImpl
 import com.example.uade.rememberapp.data.storage.PhotoRepositoryImpl
 import com.example.uade.rememberapp.domain.repository.AddressSearchService
+import com.example.uade.rememberapp.domain.repository.DataManagementRepository
 import com.example.uade.rememberapp.domain.repository.PhotoRepository
 import com.example.uade.rememberapp.domain.repository.PlaceRepository
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
+import com.example.uade.rememberapp.domain.repository.SettingsRepository
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.scheduler.GeofenceRegistrar
 import com.example.uade.rememberapp.domain.scheduler.ReminderScheduler
@@ -173,6 +177,26 @@ class AppContainer(context: Context) {
     /** Arranca con las etiquetas de ejemplo que carga [SeedTagsCallback] al crear la base. */
     val tagRepository: TagRepository by lazy {
         TagRepositoryImpl(database.tagDao())
+    }
+
+    /** Repositorio de ajustes y apariencia de la aplicación. */
+    val settingsRepository: SettingsRepository by lazy {
+        SettingsRepositoryImpl(appContext)
+    }
+
+    /** Repositorio de gestión de datos, respaldos y almacenamiento. */
+    val dataManagementRepository: DataManagementRepository by lazy {
+        DataManagementRepositoryImpl(
+            context = appContext,
+            database = database,
+            reminderRepository = reminderRepository,
+            tagRepository = tagRepository,
+            placeRepository = placeRepository,
+            settingsRepository = settingsRepository,
+            reminderScheduler = reminderScheduler,
+            geofenceRegistrar = geofenceRegistrar,
+            rescheduleRemindersUseCase = rescheduleRemindersUseCase,
+        )
     }
 
     /** Repositorio de lugares para recordatorios geolocalizados. */

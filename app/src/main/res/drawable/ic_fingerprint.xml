@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono "fingerprint" de Material Symbols (outlined). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M480-80q-26 0-51-7t-47-21q-50-29-81-79t-37-111l68-20q7 48 33 88t67 56q22 10 44 14t43 4q71 0 125-47t65-117h70q-12 99-84 163.5T480-80Zm-212-252q-13-33-19.5-68.5T242-480q0-99 69.5-168.5T480-718q99 0 168.5 69.5T718-480h70q0-128-90-218t-218-90q-128 0-218 90t-90 218q0 46 8 89.5t24 84.5l64-28Zm138-70q-5-18-7.5-37t-2.5-39q0-66 46.5-112.5T555-637q66 0 112.5 46.5T714-478l-70 0q0-37-26-63t-63-26q-37 0-63 26t-26 63q0 14 2 28.5t7 27.5l-68 24Zm74-198q-113 0-192.5 79.5T310-328l68 20q9-70 63.5-116T580-470q66 0 115 42.5t57 107.5h70q-9-94-73-157t-169-63Zm0-120q-142 0-241 99t-99 241q0 17 2 34t5 34l68-22q-3-23-4.5-46H180q0-125 87.5-212.5T480-800q125 0 212.5 87.5T780-500q0 48-12 93t-36 85l60 36q30-51 45-108t15-116q0-158-111-269T480-720Z" />
+    </group>
+</vector>

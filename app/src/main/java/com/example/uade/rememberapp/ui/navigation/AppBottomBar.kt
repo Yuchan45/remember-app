@@ -27,10 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.ui.theme.NavBarContainer
-import com.example.uade.rememberapp.ui.theme.NavBarContent
-import com.example.uade.rememberapp.ui.theme.NavBarOnSelected
-import com.example.uade.rememberapp.ui.theme.NavBarSelected
+import com.example.uade.rememberapp.ui.theme.AppNavBarColors
+import com.example.uade.rememberapp.ui.theme.LocalAppNavBarColors
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
 /**
@@ -49,8 +47,8 @@ enum class AppDestination(
 }
 
 /**
- * Barra de navegación inferior flotante (una "píldora" celeste). El destino elegido se
- * muestra con ícono y texto sobre fondo oscuro; los demás, solo con el ícono.
+ * Barra de navegación inferior flotante. Adapta sus colores reactivamente a la paleta elegida
+ * y al modo claro/oscuro del sistema, manteniendo un contraste accesible de alta visibilidad.
  *
  * Se dibuja una sola vez, en [MainTabs], para todas las pantallas principales.
  */
@@ -59,11 +57,12 @@ fun AppBottomBar(
     selected: AppDestination,
     onSelected: (AppDestination) -> Unit,
     modifier: Modifier = Modifier,
+    colors: AppNavBarColors = LocalAppNavBarColors.current,
 ) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(NavBarContainer)
+            .background(colors.container)
             .padding(4.dp)
             .selectableGroup(),
         verticalAlignment = Alignment.CenterVertically,
@@ -74,6 +73,7 @@ fun AppBottomBar(
                 destination = destination,
                 selected = destination == selected,
                 onClick = { onSelected(destination) },
+                colors = colors,
             )
         }
     }
@@ -84,14 +84,15 @@ private fun BottomBarItem(
     destination: AppDestination,
     selected: Boolean,
     onClick: () -> Unit,
+    colors: AppNavBarColors,
     modifier: Modifier = Modifier,
 ) {
-    val contentColor = if (selected) NavBarOnSelected else NavBarContent
+    val contentColor = if (selected) colors.selectedContent else colors.unselectedContent
     Row(
         modifier = modifier
             .height(48.dp)
             .clip(RoundedCornerShape(50))
-            .background(if (selected) NavBarSelected else Color.Transparent)
+            .background(if (selected) colors.selectedBackground else Color.Transparent)
             .selectable(selected = selected, onClick = onClick, role = Role.Tab)
             .padding(horizontal = if (selected) 18.dp else 14.dp)
             .animateContentSize(),
@@ -100,7 +101,6 @@ private fun BottomBarItem(
     ) {
         Icon(
             painter = painterResource(destination.icon),
-            // Si no está elegido no hay texto visible, así que el ícono lleva la descripción.
             contentDescription = if (selected) null else stringResource(destination.label),
             tint = contentColor,
             modifier = Modifier.size(22.dp),

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
 import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
@@ -54,7 +55,7 @@ private val ScreenPadding = 16.dp
 fun RemindersListScreen(
     viewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
     contentPadding: PaddingValues = PaddingValues(),
-    onReminderClick: (id: Long) -> Unit = {},
+    onReminderClick: (id: Long, type: ReminderType) -> Unit = { _, _ -> },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // "Ahora" fijo mientras la pantalla está abierta: decide qué es "hoy" y cuándo mostrar el "!".
@@ -124,7 +125,7 @@ data class RemindersListActions(
     val onGroupingClick: () -> Unit = {},
     val onSortClick: () -> Unit = {},
     val onSectionToggle: (ReminderSectionKey) -> Unit = {},
-    val onReminderClick: (id: Long) -> Unit = {},
+    val onReminderClick: (id: Long, type: ReminderType) -> Unit = { _, _ -> },
     val onReminderDone: (id: Long) -> Unit = {},
     val onReminderArchive: (id: Long) -> Unit = {},
     val onReminderTrash: (id: Long) -> Unit = {},
@@ -246,7 +247,7 @@ private fun RemindersListContent(
                             placeName = reminder.places.firstOrNull()
                                 ?.let { uiState.placeNames[it.placeId] },
                             now = now,
-                            onClick = { actions.onReminderClick(reminder.id) },
+                            onClick = { actions.onReminderClick(reminder.id, reminder.type) },
                             onDone = { actions.onReminderDone(reminder.id) },
                             onArchive = { actions.onReminderArchive(reminder.id) },
                             onTrash = { actions.onReminderTrash(reminder.id) },

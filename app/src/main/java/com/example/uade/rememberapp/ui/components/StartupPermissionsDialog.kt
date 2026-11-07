@@ -81,6 +81,12 @@ fun StartupPermissionsDialog(
                     title = stringResource(R.string.startup_permissions_item_audio_title),
                     description = stringResource(R.string.startup_permissions_item_audio_desc),
                 )
+
+                PermissionReasonItem(
+                    icon = R.drawable.ic_fingerprint,
+                    title = stringResource(R.string.startup_permissions_item_biometric_title),
+                    description = stringResource(R.string.startup_permissions_item_biometric_desc),
+                )
             }
         },
         confirmButton = {

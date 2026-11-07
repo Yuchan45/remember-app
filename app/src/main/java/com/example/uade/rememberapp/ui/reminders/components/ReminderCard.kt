@@ -37,6 +37,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.MessageChannel
+import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Tag
@@ -257,6 +259,16 @@ private fun accentBrush(tags: List<Tag>): Brush? {
 /** Ícono junto al título: lista, nota solo por lugar (pin) o nota común. */
 @DrawableRes
 internal fun Reminder.typeIcon(): Int = when {
+    type == ReminderType.ScheduledMessage || action != null -> when (val act = action) {
+        is NotificationAction.Call -> R.drawable.ic_call
+        is NotificationAction.Email -> R.drawable.ic_mail
+        is NotificationAction.Message -> when (act.channel) {
+            MessageChannel.WhatsApp -> R.drawable.ic_whatsapp
+            MessageChannel.Sms -> R.drawable.ic_sms
+            MessageChannel.Instagram -> R.drawable.ic_instagram
+        }
+        null -> R.drawable.ic_send
+    }
     type == ReminderType.Checklist -> R.drawable.ic_checklist
     alarms.isEmpty() && places.isNotEmpty() -> R.drawable.ic_location_on
     else -> R.drawable.ic_description

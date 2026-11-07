@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.ui.archive.ArchiveScreen
 import com.example.uade.rememberapp.ui.components.CircleIconButton
 import com.example.uade.rememberapp.ui.components.CookieShape
@@ -61,9 +62,10 @@ import kotlinx.coroutines.launch
 fun MainTabs(
     modifier: Modifier = Modifier,
     remindersViewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
-    onReminderClick: (id: Long) -> Unit = {},
+    onReminderClick: (id: Long, type: ReminderType) -> Unit = { _, _ -> },
     onCreateNote: () -> Unit = {},
     onCreateChecklist: () -> Unit = {},
+    onCreateScheduledMessage: () -> Unit = {},
 ) {
     val remindersState by remindersViewModel.uiState.collectAsStateWithLifecycle()
     val destinations = AppDestination.entries
@@ -126,8 +128,8 @@ fun MainTabs(
                     // Mismo alto que la barra (48dp de destino + 4dp de margen arriba y abajo).
                     size = 56.dp,
                     shape = CookieShape,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = com.example.uade.rememberapp.ui.theme.LocalAppNavBarColors.current.container,
+                    contentColor = com.example.uade.rememberapp.ui.theme.LocalAppNavBarColors.current.unselectedContent,
                 )
             }
         },
@@ -159,6 +161,7 @@ fun MainTabs(
                 when (option) {
                     CreateReminderOption.Note -> onCreateNote()
                     CreateReminderOption.Checklist -> onCreateChecklist()
+                    CreateReminderOption.ScheduledMessage -> onCreateScheduledMessage()
                     else -> remindersViewModel.onCreateOptionClick(option)
                 }
             },
@@ -249,7 +252,7 @@ private fun ChecklistNoticeSnackbar(
 private fun MainTabPage(
     destination: AppDestination,
     contentPadding: PaddingValues,
-    onReminderClick: (id: Long) -> Unit,
+    onReminderClick: (id: Long, type: ReminderType) -> Unit,
 ) {
     when (destination) {
         AppDestination.Home -> RemindersListScreen(

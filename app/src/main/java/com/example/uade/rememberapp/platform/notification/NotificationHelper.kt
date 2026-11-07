@@ -10,15 +10,17 @@ import androidx.core.app.NotificationManagerCompat
 import java.time.Instant
 import com.example.uade.rememberapp.MainActivity
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.platform.message.MessageLauncherHelper
 import com.example.uade.rememberapp.platform.receiver.ReminderActionReceiver
 
 /**
  * Responsable de la creación de canales y del ensamblado de notificaciones para los recordatorios
- * y tareas de IA en segundo plano.
- * Pertenece a la capa `platform` porque trata directamente con las APIs de Android.
+ * y tareas de IA en segundo plano, respetando los ajustes de notificaciones del usuario.
  */
 object NotificationHelper {
 
@@ -30,6 +32,9 @@ object NotificationHelper {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
     fun createNotificationChannel(context: Context) {
+        val prefs = context.getSharedPreferences("hey_app_settings", Context.MODE_PRIVATE)
+        val vibrationEnabled = prefs.getBoolean("notif_vibration", true)
+
         val name = context.getString(R.string.notification_channel_reminders_name)
         val description = context.getString(R.string.notification_channel_reminders_desc)
         val channel = NotificationChannel(
@@ -38,7 +43,7 @@ object NotificationHelper {
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
             this.description = description
-            enableVibration(true)
+            enableVibration(vibrationEnabled)
         }
 
         val aiChannel = NotificationChannel(
@@ -56,11 +61,23 @@ object NotificationHelper {
     }
 
     /**
-     * Muestra la notificación del aviso que sonó a las [alarmAt]. Va con el recordatorio para que
-     * "Posponer" sepa qué aviso reemplazar. Hay una sola notificación por recordatorio: si suena
-     * otro aviso del mismo, reemplaza a la anterior.
+     * Muestra la notificación del aviso que sonó a las [alarmAt], filtrando según los ajustes
+     * de notificaciones (por hora, solo alta importancia, vibración y tipo de sonido).
      */
     fun showReminderNotification(context: Context, reminder: Reminder, alarmAt: Instant) {
+        val prefs = context.getSharedPreferences("hey_app_settings", Context.MODE_PRIVATE)
+        val timeAlertsEnabled = prefs.getBoolean("notif_time_alerts", true)
+        if (!timeAlertsEnabled) return
+
+        val highPriorityOnly = prefs.getBoolean("notif_high_priority_only", false)
+        if (highPriorityOnly && reminder.importance != Importance.High && reminder.importance != Importance.Critical) {
+            return
+        }
+
+        val vibrationEnabled = prefs.getBoolean("notif_vibration", true)
+        val alarmSoundStr = prefs.getString("notif_alarm_sound", "ShortChime")
+        val isOneMinuteAlarm = alarmSoundStr == "OneMinuteAlarm"
+
         createNotificationChannel(context)
 
         // Acción al tocar la notificación: abre la app directamente en el recordatorio
@@ -103,12 +120,25 @@ object NotificationHelper {
         val title = reminder.title.takeUnless { it.isNullOrBlank() }
             ?: context.getString(R.string.notification_default_title)
 
+        val smallIcon = if (reminder.type == ReminderType.ScheduledMessage) {
+            reminder.action?.let { MessageLauncherHelper.getActionIcon(it) } ?: R.drawable.ic_send
+        } else {
+            R.drawable.ic_alarm
+        }
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_alarm)
+            .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .apply {
                 if (!reminder.description.isNullOrBlank()) {
                     setContentText(reminder.description)
+                }
+                if (!vibrationEnabled) {
+                    setVibrate(longArrayOf(0))
+                }
+                if (isOneMinuteAlarm) {
+                    setCategory(NotificationCompat.CATEGORY_ALARM)
+                    setOngoing(true)
                 }
             }
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -125,6 +155,24 @@ object NotificationHelper {
                 context.getString(R.string.notification_action_snooze),
                 snoozePendingIntent,
             )
+            .apply {
+                reminder.action?.let { action ->
+                    val sendIntent = MessageLauncherHelper.createSendIntent(context, action, reminder.description)
+                    if (sendIntent != null) {
+                        val sendPendingIntent = PendingIntent.getActivity(
+                            context,
+                            (reminder.id * 31 + 3).hashCode(),
+                            sendIntent,
+                            PENDING_INTENT_FLAGS,
+                        )
+                        addAction(
+                            MessageLauncherHelper.getActionIcon(action),
+                            MessageLauncherHelper.getActionLabel(context, action),
+                            sendPendingIntent,
+                        )
+                    }
+                }
+            }
 
         val notificationManager = NotificationManagerCompat.from(context)
         try {
@@ -143,6 +191,19 @@ object NotificationHelper {
         place: Place,
         event: PlaceAlertEvent,
     ) {
+        val prefs = context.getSharedPreferences("hey_app_settings", Context.MODE_PRIVATE)
+        val placeAlertsEnabled = prefs.getBoolean("notif_place_alerts", true)
+        if (!placeAlertsEnabled) return
+
+        val highPriorityOnly = prefs.getBoolean("notif_high_priority_only", false)
+        if (highPriorityOnly && reminder.importance != Importance.High && reminder.importance != Importance.Critical) {
+            return
+        }
+
+        val vibrationEnabled = prefs.getBoolean("notif_vibration", true)
+        val alarmSoundStr = prefs.getString("notif_alarm_sound", "ShortChime")
+        val isOneMinuteAlarm = alarmSoundStr == "OneMinuteAlarm"
+
         createNotificationChannel(context)
 
         val contentIntent = Intent(context, MainActivity::class.java).apply {
@@ -182,10 +243,25 @@ object NotificationHelper {
             eventSubtitle
         }
 
+        val smallIcon = if (reminder.type == ReminderType.ScheduledMessage) {
+            reminder.action?.let { MessageLauncherHelper.getActionIcon(it) } ?: R.drawable.ic_send
+        } else {
+            R.drawable.ic_location_on
+        }
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_location_on)
+            .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .setContentText(text)
+            .apply {
+                if (!vibrationEnabled) {
+                    setVibrate(longArrayOf(0))
+                }
+                if (isOneMinuteAlarm) {
+                    setCategory(NotificationCompat.CATEGORY_ALARM)
+                    setOngoing(true)
+                }
+            }
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
@@ -195,6 +271,24 @@ object NotificationHelper {
                 context.getString(R.string.notification_action_done),
                 donePendingIntent,
             )
+            .apply {
+                reminder.action?.let { action ->
+                    val sendIntent = MessageLauncherHelper.createSendIntent(context, action, reminder.description)
+                    if (sendIntent != null) {
+                        val sendPendingIntent = PendingIntent.getActivity(
+                            context,
+                            (reminder.id * 31 + 3).hashCode(),
+                            sendIntent,
+                            PENDING_INTENT_FLAGS,
+                        )
+                        addAction(
+                            MessageLauncherHelper.getActionIcon(action),
+                            MessageLauncherHelper.getActionLabel(context, action),
+                            sendPendingIntent,
+                        )
+                    }
+                }
+            }
 
         val notificationManager = NotificationManagerCompat.from(context)
         try {
