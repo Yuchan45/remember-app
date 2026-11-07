@@ -23,7 +23,10 @@ data class Reminder(
     /** La portada recortada (de la foto de [photos] con isCover), o null si no tiene. */
     val photoPath: String? = null,
     val photos: List<ReminderPhoto> = emptyList(),
+    /** La grabación de voz de la que salió (si se creó dictando). La pueden compartir varios. */
     val audioPath: String? = null,
+    /** Lo que entendió la IA de esa grabación, tal cual; null si no se creó por voz. */
+    val transcript: String? = null,
     /** La lista de la nota; vacía si no tiene. */
     val items: List<ChecklistItem> = emptyList(),
     val tags: List<Tag> = emptyList(),

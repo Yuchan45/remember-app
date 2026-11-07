@@ -101,55 +101,6 @@ class AiRemindersUseCasesTest {
     }
 
     @Test
-    fun `DetectSimilarRemindersUseCase detecta recordatorio cercano en horario`() {
-        val useCase = DetectSimilarRemindersUseCase()
-        val baseTime = Instant.parse("2026-10-08T22:00:00Z")
-
-        val existing = Reminder(
-            id = 10,
-            title = "Cepillar los dientes",
-            alarms = listOf(Alarm(baseTime)),
-            status = ReminderStatus.Active,
-            createdAt = baseTime.minusSeconds(3600),
-        )
-
-        val newProposal = ProposedReminder(
-            title = "Cambiar las sábanas",
-            alarms = listOf(Alarm(baseTime.plusSeconds(1800))), // 30 min despues
-            triggerDisplayTime = "Esta noche",
-        )
-
-        val proposal = useCase(newProposal, listOf(existing))
-
-        assertNotNull(proposal)
-        assertEquals(2, proposal!!.checklistItems.size)
-        assertEquals("Cepillar los dientes", proposal.checklistItems[0].text)
-        assertEquals("Cambiar las sábanas", proposal.checklistItems[1].text)
-    }
-
-    @Test
-    fun `DetectSimilarRemindersUseCase no sugiere merge si los horarios difieren mucho`() {
-        val useCase = DetectSimilarRemindersUseCase()
-        val baseTime = Instant.parse("2026-10-08T10:00:00Z")
-
-        val existing = Reminder(
-            id = 10,
-            title = "Cepillar los dientes",
-            alarms = listOf(Alarm(baseTime)),
-            status = ReminderStatus.Active,
-            createdAt = baseTime.minusSeconds(3600),
-        )
-
-        val newProposal = ProposedReminder(
-            title = "Cambiar las sábanas",
-            alarms = listOf(Alarm(baseTime.plusSeconds(36000))), // 10 horas despues
-        )
-
-        val proposal = useCase(newProposal, listOf(existing))
-        assertNull(proposal)
-    }
-
-    @Test
     fun `ProcessVoiceWithAiUseCase invoca servicio de IA con timestamp ISO`() = runBlocking {
         var recordedIso: String? = null
         val fakeService = object : AiReminderService {

@@ -224,3 +224,13 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         db.execSQL("ALTER TABLE reminder_alarms ADD COLUMN `repeat` TEXT NOT NULL DEFAULT 'None'")
     }
 }
+
+/**
+ * 12 → 13: `transcript` en `reminders`, el texto que se transcribió de la nota de voz (para poder
+ * leerlo junto con el audio). Nullable: los que ya existían quedan sin transcripción.
+ */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE reminders ADD COLUMN transcript TEXT")
+    }
+}

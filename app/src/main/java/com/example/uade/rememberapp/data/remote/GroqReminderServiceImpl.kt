@@ -5,33 +5,41 @@ import com.example.uade.rememberapp.data.remote.dto.GroqMessage
 import com.example.uade.rememberapp.data.remote.dto.GroqParsedReminderDto
 import com.example.uade.rememberapp.data.remote.dto.GroqReminderAnalysisDto
 import com.example.uade.rememberapp.domain.model.AiAnalysisResult
+import com.example.uade.rememberapp.domain.model.AiProcessingError
 import com.example.uade.rememberapp.domain.model.Alarm
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.ProposedReminder
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.repository.AiReminderService
 import com.google.gson.Gson
+import java.io.File
+import java.io.IOException
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.File
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.format.DateTimeParseException
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.UUID
+import retrofit2.HttpException
 
 /**
  * Implementación de [AiReminderService] que se comunica con la API de Groq
- * utilizando Retrofit (Whisper para voz y Llama 3.3 para extracción estructurada).
+ * utilizando Retrofit (Whisper para voz y gpt-oss-120b para extracción estructurada).
  *
  * Incluye un fallback heurístico inteligente si la API key aún no fue configurada
  * o ante fallos de red en modo demo, garantizando el flujo visual de los mockups 03.B y 03.D.
  */
+private const val TRANSCRIPTION_PROMPT =
+    "Recordatorio en español: recordame, mañana, pasado mañana, hoy, a la mañana, a la tarde, " +
+        "a la noche, a las ocho, lunes, martes, comprar, llamar, pagar, turno, médico."
+
 class GroqReminderServiceImpl(
     private val apiService: GroqApiService,
     private val apiKey: String,
@@ -45,33 +53,52 @@ class GroqReminderServiceImpl(
         }
 
         if (apiKey.isBlank()) {
-            return@withContext Result.failure(
-                IllegalStateException("No se pudo procesar el audio: clave de API de Groq no configurada"),
-            )
+            logError("GroqAI", "Falta groq.api.key en local.properties: no se puede transcribir", null)
+            return@withContext Result.failure(AiProcessingError.MissingApiKey())
         }
 
         if (file.length() < 1200L) {
-            return@withContext Result.failure(
-                IllegalArgumentException("El archivo de audio está vacío o es demasiado corto"),
-            )
+            return@withContext Result.failure(AiProcessingError.Unintelligible())
         }
 
         try {
             val authHeader = "Bearer $apiKey"
-            val requestFile = file.asRequestBody("audio/*".toMediaTypeOrNull())
+            // audio/mp4: es lo que graba AudioRecorder (AAC en .m4a). Con "audio/*" Groq tiene que
+            // adivinar el formato por la extensión.
+            val requestFile = file.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-            val model = "whisper-large-v3".toRequestBody("text/plain".toMediaTypeOrNull())
-            val language = "es".toRequestBody("text/plain".toMediaTypeOrNull())
-
-            val response = apiService.transcribeAudio(authHeader, body, model, language)
-            val text = response.text.trim()
-            if (text.isBlank() || isTranscriptBlankOrNoise(text)) {
-                Result.failure(IllegalStateException("No se pudo procesar el audio: el audio está vacío o es ininteligible"))
+            val text = "text/plain".toMediaTypeOrNull()
+            val response = apiService.transcribeAudio(
+                authHeader = authHeader,
+                file = body,
+                model = "whisper-large-v3".toRequestBody(text),
+                language = "es".toRequestBody(text),
+                // temperature 0: la transcripción más probable, sin "creatividad" (menos frases
+                // inventadas en los silencios).
+                temperature = "0".toRequestBody(text),
+                // El prompt le da contexto a Whisper: palabras que suelen aparecer en un
+                // recordatorio, así reconoce mejor horas, días y verbos cortos.
+                prompt = TRANSCRIPTION_PROMPT.toRequestBody(text),
+            )
+            val transcript = response.text.trim()
+            logDebug("GroqAI", "Whisper transcript: '$transcript'")
+            if (transcript.isBlank() || isTranscriptBlankOrNoise(transcript)) {
+                Result.failure(AiProcessingError.Unintelligible())
             } else {
-                Result.success(text)
+                Result.success(transcript)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: HttpException) {
+            logError("GroqAI", "Whisper respondió HTTP ${e.code()}", e)
+            Result.failure(
+                when (e.code()) {
+                    401, 403 -> AiProcessingError.InvalidApiKey(e)
+                    // 400/422: Groq no pudo leer el audio (vacío, cortado o formato raro).
+                    400, 413, 422 -> AiProcessingError.Unintelligible()
+                    else -> AiProcessingError.Network(e)
+                },
+            )
+        } catch (e: IOException) {
+            Result.failure(AiProcessingError.Network(e))
         }
     }
 
@@ -89,7 +116,9 @@ class GroqReminderServiceImpl(
                 val authHeader = "Bearer $apiKey"
                 val systemPrompt = buildSystemPrompt(referenceDateTimeIso)
                 val request = GroqChatRequest(
-                    model = "llama-3.3-70b-versatile",
+                    // llama-3.3-70b-versatile se dio de baja en Groq: con ese nombre la API falla y la app caía
+                    // siempre al análisis local (más básico). gpt-oss-120b es el modelo de chat más capaz hoy.
+                    model = "openai/gpt-oss-120b",
                     messages = listOf(
                         GroqMessage(role = "system", content = systemPrompt),
                         GroqMessage(role = "user", content = text),
@@ -135,40 +164,11 @@ class GroqReminderServiceImpl(
     private fun mapDtoToDomain(dto: GroqReminderAnalysisDto?, rawTranscript: String): AiAnalysisResult {
         val rawReminders = dto?.reminders ?: emptyList()
 
-        // Si el LLM devolvió un único recordatorio pero este contiene tareas separables con conectores de acción (ej. "Hacer la tarea e ir al súper")
-        val adjustedReminders = if (rawReminders.size == 1 && !rawReminders.first().type.equals("Checklist", ignoreCase = true)) {
-            val singleTitle = rawReminders.first().title.ifBlank { rawTranscript }
-            val splitSegments = singleTitle.split(TASK_SPLIT_REGEX).map { it.trim() }.filter { it.isNotBlank() }
-            if (splitSegments.size >= 2) {
-                splitSegments.mapIndexed { idx, segment ->
-                    val cleanTitle = cleanTaskTitle(segment)
-                    val lower = segment.lowercase()
-                    val originalTriggerIso = rawReminders.first().triggerIso
-                    val originalTriggerDisplay = rawReminders.first().triggerDisplay
-                    val segmentDisplayTime = inferDisplayTime(lower).let { if (it == "Sin fecha" && idx == 0) originalTriggerDisplay ?: it else it }
-                    val segmentPlace = inferPlace(lower) ?: if (idx == 0) rawReminders.first().placeName else null
-                    val segmentList = inferList(lower) ?: if (idx == 0) rawReminders.first().listName else null
-
-                    GroqParsedReminderDto(
-                        title = cleanTitle,
-                        description = segment,
-                        type = "Note",
-                        triggerType = if (segmentDisplayTime != "Sin fecha") "TIME" else "NONE",
-                        triggerIso = if (segmentDisplayTime != "Sin fecha" && idx == 0) originalTriggerIso else null,
-                        triggerDisplay = segmentDisplayTime,
-                        placeName = segmentPlace,
-                        priority = rawReminders.first().priority,
-                        listName = segmentList,
-                        items = emptyList(),
-                        separate = false,
-                    )
-                }
-            } else {
-                rawReminders
-            }
-        } else {
-            rawReminders
-        }
+        // Se usa tal cual lo que decidió el modelo. Antes, si devolvía un solo recordatorio, acá se
+        // volvía a cortar el título por "y" / "e" / "después" (TASK_SPLIT_REGEX): eso partía en dos
+        // frases como "ir al súper y comprar carne", que el prompt ya junta a propósito. El corte por
+        // conectores sigue solo en el análisis local (createLocalHeuristicResult), sin modelo.
+        val adjustedReminders = rawReminders
 
         val proposals = adjustedReminders.map { r ->
             val resolvedTriggerIso = if (r.triggerType.equals("TIME", ignoreCase = true) && r.triggerIso.isNullOrBlank() && !r.triggerDisplay.isNullOrBlank()) {
@@ -340,89 +340,100 @@ class GroqReminderServiceImpl(
         return emptyList()
     }
 
+    /**
+     * El prompt de sistema para estructurar una nota de voz en recordatorios.
+     *
+     * Está armado con las prácticas habituales para modelos de lenguaje:
+     * - Rol y tarea al principio, en una línea cada uno.
+     * - El contexto que el modelo no puede saber solo: la fecha y hora de ahora, con el día de la
+     *   semana y la zona horaria (si no, "el lunes" o "a las 9" se resuelven mal).
+     * - Un criterio de decisión explícito para lo más difícil (¿uno o varios recordatorios?), con
+     *   el porqué, en vez de reglas sueltas por palabra ("separá si hay una y"), que fallaban con
+     *   frases como "ir al súper y comprar carne".
+     * - Qué va en cada campo, con su formato exacto.
+     * - Ejemplos de entrada → salida que cubren los casos dudosos, incluidos los que NO hay que
+     *   separar. Los ejemplos usan su propia fecha de referencia, para que el modelo no copie sus
+     *   horas.
+     * - La salida se pide solo como JSON (además, el pedido usa response_format = json_object).
+     */
     private fun buildSystemPrompt(referenceIso: String): String {
+        val reference = describeReference(referenceIso)
         return """
-        Eres un asistente inteligente para la aplicación Android "Hey, Remember".
-        La fecha y hora actual de referencia del usuario es: $referenceIso.
-        Tu misión es analizar la transcripción del audio del usuario y estructurar los recordatorios en formato JSON.
+        Sos el asistente de "Hey!", una app de recordatorios. Recibís la transcripción de una nota de voz en español rioplatense y la convertís en recordatorios.
 
-        REGLAS FUNDAMENTALES OBLIGATORIAS:
-        1. "Separación estricta entre Título y Descripción":
-           - "title": DEBE ser conciso, claro y directo (máximo 3 a 5 palabras, ej. "Comprar en el súper", "Llamar al médico", "Reunión de trabajo", "Hacer la tarea"). NUNCA coloques oraciones largas, explicaciones detalladas ni toda la transcripción en el título.
-           - "description": DEBE contener los detalles, explicaciones, motivos, razones o notas secundarias que el usuario mencionó (ej. "Para pedir los análisis de sangre del lunes", "Porque pierde agua el caño de la cocina", "Cosas necesarias para el viaje"). Si el usuario dicta una nota o pensamiento personal, el título es el asunto y la descripción contiene el texto completo de la nota. ¡NUNCA dejes "description" vacía ("") si el audio contiene información adicional o explicativa!
+        # Contexto
+        Ahora es $reference ($referenceIso). Usalo para resolver fechas y horas relativas.
 
-        2. "Texto a Checklist" (03.D):
-           - Si el usuario dicta una lista de compras, elementos, ingredientes, tareas o cosas a llevar (ej. "comprar leche, pan y huevos", "para el viaje llevar toalla, protector y ojotas", "necesito comprar azúcar, café y galletitas"):
-             * Define "is_checklist_candidate": true.
-             * En el recordatorio define "type": "Checklist".
-             * Define un "title" conciso (ej. "Compras", "Para el viaje", "Lista de pendientes").
-             * En "description" coloca el motivo o contexto si lo hay.
-             * Coloca cada ítem individual limpio y capitalizado en el arreglo "items": ["Leche", "Pan", "Huevos"].
-             * Si alguno de los elementos tiene una fecha/hora propia (ej. "y el viernes avisarle a Juan"), créalo como un recordatorio separado con "separate": true y su propio "trigger_iso".
+        # Paso 1: ¿cuántos recordatorios?
+        Pensá en salidas o momentos, no en verbos.
+        - Un recordatorio es algo que el usuario tiene que acordarse de hacer en un momento o en un lugar.
+        - Lo que se hace como parte de esa misma salida o momento va DENTRO del mismo recordatorio, no aparte:
+          - cosas (productos u objetos) para comprar, llevar o conseguir → en "items" (checklist), aunque sea una sola;
+          - trámites o qué hay que hacer allá ("depositar el cheque", "sacar turno", "pagar"), detalles o motivos → en "description", NO en "items".
+          Ej.: "ir al supermercado y comprar carne" es UNA salida al supermercado con un ítem (Carne).
+        - Separá en varios recordatorios solo si las acciones son independientes: momentos distintos ("a las 9… y a la tarde…"), lugares sin relación, o cosas que no se hacen juntas ("hacer la tarea e ir al súper").
+        - Nunca crees un recordatorio por cada producto de una lista.
+        - Ante la duda, UN solo recordatorio: el usuario puede dividirlo después, pero juntar es más difícil.
 
-        3. "Split automático de intenciones múltiples" (03.B):
-           - Si el usuario menciona dos o más tareas o acciones independientes, SEPARA CADA TAREA en un objeto individual dentro del arreglo "reminders".
-           - OBLIGATORIO: Esto incluye no solo conectores como "y después", "luego", "más tarde", sino MUY ESPECIALMENTE cuando dos acciones están unidas por "y" o "e" seguidas de un verbo de acción (ej. "hacer la tarea e ir al súper", "comprar el pan y llamar al médico", "pagar la luz y pasar por la farmacia", "a la noche hacer la tarea e ir al super").
-           - NUNCA agrupes dos acciones con verbos distintos en un solo recordatorio ("Hacer la tarea e ir al súper" es un error grave: DEBEN ser 2 recordatorios individuales en "reminders":
-             Recordatorio 1: "title": "Hacer la tarea", "trigger_display": "Hoy 21:00", "list_name": "Estudio".
-             Recordatorio 2: "title": "Ir al súper", "place_name": "Al pasar por Súper", "list_name": "Súper").
-           - Ejemplo: "A la noche tengo que hacer la tarea de matemática y después ir al super a comprar verduras" ->
-             Recordatorio 1: "title": "Hacer la tarea", "description": "Ejercicios de matemática", "trigger_display": "Hoy 21:00", "list_name": "Estudio".
-             Recordatorio 2: "title": "Ir al súper", "description": "Comprar verduras", "place_name": "Al pasar por Súper", "list_name": "Súper".
+        # Paso 2: cada campo
+        - "title": la acción principal, de 2 a 5 palabras, en infinitivo y con mayúscula inicial ("Ir al supermercado", "Llamar al médico", "Sacar turno con el dentista"). Sin fechas ni horas, y sin "tengo que", "acordarme de", "recordame", "hay que".
+          - Si es solo una compra sin lugar, el título es la compra: "Comprar leche" (sin items); con dos o más productos, "Compras" con los productos en "items".
+        - "description": lo que se hace allá y los detalles o motivos que dijo el usuario, en una frase corta ("Depositar el cheque", "Pedir los análisis del lunes"). Si hay "items", es solo el verbo ("Comprar", "Llevar") sin repetir los ítems. "" si no dijo nada más.
+        - "items": cada cosa por separado, con mayúscula inicial, tal como la dijo (con cantidad si la dijo: "2 kg de papas"). [] si no hay.
+        - "type": "Checklist" si "items" tiene algo; si no, "Note".
+        - "trigger_type": "TIME" si dijo un día o una hora; si no, "NONE".
+        - "trigger_iso": fecha y hora en ISO-8601 con el MISMO offset que la hora de referencia (ej. 2026-11-07T21:00:00-03:00). Nunca uses "Z". null si "trigger_type" es "NONE".
+          - Hora sin día: la próxima vez que llegue esa hora. Si son las 15:30, "a las 9" es hoy a las 21:00 y "a las 16" es hoy a las 16:00; si son las 08:00, "a las 9" es hoy a las 09:00.
+          - Momentos sin hora: "a la mañana" 09:00, "al mediodía" 13:00, "a la tarde" 17:00, "a la noche"/"esta noche" 21:00.
+          - Día sin hora ("mañana", "el lunes", "el 15"): ese día a las 09:00. Un día de la semana es el próximo que viene (si hoy es lunes, "el lunes" es el de la semana que viene).
+          - Una fecha u hora dicha una vez vale para todas las acciones de la frase que la siguen ("y después", "y", "también"), salvo que se diga otra.
+        - "trigger_display": cómo se lee la fecha: "Hoy 21:00" si es hoy, "Mañana 09:00" si es mañana, y si no "Lun 9/11 09:00"; "Sin fecha" si no tiene.
+        - "place_name": el lugar al que va o donde tiene que estar ("Supermercado", "Farmacia", "Trabajo"); null si no nombró ninguno.
+        - "priority": "Alta" solo si dijo que es urgente, importante o "sin falta"; si no, "Normal".
+        - "list_name": una categoría corta si es obvia ("Compras", "Salud", "Trabajo", "Estudio", "Casa"); si no, null.
+        - "separate": siempre false.
+        - "is_checklist_candidate": true si algún recordatorio tiene "items".
+        - "summary_badge": una frase corta para el usuario, ej. "Encontré 1 recordatorio con 1 ítem." o "Encontré 2 recordatorios."
 
-        4. "Fidelidad absoluta al audio del usuario":
-           - NUNCA inventes tareas ni copies nombres de ejemplos. Extrae los datos ÚNICAMENTE de lo que el usuario dijo.
-           - Limpia fórmulas verbales iniciales como "tengo que...", "acordarme de...", "hay que...", "recordar...", dejando la acción concisa en infinitivo o imperativo (ej. "Hacer la tarea", "Llamar al médico", "Comprar leche").
+        # Reglas
+        - Usá solo lo que dijo el usuario: no inventes tareas, horas, lugares ni productos.
+        - Si la transcripción tiene un error obvio y el sentido es claro, corregilo ("super mercado" → "supermercado").
+        - Respondé solo con el JSON, sin texto antes ni después.
 
-        5. "Inferencia temporal (Fechas y horas)":
-           - Usa la hora de referencia ($referenceIso) para inferir momentos relativos:
-             * "a la noche" / "esta noche" -> Hoy 21:00.
-             * "a la tarde" -> Hoy 17:00.
-             * "al mediodía" -> Hoy 13:00.
-             * "mañana a la mañana" -> Mañana 09:00.
-             * "mañana" -> Mañana 09:00.
-             * Si no hay hora ni fecha indicada -> "trigger_type": "NONE", "trigger_iso": null, "trigger_display": "Sin fecha".
-           - Cuando haya fecha/hora, define "trigger_type": "TIME", "trigger_iso" en ISO-8601 y "trigger_display" legible (ej. "Hoy 21:00", "Mañana 09:00").
+        # Formato de salida
+        {"summary_badge": string, "is_checklist_candidate": boolean, "reminders": [{"title": string, "description": string, "type": "Note" | "Checklist", "trigger_type": "TIME" | "NONE", "trigger_iso": string | null, "trigger_display": string, "place_name": string | null, "priority": "Normal" | "Alta", "list_name": string | null, "items": [string], "separate": false}]}
 
-        6. "Inferencia de Lugares, Prioridades y Listas":
-           - "place_name": si menciona un lugar físico (ej. "Casa", "Al pasar por Súper", "Trabajo", "Farmacia").
-           - "priority": "Alta" si indica urgencia o importancia, de lo contrario null o "Normal".
-           - "list_name": si corresponde a una lista lógica (ej. "Súper", "Viaje", "Estudio", "Trabajo").
+        # Ejemplos
+        En los ejemplos, "ahora" es el sábado 7 de noviembre de 2026 a las 15:30 (-03:00). Son solo para mostrar el criterio: con el usuario real usá la hora del Contexto.
 
-        7. Devuelve SIEMPRE y ÚNICAMENTE un JSON válido con el siguiente esquema exacto (sin texto adicional ni explicaciones):
-        {
-          "summary_badge": "Encontré 2 recordatorios distintos en tu audio. Revísalos antes de crearlos.",
-          "is_checklist_candidate": false,
-          "reminders": [
-            {
-              "title": "Hacer la tarea",
-              "description": "Completar los ejercicios de matemática para la facultad",
-              "type": "Note",
-              "trigger_type": "TIME",
-              "trigger_iso": "2026-10-17T21:00:00Z",
-              "trigger_display": "Hoy 21:00",
-              "place_name": null,
-              "priority": "Normal",
-              "list_name": "Estudio",
-              "items": [],
-              "separate": false
-            },
-            {
-              "title": "Ir al súper",
-              "description": "Comprar verduras y frutas para la cena",
-              "type": "Note",
-              "trigger_type": "NONE",
-              "trigger_iso": null,
-              "trigger_display": "Sin fecha",
-              "place_name": "Al pasar por Súper",
-              "priority": "Normal",
-              "list_name": "Súper",
-              "items": [],
-              "separate": false
-            }
-          ]
-        }
+        Entrada: "a las 9 ir al supermercado y comprar carne"
+        Salida: {"summary_badge": "Encontré 1 recordatorio con 1 ítem.", "is_checklist_candidate": true, "reminders": [{"title": "Ir al supermercado", "description": "Comprar", "type": "Checklist", "trigger_type": "TIME", "trigger_iso": "2026-11-07T21:00:00-03:00", "trigger_display": "Hoy 21:00", "place_name": "Supermercado", "priority": "Normal", "list_name": "Compras", "items": ["Carne"], "separate": false}]}
+
+        Entrada: "tengo que pasar por la farmacia a comprar ibuprofeno, curitas y alcohol"
+        Salida: {"summary_badge": "Encontré 1 recordatorio con 3 ítems.", "is_checklist_candidate": true, "reminders": [{"title": "Ir a la farmacia", "description": "Comprar", "type": "Checklist", "trigger_type": "NONE", "trigger_iso": null, "trigger_display": "Sin fecha", "place_name": "Farmacia", "priority": "Normal", "list_name": "Salud", "items": ["Ibuprofeno", "Curitas", "Alcohol"], "separate": false}]}
+
+        Entrada: "a las 9 llamar al médico y a la tarde pagar la luz"
+        Salida: {"summary_badge": "Encontré 2 recordatorios.", "is_checklist_candidate": false, "reminders": [{"title": "Llamar al médico", "description": "", "type": "Note", "trigger_type": "TIME", "trigger_iso": "2026-11-07T21:00:00-03:00", "trigger_display": "Hoy 21:00", "place_name": null, "priority": "Normal", "list_name": "Salud", "items": [], "separate": false}, {"title": "Pagar la luz", "description": "", "type": "Note", "trigger_type": "TIME", "trigger_iso": "2026-11-07T17:00:00-03:00", "trigger_display": "Hoy 17:00", "place_name": null, "priority": "Normal", "list_name": "Casa", "items": [], "separate": false}]}
+
+        Entrada: "recordame el lunes sacar turno con el dentista, es urgente"
+        Salida: {"summary_badge": "Encontré 1 recordatorio.", "is_checklist_candidate": false, "reminders": [{"title": "Sacar turno con el dentista", "description": "", "type": "Note", "trigger_type": "TIME", "trigger_iso": "2026-11-09T09:00:00-03:00", "trigger_display": "Lun 9/11 09:00", "place_name": null, "priority": "Alta", "list_name": "Salud", "items": [], "separate": false}]}
+
+        Entrada: "comprar leche, pan y huevos"
+        Salida: {"summary_badge": "Encontré 1 recordatorio con 3 ítems.", "is_checklist_candidate": true, "reminders": [{"title": "Compras", "description": "", "type": "Checklist", "trigger_type": "NONE", "trigger_iso": null, "trigger_display": "Sin fecha", "place_name": null, "priority": "Normal", "list_name": "Compras", "items": ["Leche", "Pan", "Huevos"], "separate": false}]}
         """.trimIndent()
+    }
+
+    /**
+     * La hora de referencia como la lee una persona, ej. "sábado 7 de noviembre de 2026, 15:30
+     * (UTC-03:00)". El modelo calcula mejor "el lunes" o "pasado mañana" sabiendo qué día es hoy;
+     * con solo el ISO tendría que deducir el día de la semana, y ahí se equivoca.
+     */
+    private fun describeReference(referenceIso: String): String = try {
+        val reference = OffsetDateTime.parse(referenceIso)
+        val formatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM 'de' yyyy, HH:mm", Locale.forLanguageTag("es-AR"))
+        "${reference.format(formatter)} (UTC${reference.offset.id.replace("Z", "+00:00")})"
+    } catch (e: DateTimeParseException) {
+        referenceIso
     }
 
     /**

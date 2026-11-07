@@ -23,6 +23,8 @@ data class ReminderEntity(
     val description: String?,
     val photoPath: String?,
     val audioPath: String? = null,
+    /** Lo que se transcribió de [audioPath] (ver Reminder.transcript). */
+    val transcript: String? = null,
     val isDone: Boolean,
     val status: String,
     /** Desde cuándo está hecho, archivado o eliminado (epoch millis); null si está activo. */

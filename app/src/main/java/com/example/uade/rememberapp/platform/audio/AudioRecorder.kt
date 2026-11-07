@@ -36,10 +36,15 @@ class AudioRecorder(private val context: Context) {
             }
 
             mediaRecorder.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
+                // VOICE_RECOGNITION y no MIC: es la fuente pensada para reconocer voz. Android le
+                // saca el procesamiento que agrega el modo "micrófono" (control automático de
+                // volumen, efectos), que a Whisper le cuesta más entender.
+                setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128_000)
+                // Mono: la voz es un solo canal; en estéreo el archivo pesa el doble para nada.
+                setAudioChannels(1)
+                setAudioEncodingBitRate(96_000)
                 setAudioSamplingRate(44_100)
                 setOutputFile(outputFile.absolutePath)
                 prepare()

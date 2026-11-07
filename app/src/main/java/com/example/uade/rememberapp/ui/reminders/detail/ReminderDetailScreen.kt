@@ -136,6 +136,7 @@ import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationA
 import com.example.uade.rememberapp.ui.reminders.detail.components.PhotoStack
 import com.example.uade.rememberapp.ui.reminders.detail.components.PhotosSheet
 import com.example.uade.rememberapp.ui.reminders.detail.components.PhotosSheetActions
+import com.example.uade.rememberapp.ui.reminders.detail.components.VoiceNoteSection
 import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
@@ -170,15 +171,28 @@ private const val CoverAspectRatio = 16f / 9f
 @Composable
 fun ReminderDetailScreen(
     onBack: () -> Unit,
-    viewModel: ReminderDetailViewModel = viewModel(factory = ReminderDetailViewModel.Factory),
+    /**
+     * Para editar un recordatorio que todavía no está guardado (ej. una propuesta de la IA): el
+     * mismo editor, pero ✓ devuelve el resultado por [onDraftSaved] en vez de guardarlo.
+     */
+    draft: Reminder? = null,
+    onDraftSaved: (Reminder) -> Unit = {},
+    viewModel: ReminderDetailViewModel = viewModel(
+        // Un ViewModel por borrador: si no, editar otra propuesta reusaría el de la anterior.
+        key = draft?.let { "draft-${System.identityHashCode(it)}" },
+        factory = if (draft != null) ReminderDetailViewModel.draftFactory(draft) else ReminderDetailViewModel.Factory,
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // "Ahora" fijo mientras la pantalla está abierta: decide si el aviso dice "Hoy 18:00".
     val now = remember { Instant.now() }
 
-    // Guardado con ✓: recién ahí se cierra, así no se sale antes de que termine de guardar.
+    // Guardado con ✓: recién ahí se cierra, así no se sale antes de que termine de guardar. En
+    // modo borrador, el resultado (si hubo cambios) se lo lleva quien abrió el editor.
     LaunchedEffect(uiState.isSaved) {
-        if (uiState.isSaved) onBack()
+        if (uiState.isSaved) {
+            uiState.draftResult?.let(onDraftSaved) ?: onBack()
+        }
     }
 
     val context = LocalContext.current
@@ -760,6 +774,15 @@ private fun ReminderDetailBody(
                         photoPaths = stackPhotos,
                         aspectRatio = CoverAspectRatio,
                         onClick = onImageClick,
+                    )
+                }
+
+                // Si se creó dictando: la grabación para volver a escucharla y lo que entendió la IA.
+                val voiceNote = uiState.reminder
+                if (voiceNote?.audioPath != null || !voiceNote?.transcript.isNullOrBlank()) {
+                    VoiceNoteSection(
+                        audioPath = voiceNote?.audioPath,
+                        transcript = voiceNote?.transcript,
                     )
                 }
 

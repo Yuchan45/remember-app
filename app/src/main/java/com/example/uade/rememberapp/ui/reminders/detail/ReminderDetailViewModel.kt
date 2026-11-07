@@ -38,6 +38,7 @@ import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
 import com.example.uade.rememberapp.ui.reminders.model.toDomain
 import com.example.uade.rememberapp.ui.reminders.model.toUi
 import java.time.Instant
+import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -74,6 +75,12 @@ class ReminderDetailViewModel(
     observePlaces: ObservePlacesUseCase,
     private val aiReminderService: AiReminderService? = null,
     private val markReminderDone: MarkReminderDoneUseCase? = null,
+    /**
+     * Modo borrador: editar un recordatorio que todavía no está guardado (ej. una propuesta de la
+     * IA en la revisión de una nota de voz). Es el mismo editor, pero ✓ no guarda en la base:
+     * deja el resultado en [ReminderDetailUiState.draftResult] para que lo use quien lo abrió.
+     */
+    draft: Reminder? = null,
     private val now: () -> Instant = Instant::now,
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
@@ -82,7 +89,9 @@ class ReminderDetailViewModel(
     private val reminderId: Long? = savedStateHandle[Routes.ARG_REMINDER_ID]
 
     private val _uiState = MutableStateFlow(
-        if (reminderId == null) {
+        if (draft != null) {
+            ReminderDetailUiState(isLoading = false, isDraft = true).withLoaded(draft)
+        } else if (reminderId == null) {
             // Nota nueva: puede venir con el título de la nota rápida y con la lista ya abierta
             // (un ítem vacío, para escribir el primero).
             ReminderDetailUiState(
@@ -113,24 +122,7 @@ class ReminderDetailViewModel(
         if (reminderId != null) {
             viewModelScope.launch {
                 val reminder = getReminder(reminderId)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        reminder = reminder,
-                        items = reminder?.items.orEmpty(),
-                        title = reminder?.title.orEmpty(),
-                        description = reminder?.description.orEmpty(),
-                        tagIds = reminder?.tags.orEmpty().map { tag -> tag.id }.toSet(),
-                        alarms = reminder?.alarms.orEmpty().map { alarm -> alarm.at }.sorted(),
-                        alarmRepeats = reminder?.alarms.orEmpty()
-                            .filter { alarm -> alarm.repeat != AlarmRepeat.None }
-                            .associate { alarm -> alarm.at to alarm.repeat },
-                        importance = reminder?.importance ?: Importance.Default,
-                        action = reminder?.action,
-                        photos = reminder?.photos.orEmpty(),
-                        photoPath = reminder?.photoPath,
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false).withLoaded(reminder) }
                 // Recién con el recordatorio cargado: el modal arranca con sus valores actuales.
                 if (reminder != null) {
                     when (openSection) {
@@ -776,7 +768,7 @@ class ReminderDetailViewModel(
         _uiState.update { it.copy(isPasteDialogOpen = false, isGeneratingItems = true) }
         viewModelScope.launch {
             try {
-                val result = aiReminderService?.analyzeText(rawText, now().toString())
+                val result = aiReminderService?.analyzeText(rawText, referenceIso())
                 val firstProposal = result?.getOrNull()?.proposedReminders?.firstOrNull()
                 val extracted = result?.getOrNull()?.let { analysis ->
                     analysis.proposedReminders.flatMap { p ->
@@ -820,7 +812,7 @@ class ReminderDetailViewModel(
         _uiState.update { it.copy(isVoiceCaptureOpen = false, isGeneratingItems = true) }
         viewModelScope.launch {
             try {
-                val result = aiReminderService?.processAudio(audioFilePath, now().toString())
+                val result = aiReminderService?.processAudio(audioFilePath, referenceIso())
                 val firstProposal = result?.getOrNull()?.proposedReminders?.firstOrNull()
                 val extracted = result?.getOrNull()?.let { analysis ->
                     analysis.proposedReminders.flatMap { p ->
@@ -974,6 +966,11 @@ class ReminderDetailViewModel(
             _uiState.update { it.copy(isSaved = true) }
             return
         }
+        if (state.isDraft) {
+            // Borrador: no se guarda acá; quien abrió el editor recibe el resultado.
+            _uiState.update { it.copy(isSaved = true, draftResult = toSave) }
+            return
+        }
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             saveReminder(toSave)
@@ -987,6 +984,11 @@ class ReminderDetailViewModel(
     fun onFinalizeReminder() {
         val state = _uiState.value
         if (state.isSaving || state.isSaved) return
+        // Un borrador todavía no existe: no se puede marcar como hecho, solo aplicar los cambios.
+        if (state.isDraft) {
+            onDone()
+            return
+        }
         val validItems = state.validItems
         val reminder = state.reminder
         _uiState.update { it.copy(isSaving = true) }
@@ -1031,19 +1033,53 @@ class ReminderDetailViewModel(
         }
     }
 
+    /**
+     * "Ahora" para la IA, con la zona horaria del teléfono (ej. 2026-11-07T15:30:00-03:00). Con
+     * Instant.toString() iba en UTC ("…T18:30:00Z") y el modelo calculaba "a las 9" o "mañana"
+     * con 3 horas de diferencia.
+     */
+    private fun referenceIso(): String =
+        DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(now().atZone(zone))
+
     /** El tipo que se guarda: con ítems, lista; si no, nota (el usuario no lo elige). */
     private fun typeFor(items: List<ChecklistItem>): ReminderType =
         if (items.isNotEmpty()) ReminderType.Checklist else ReminderType.Note
+
+    /**
+     * El estado con los datos de [reminder] en los campos del editor. Lo usan cargar uno de la
+     * base y abrir un borrador, para que los dos arranquen igual.
+     */
+    private fun ReminderDetailUiState.withLoaded(reminder: Reminder?): ReminderDetailUiState = copy(
+        reminder = reminder,
+        items = reminder?.items.orEmpty(),
+        title = reminder?.title.orEmpty(),
+        description = reminder?.description.orEmpty(),
+        tagIds = reminder?.tags.orEmpty().map { tag -> tag.id }.toSet(),
+        alarms = reminder?.alarms.orEmpty().map { alarm -> alarm.at }.sorted(),
+        alarmRepeats = reminder?.alarms.orEmpty()
+            .filter { alarm -> alarm.repeat != AlarmRepeat.None }
+            .associate { alarm -> alarm.at to alarm.repeat },
+        importance = reminder?.importance ?: Importance.Default,
+        action = reminder?.action,
+        photos = reminder?.photos.orEmpty(),
+        photoPath = reminder?.photoPath,
+    )
 
     // TODO: compartir el recordatorio (crear link). Por ahora es maquetado.
     fun onShareClick() = Unit
 
     companion object {
         /** Crea el ViewModel con el id de la ruta (si hay) y los casos de uso del [RememberApp.container]. */
-        val Factory = viewModelFactory {
+        val Factory = factory(draft = null)
+
+        /** El mismo editor sobre un recordatorio sin guardar (ver el parámetro `draft`). */
+        fun draftFactory(draft: Reminder) = factory(draft)
+
+        private fun factory(draft: Reminder?) = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as RememberApp
                 ReminderDetailViewModel(
+                    draft = draft,
                     savedStateHandle = createSavedStateHandle(),
                     getReminder = app.container.getReminderUseCase,
                     saveReminder = app.container.saveReminderUseCase,

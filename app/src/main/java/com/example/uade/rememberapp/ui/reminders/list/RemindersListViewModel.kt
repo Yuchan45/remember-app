@@ -278,7 +278,7 @@ class RemindersListViewModel(
     }
 
     fun onQuickCaptureDismiss() {
-        _uiState.update { it.copy(isQuickCaptureOpen = false, capturedAudioPath = null) }
+        _uiState.update { it.copy(isQuickCaptureOpen = false, capturedAudioPath = null, capturedPhotoUris = emptyList()) }
     }
 
     /** El botón "+": abre el menú "Crear" con los tipos de recordatorio. */
@@ -359,8 +359,14 @@ class RemindersListViewModel(
         _uiState.update { it.copy(offlineVoiceSavedNotification = false) }
     }
 
-    // TODO: crear con una foto desde la barra de captura.
-    fun onPhotoCaptureClick() = Unit
+    /**
+     * 🖼 de la barra plegada: volvió el selector de fotos con [uris]. Abre la nota rápida con esas
+     * fotos ya adjuntas, para escribirle un título y guardarla. Sin fotos (canceló), no hace nada.
+     */
+    fun onPhotosPickedForCapture(uris: List<String>) {
+        if (uris.isEmpty()) return
+        _uiState.update { it.copy(isQuickCaptureOpen = true, capturedPhotoUris = uris) }
+    }
 
     companion object {
         /** Crea el ViewModel con los casos de uso del [RememberApp.container]. */

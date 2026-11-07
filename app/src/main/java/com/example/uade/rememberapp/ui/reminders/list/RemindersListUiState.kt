@@ -65,6 +65,8 @@ data class RemindersListUiState(
     val isVoiceCaptureOpen: Boolean = false,
     /** Ruta de audio temporal grabado para pasar a la ventana de configuración rápida. */
     val capturedAudioPath: String? = null,
+    /** Fotos elegidas con 🖼 de la barra plegada, para abrir la nota rápida con ellas adjuntas. */
+    val capturedPhotoUris: List<String> = emptyList(),
     /** Si el menú "Crear" está abierto. Lo abre el botón "+" de la barra inferior. */
     val isCreateMenuOpen: Boolean = false,
     /** Resultado de análisis de Groq IA para abrir la pantalla de revisión de recordatorios (03.B). */

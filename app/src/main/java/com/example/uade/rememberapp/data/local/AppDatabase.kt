@@ -38,6 +38,7 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
  * - 11: `statusChangedAtMillis` en `reminders`, para borrar solos los hechos y eliminados (ver
  *   MIGRATION_10_11).
  * - 12: `repeat` en `reminder_alarms`, la repetición de cada aviso (ver MIGRATION_11_12).
+ * - 13: `transcript` en `reminders`, el texto de la nota de voz (ver MIGRATION_12_13).
  */
 @Database(
     entities = [
@@ -57,7 +58,7 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
 abstract class AppDatabase : RoomDatabase() {
     companion object {
         /** La versión del esquema. Subirla al cambiar tablas o columnas, con su migración. */
-        const val VERSION = 12
+        const val VERSION = 13
     }
 
     abstract fun reminderDao(): ReminderDao

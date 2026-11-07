@@ -5,6 +5,7 @@ import com.example.uade.rememberapp.data.remote.dto.GroqChatResponse
 import com.example.uade.rememberapp.data.remote.dto.GroqChoice
 import com.example.uade.rememberapp.data.remote.dto.GroqMessage
 import com.example.uade.rememberapp.data.remote.dto.GroqTranscriptionResponse
+import com.example.uade.rememberapp.domain.model.AiProcessingError
 import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
 import okhttp3.MultipartBody
@@ -21,6 +22,8 @@ class GroqReminderServiceImplTest {
             file: MultipartBody.Part,
             model: RequestBody,
             language: RequestBody?,
+            temperature: RequestBody?,
+            prompt: RequestBody?,
         ): GroqTranscriptionResponse = GroqTranscriptionResponse("fake")
 
         override suspend fun createChatCompletion(
@@ -99,6 +102,8 @@ class GroqReminderServiceImplTest {
                 file: MultipartBody.Part,
                 model: RequestBody,
                 language: RequestBody?,
+                temperature: RequestBody?,
+                prompt: RequestBody?,
             ): GroqTranscriptionResponse = GroqTranscriptionResponse("fake")
 
             override suspend fun createChatCompletion(
@@ -180,6 +185,8 @@ class GroqReminderServiceImplTest {
                 file: MultipartBody.Part,
                 model: RequestBody,
                 language: RequestBody?,
+                temperature: RequestBody?,
+                prompt: RequestBody?,
             ): GroqTranscriptionResponse = GroqTranscriptionResponse("fake")
 
             override suspend fun createChatCompletion(
@@ -218,19 +225,23 @@ class GroqReminderServiceImplTest {
     }
 
     @Test
-    fun `mapDtoToDomain si LLM devolvio tarea combinada con e ir la divide en dos propuestas`() = runBlocking {
+    fun `mapDtoToDomain respeta un solo recordatorio con checklist y no lo vuelve a separar`() = runBlocking {
+        // El modelo junta "ir al supermercado y comprar carne" en UNA salida con un ítem. Antes el
+        // código volvía a cortar el título por "y" y lo dejaba en dos recordatorios.
         val jsonPayload = """
         {
-          "summary_badge": "Detecté 1 recordatorio en tu audio.",
-          "is_checklist_candidate": false,
+          "summary_badge": "Encontré 1 recordatorio con 1 ítem.",
+          "is_checklist_candidate": true,
           "reminders": [
             {
-              "title": "Hacer la tarea e ir al super",
-              "description": "",
-              "type": "Note",
+              "title": "Ir al supermercado y comprar carne",
+              "description": "Comprar",
+              "type": "Checklist",
               "trigger_type": "TIME",
-              "trigger_iso": "2026-10-17T21:00:00Z",
-              "trigger_display": "Hoy 21:00"
+              "trigger_iso": "2026-11-09T09:00:00-03:00",
+              "trigger_display": "Hoy 09:00",
+              "place_name": "Supermercado",
+              "items": ["Carne"]
             }
           ]
         }
@@ -242,6 +253,8 @@ class GroqReminderServiceImplTest {
                 file: MultipartBody.Part,
                 model: RequestBody,
                 language: RequestBody?,
+                temperature: RequestBody?,
+                prompt: RequestBody?,
             ): GroqTranscriptionResponse = GroqTranscriptionResponse("fake")
 
             override suspend fun createChatCompletion(
@@ -253,14 +266,12 @@ class GroqReminderServiceImplTest {
         }
 
         val service = GroqReminderServiceImpl(mockApi, apiKey = "gsk_test", gson = Gson())
-        val result = service.analyzeText("Hacer la tarea e ir al super", "2026-10-17T15:00:00Z")
+        val result = service.analyzeText("A las 9 ir al supermercado y comprar carne", "2026-11-09T08:00:00-03:00")
 
         assertTrue(result.isSuccess)
         val analysis = result.getOrNull()!!
-        assertEquals(2, analysis.proposedReminders.size)
-        assertEquals("Hacer la tarea", analysis.proposedReminders[0].title)
-        assertEquals("Ir al super", analysis.proposedReminders[1].title)
-        assertEquals("Al pasar por Súper", analysis.proposedReminders[1].placeName)
+        assertEquals(1, analysis.proposedReminders.size)
+        assertEquals(listOf("Carne"), analysis.proposedReminders[0].items.map { it.text })
     }
 
     @Test
@@ -272,8 +283,8 @@ class GroqReminderServiceImplTest {
             val result = service.transcribeAudio(tempFile.absolutePath)
 
             assertTrue(result.isFailure)
-            val errorMsg = result.exceptionOrNull()?.message.orEmpty()
-            assertTrue(errorMsg.contains("clave de API"))
+            // Error tipado: la pantalla dice "falta la clave", no "no se entendió".
+            assertTrue(result.exceptionOrNull() is AiProcessingError.MissingApiKey)
         } finally {
             tempFile.delete()
         }
@@ -288,8 +299,7 @@ class GroqReminderServiceImplTest {
             val result = service.transcribeAudio(tempFile.absolutePath)
 
             assertTrue(result.isFailure)
-            val errorMsg = result.exceptionOrNull()?.message.orEmpty()
-            assertTrue(errorMsg.contains("demasiado corto") || errorMsg.contains("vacío"))
+            assertTrue(result.exceptionOrNull() is AiProcessingError.Unintelligible)
         } finally {
             tempFile.delete()
         }
@@ -303,6 +313,8 @@ class GroqReminderServiceImplTest {
                 file: MultipartBody.Part,
                 model: RequestBody,
                 language: RequestBody?,
+                temperature: RequestBody?,
+                prompt: RequestBody?,
             ): GroqTranscriptionResponse = GroqTranscriptionResponse("[música]")
 
             override suspend fun createChatCompletion(
@@ -318,8 +330,7 @@ class GroqReminderServiceImplTest {
             val result = service.transcribeAudio(tempFile.absolutePath)
 
             assertTrue(result.isFailure)
-            val errorMsg = result.exceptionOrNull()?.message.orEmpty()
-            assertTrue(errorMsg.contains("vacío o es ininteligible"))
+            assertTrue(result.exceptionOrNull() is AiProcessingError.Unintelligible)
         } finally {
             tempFile.delete()
         }

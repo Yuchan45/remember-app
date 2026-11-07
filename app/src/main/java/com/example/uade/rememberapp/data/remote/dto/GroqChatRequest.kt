@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 data class GroqChatRequest(
     @SerializedName("model")
-    val model: String = "llama-3.3-70b-versatile",
+    val model: String = "openai/gpt-oss-120b",
     @SerializedName("messages")
     val messages: List<GroqMessage>,
     @SerializedName("response_format")

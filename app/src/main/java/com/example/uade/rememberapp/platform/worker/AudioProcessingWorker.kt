@@ -44,6 +44,7 @@ class AudioProcessingWorker(
                         existing.copy(
                             title = fallbackTitle,
                             description = analysis.rawTranscript.ifBlank { null },
+                            transcript = analysis.rawTranscript.ifBlank { null },
                             aiStatus = AiProcessingStatus.Completed,
                         ),
                     )
@@ -56,6 +57,7 @@ class AudioProcessingWorker(
                             type = p.type,
                             items = p.items,
                             alarms = p.alarms,
+                            transcript = analysis.rawTranscript.ifBlank { null },
                             aiStatus = AiProcessingStatus.Completed,
                         ),
                     )
@@ -70,6 +72,7 @@ class AudioProcessingWorker(
                             type = first.type,
                             items = first.items,
                             alarms = first.alarms,
+                            transcript = analysis.rawTranscript.ifBlank { null },
                             aiStatus = AiProcessingStatus.Completed,
                         ),
                     )
@@ -84,6 +87,7 @@ class AudioProcessingWorker(
                             items = p.items,
                             alarms = p.alarms,
                             audioPath = audioPath,
+                            transcript = analysis.rawTranscript.ifBlank { null },
                             aiStatus = AiProcessingStatus.Completed,
                             createdAt = Instant.now(),
                         )

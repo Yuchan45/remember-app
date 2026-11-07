@@ -9,4 +9,9 @@ data class AiAnalysisResult(
     val summaryBadge: String,
     val proposedReminders: List<ProposedReminder>,
     val isChecklistCandidate: Boolean = false,
+    /**
+     * La grabación que se analizó, para guardarla en los recordatorios que se creen (y poder
+     * volver a escucharla). null si el análisis vino de un texto pegado.
+     */
+    val audioPath: String? = null,
 )

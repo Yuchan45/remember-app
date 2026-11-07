@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,8 +22,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,12 +46,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +69,10 @@ import com.example.uade.rememberapp.domain.model.AiAnalysisResult
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.ProposedReminder
 import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.ui.components.AppDialogDefaults
+import com.example.uade.rememberapp.ui.components.DialogDismissButton
+import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
+import com.example.uade.rememberapp.ui.reminders.detail.ReminderDetailScreen
 import com.example.uade.rememberapp.ui.theme.CardSurface
 import com.example.uade.rememberapp.ui.theme.Outline
 import com.example.uade.rememberapp.ui.theme.Primary
@@ -102,22 +109,30 @@ fun ReviewProposedRemindersScreen(
         }
     }
 
+    // Cerrar (con ✕ o el "atrás" del sistema) descarta lo que armó la IA a partir del audio, y
+    // eso no se puede recuperar: se pregunta antes. Sin propuestas no hay nada que perder.
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+    val requestClose = {
+        if (uiState.proposals.isNotEmpty() && !uiState.isSaved) showDiscardDialog = true else onDismiss()
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = requestClose,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false,
+            // Un toque sin querer afuera no tiene que cerrar (ni preguntar): solo ✕ o "atrás".
+            dismissOnClickOutside = false,
         ),
     ) {
         ReviewProposedRemindersContent(
             uiState = uiState,
-            onDismiss = onDismiss,
+            onDismiss = requestClose,
             onToggleProposal = viewModel::onToggleProposalSelection,
             onToggleChecklistItem = viewModel::onToggleChecklistItem,
             onSetChecklistView = viewModel::onSetChecklistView,
             onAddNewProposal = viewModel::onAddNewProposal,
             onStartEdit = viewModel::onStartEdit,
-            onSaveEdit = viewModel::onSaveEdit,
             onDismissEdit = viewModel::onDismissEdit,
             onMergeAllIntoOne = viewModel::onMergeAllIntoOne,
             onUnmergeSelected = viewModel::onUnmergeSelected,
@@ -125,17 +140,84 @@ fun ReviewProposedRemindersScreen(
             onCreateClick = viewModel::onCreateClick,
         )
 
-        // Modal 03.C: ¿Los unimos?
-        val mergeProposal = uiState.similarMergeProposal
-        if (mergeProposal != null) {
-            MergeSimilarDialog(
-                proposal = mergeProposal,
-                onConfirmMerge = viewModel::onConfirmMergeSimilar,
-                onKeepSeparate = viewModel::onKeepSeparateSimilar,
-                onDismiss = viewModel::onKeepSeparateSimilar,
+        // ✏️ de una propuesta: el mismo editor que cualquier recordatorio (no un modal aparte).
+        // Trabaja sobre un borrador: ✓ vuelve a la revisión con los cambios, sin guardar todavía.
+        val editing = uiState.editingProposal
+        if (editing != null) {
+            val draft = remember(editing.tempId) { viewModel.draftFor(editing) }
+            Dialog(
+                onDismissRequest = viewModel::onDismissEdit,
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    decorFitsSystemWindows = false,
+                    dismissOnClickOutside = false,
+                ),
+            ) {
+                ReminderDetailScreen(
+                    onBack = viewModel::onDismissEdit,
+                    draft = draft,
+                    onDraftSaved = { edited -> viewModel.onDraftEdited(editing.tempId, edited) },
+                )
+            }
+        }
+
+        if (showDiscardDialog) {
+            DiscardProposalsDialog(
+                count = uiState.proposals.size,
+                onDiscard = {
+                    showDiscardDialog = false
+                    onDismiss()
+                },
+                onKeepReviewing = { showDiscardDialog = false },
             )
         }
     }
+}
+
+/**
+ * Confirmación antes de cerrar la revisión:
+ * ```
+ * ¿Descartar los recordatorios?
+ * Se van a perder los 2 recordatorios que armó la IA con tu audio.
+ *                              [Seguir revisando]  [Descartar]
+ * ```
+ * "Seguir revisando" es el botón destacado y también lo que pasa al tocar afuera o "atrás": la
+ * opción segura es no perder nada.
+ */
+@Composable
+private fun DiscardProposalsDialog(
+    count: Int,
+    onDiscard: () -> Unit,
+    onKeepReviewing: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onKeepReviewing,
+        shape = AppDialogDefaults.shape,
+        containerColor = AppDialogDefaults.containerColor,
+        title = {
+            Text(
+                text = stringResource(R.string.review_discard_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            Text(
+                text = pluralStringResource(R.plurals.review_discard_message, count, count),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            DialogFilledConfirmButton(
+                text = stringResource(R.string.review_discard_keep),
+                onClick = onKeepReviewing,
+            )
+        },
+        dismissButton = {
+            DialogDismissButton(text = stringResource(R.string.review_discard_confirm), onClick = onDiscard)
+        },
+    )
 }
 
 @Composable
@@ -147,7 +229,6 @@ private fun ReviewProposedRemindersContent(
     onSetChecklistView: (Boolean) -> Unit,
     onAddNewProposal: () -> Unit,
     onStartEdit: (ProposedReminder) -> Unit,
-    onSaveEdit: (ProposedReminder) -> Unit,
     onDismissEdit: () -> Unit,
     onMergeAllIntoOne: () -> Unit,
     onUnmergeSelected: () -> Unit,
@@ -447,7 +528,8 @@ private fun ReviewProposedRemindersContent(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 ) {
                     Text(
-                        text = uiState.createButtonLabel,
+                        // Cuenta los recordatorios que se van a crear (no los ítems de una lista).
+                        text = pluralStringResource(R.plurals.review_create_button, uiState.selectedCount, uiState.selectedCount),
                         color = Color(0xFF0B141B),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
@@ -456,15 +538,6 @@ private fun ReviewProposedRemindersContent(
             }
         }
 
-        // Diálogo para editar propuesta
-        val editing = uiState.editingProposal
-        if (editing != null) {
-            EditProposalDialog(
-                proposal = editing,
-                onDismiss = onDismissEdit,
-                onSave = onSaveEdit,
-            )
-        }
     }
 }
 
@@ -821,242 +894,3 @@ private fun SeparateReminderProposalCard(
     }
 }
 
-/**
- * Diálogo para editar título, fecha inferida y lugar de una propuesta.
- */
-@Composable
-private fun EditProposalDialog(
-    proposal: ProposedReminder,
-    onDismiss: () -> Unit,
-    onSave: (ProposedReminder) -> Unit,
-) {
-    var title by remember { mutableStateOf(proposal.title) }
-    var description by remember { mutableStateOf(proposal.description ?: "") }
-    var time by remember { mutableStateOf(proposal.triggerDisplayTime ?: "") }
-    var place by remember { mutableStateOf(proposal.placeName ?: "") }
-    var priority by remember { mutableStateOf(proposal.priorityName ?: "") }
-    var list by remember { mutableStateOf(proposal.listName ?: "") }
-
-    val isChecklist = proposal.type == ReminderType.Checklist || proposal.items.isNotEmpty()
-    var itemsList by remember { mutableStateOf(proposal.items) }
-    var newItemText by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = if (isChecklist) "Editar checklist" else "Editar recordatorio",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Título") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        cursorColor = Primary,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Descripción / Notas") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        cursorColor = Primary,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 4,
-                )
-
-                if (isChecklist) {
-                    Text(
-                        text = "Tareas de la lista (${itemsList.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-
-                    itemsList.forEachIndexed { index, item ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(
-                                    if (item.isChecked) R.drawable.ic_check_box else R.drawable.ic_check_box_outline_blank,
-                                ),
-                                contentDescription = null,
-                                tint = if (item.isChecked) Primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clickable {
-                                        itemsList = itemsList.mapIndexed { idx, itm ->
-                                            if (idx == index) itm.copy(isChecked = !itm.isChecked) else itm
-                                        }
-                                    },
-                            )
-
-                            OutlinedTextField(
-                                value = item.text,
-                                onValueChange = { newText ->
-                                    itemsList = itemsList.mapIndexed { idx, itm ->
-                                        if (idx == index) itm.copy(text = newText) else itm
-                                    }
-                                },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Primary,
-                                    cursorColor = Primary,
-                                ),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                            )
-
-                            IconButton(
-                                onClick = {
-                                    itemsList = itemsList.filterIndexed { idx, _ -> idx != index }
-                                },
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_close),
-                                    contentDescription = "Eliminar tarea",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-                    }
-
-                    // Fila para agregar nueva tarea
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        OutlinedTextField(
-                            value = newItemText,
-                            onValueChange = { newItemText = it },
-                            placeholder = { Text("Nueva tarea...", style = MaterialTheme.typography.bodyMedium) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Primary,
-                                cursorColor = Primary,
-                            ),
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                        )
-
-                        IconButton(
-                            onClick = {
-                                if (newItemText.isNotBlank()) {
-                                    itemsList = itemsList + ChecklistItem(text = newItemText.trim())
-                                    newItemText = ""
-                                }
-                            },
-                            enabled = newItemText.isNotBlank(),
-                            modifier = Modifier.size(40.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_add),
-                                contentDescription = "Agregar tarea",
-                                tint = if (newItemText.isNotBlank()) Primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = time,
-                    onValueChange = { time = it },
-                    label = { Text("Fecha / Horario (ej. Hoy 21:00, Mañana 09:00)") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        cursorColor = Primary,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = place,
-                    onValueChange = { place = it },
-                    label = { Text("Lugar (ej. Casa, Al pasar por Súper)") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        cursorColor = Primary,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = priority,
-                    onValueChange = { priority = it },
-                    label = { Text("Prioridad (ej. Normal, Alta, Urgente)") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        cursorColor = Primary,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = list,
-                    onValueChange = { list = it },
-                    label = { Text("Lista (ej. Súper, Estudio, Trabajo)") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        cursorColor = Primary,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val cleanedItems = itemsList.filter { it.text.isNotBlank() }
-                    val finalType = if (isChecklist && cleanedItems.isNotEmpty()) {
-                        ReminderType.Checklist
-                    } else {
-                        proposal.type
-                    }
-                    onSave(
-                        proposal.copy(
-                            title = title.ifBlank { proposal.title },
-                            description = description.ifBlank { null },
-                            type = finalType,
-                            items = cleanedItems,
-                            triggerDisplayTime = time.ifBlank { null },
-                            placeName = place.ifBlank { null },
-                            priorityName = priority.ifBlank { null },
-                            listName = list.ifBlank { null },
-                        ),
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Primary),
-            ) {
-                Text(
-                    text = "Guardar",
-                    color = Color(0xFF0B141B),
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-    )
-}

@@ -7,11 +7,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.repository.TagRepository
+import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
 import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
@@ -21,6 +24,10 @@ import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
 import com.example.uade.rememberapp.ui.reminders.model.toDomain
 import com.example.uade.rememberapp.ui.reminders.sample.SampleQuickCapture
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZonedDateTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,9 +35,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZonedDateTime
 
 /**
  * ViewModel del modal de captura rápida. Guarda notas con título y, opcionalmente, fecha,
@@ -40,6 +44,7 @@ class QuickCaptureViewModel(
     private val saveReminder: SaveReminderUseCase,
     tagRepository: TagRepository,
     private val observePlaces: ObservePlacesUseCase,
+    private val importPhotos: ImportPhotosUseCase,
     private val now: () -> ZonedDateTime = { ZonedDateTime.now() },
 ) : ViewModel() {
 
@@ -153,7 +158,31 @@ class QuickCaptureViewModel(
     }
 
     fun onVoiceClick() = Unit
-    fun onPhotoClick() = Unit
+    /**
+     * Volvió el selector de fotos con [uris] (vacía = no eligió nada): las copia dentro de la app
+     * y las suma a las que ya había, hasta MAX_PHOTOS. Si una no se puede leer, se saltea.
+     */
+    fun onPhotosPicked(uris: List<String>) {
+        if (uris.isEmpty()) return
+        _uiState.update { it.copy(isImportingPhotos = true) }
+        viewModelScope.launch {
+            val imported = try {
+                importPhotos(uris, alreadyCount = _uiState.value.photoPaths.size)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList()
+            }
+            _uiState.update {
+                it.copy(photoPaths = (it.photoPaths + imported).take(MAX_PHOTOS), isImportingPhotos = false)
+            }
+        }
+    }
+
+    /** ✕ en una miniatura: la saca de la nota. */
+    fun onRemovePhoto(path: String) {
+        _uiState.update { it.copy(photoPaths = it.photoPaths - path) }
+    }
 
     fun onFullScreenToggle() {
         _uiState.update { it.copy(isFullScreen = !it.isFullScreen) }
@@ -194,6 +223,9 @@ class QuickCaptureViewModel(
             type = ReminderType.Note,
             title = finalTitle,
             audioPath = state.audioPath,
+            // La primera foto queda de portada (sin recortar; se puede recortar desde el detalle).
+            photos = state.photoPaths.mapIndexed { i, path -> ReminderPhoto(path, isCover = i == 0) },
+            photoPath = state.photoPaths.firstOrNull(),
             tags = allTags.value.filter { it.id in state.selectedTagIds },
             alarms = listOfNotNull(at?.let { Alarm(it.toInstant(), repeat = state.selectedRepeat.repeat) }),
             places = placeAlerts,
@@ -214,6 +246,7 @@ class QuickCaptureViewModel(
                     saveReminder = app.container.saveReminderUseCase,
                     tagRepository = app.container.tagRepository,
                     observePlaces = app.container.observePlacesUseCase,
+                    importPhotos = app.container.importPhotosUseCase,
                 )
             }
         }

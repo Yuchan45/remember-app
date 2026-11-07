@@ -51,6 +51,14 @@ data class QuickCaptureUiState(
     // Audio adjunto si viene de la captura de voz
     val audioPath: String? = null,
 
+    /**
+     * Fotos elegidas con 🖼 (ya copiadas dentro de la app), en el orden en que se eligieron. La
+     * primera queda de portada al guardar.
+     */
+    val photoPaths: List<String> = emptyList(),
+    /** true mientras se copian las fotos elegidas (tarda un poco con varias o pesadas). */
+    val isImportingPhotos: Boolean = false,
+
     /** Si se está creando un nuevo lugar desde el buscador de dirección. */
     val isCreatingPlace: Boolean = false,
 
@@ -60,10 +68,13 @@ data class QuickCaptureUiState(
     /** true cuando la nota ya quedó guardada: el modal lo ve y se cierra. */
     val isSaved: Boolean = false,
 ) {
-    /** Hace falta un título o un audio adjunto para guardar. */
-    val canSave: Boolean get() = (title.isNotBlank() || audioPath != null) && !isSaving && !isSaved
+    /** Hace falta un título, un audio o una foto para guardar; y que las fotos ya estén copiadas. */
+    val canSave: Boolean
+        get() = (title.isNotBlank() || audioPath != null || photoPaths.isNotEmpty()) &&
+            !isImportingPhotos && !isSaving && !isSaved
     val selectedPlace: Place? get() = favoritePlaces.firstOrNull { it.id == selectedPlaceId }
     val hasTime: Boolean get() = selectedTime != null
     val hasPlace: Boolean get() = selectedPlace != null
     val hasAudio: Boolean get() = audioPath != null
+    val hasPhotos: Boolean get() = photoPaths.isNotEmpty()
 }

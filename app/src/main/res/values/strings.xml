@@ -37,6 +37,7 @@
     <string name="reminders_quick_capture_new">Nuevo recordatorio</string>
     <string name="reminders_quick_capture_voice">Dictar recordatorio</string>
     <string name="reminders_quick_capture_photo">Agregar foto</string>
+    <string name="reminders_capture_remove_photo">Quitar foto</string>
 
     <!-- Captura rápida: modal para crear una nota -->
     <string name="reminders_capture_title_hint">Crea un recordatorio rápido</string>
@@ -173,6 +174,13 @@
 
     <!-- Detalle de un recordatorio: banner (portada) -->
     <string name="reminder_detail_add_banner">Agregar banner</string>
+
+    <!-- Detalle de un recordatorio: la nota de voz de la que salió -->
+    <string name="reminder_detail_voice_note">Nota de voz</string>
+    <string name="reminder_detail_show_transcript">Ver transcripción</string>
+    <string name="reminder_detail_hide_transcript">Ocultar transcripción</string>
+    <string name="reminder_detail_play_audio">Reproducir la nota de voz</string>
+    <string name="reminder_detail_pause_audio">Pausar la nota de voz</string>
     <string name="reminder_detail_options_hide">Ocultar opciones</string>
     <string name="reminder_detail_options_show">Mostrar opciones</string>
 
@@ -421,6 +429,22 @@
     <string name="voice_capture_default_title">Nota de voz</string>
     <string name="voice_capture_attached_note">Nota de voz adjunta</string>
     <string name="voice_capture_error_empty_or_unintelligible">No se pudo procesar el audio (vacío o ininteligible). Por favor, volvé a grabar.</string>
+
+    <!-- Revisión de los recordatorios que armó la IA: confirmar antes de cerrar -->
+    <string name="review_discard_title">¿Descartar los recordatorios?</string>
+    <plurals name="review_discard_message">
+        <item quantity="one">Se va a perder el recordatorio que armó la IA con tu audio.</item>
+        <item quantity="other">Se van a perder los %d recordatorios que armó la IA con tu audio.</item>
+    </plurals>
+    <string name="review_discard_keep">Seguir revisando</string>
+    <string name="review_discard_confirm">Descartar</string>
+    <!-- Botón principal de la revisión: cuántos recordatorios se van a crear. -->
+    <plurals name="review_create_button">
+        <item quantity="one">✓ Crear %d recordatorio</item>
+        <item quantity="other">✓ Crear %d recordatorios</item>
+    </plurals>
+    <string name="voice_capture_error_missing_key">No se pudo transcribir: falta configurar la clave de Groq. Se guardó como nota de voz.</string>
+    <string name="voice_capture_error_invalid_key">No se pudo transcribir: la clave de Groq es inválida. Se guardó como nota de voz.</string>
     <string name="voice_capture_action_retry">Reintentar</string>
     <string name="voice_capture_ready_to_record">Listo para grabar</string>
     <string name="voice_capture_start_recording">Grabar</string>

@@ -13,6 +13,7 @@ import com.example.uade.rememberapp.data.local.MIGRATION_8_9
 import com.example.uade.rememberapp.data.local.MIGRATION_9_10
 import com.example.uade.rememberapp.data.local.MIGRATION_10_11
 import com.example.uade.rememberapp.data.local.MIGRATION_11_12
+import com.example.uade.rememberapp.data.local.MIGRATION_12_13
 import com.example.uade.rememberapp.data.local.SeedTagsCallback
 import com.example.uade.rememberapp.data.repository.PlaceRepositoryImpl
 import com.example.uade.rememberapp.data.repository.ReminderRepositoryImpl
@@ -51,7 +52,6 @@ import com.example.uade.rememberapp.platform.location.AndroidAddressSearchServic
 import com.example.uade.rememberapp.data.remote.GroqApiService
 import com.example.uade.rememberapp.data.remote.GroqReminderServiceImpl
 import com.example.uade.rememberapp.domain.repository.AiReminderService
-import com.example.uade.rememberapp.domain.usecase.DetectSimilarRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase
 import com.example.uade.rememberapp.domain.usecase.ProcessVoiceWithAiUseCase
 import com.example.uade.rememberapp.domain.usecase.PurgeExpiredRemindersUseCase
@@ -95,6 +95,7 @@ class AppContainer(context: Context) {
                 MIGRATION_9_10,
                 MIGRATION_10_11,
                 MIGRATION_11_12,
+                MIGRATION_12_13,
             )
             // Sin fallbackToDestructiveMigration a propósito: si falta una migración (o se instala
             // una versión más vieja de la app, ej. al cambiar de rama), Room cierra la app con un
@@ -201,9 +202,6 @@ class AppContainer(context: Context) {
         SplitProposedReminderUseCase()
     }
 
-    val detectSimilarRemindersUseCase: DetectSimilarRemindersUseCase by lazy {
-        DetectSimilarRemindersUseCase()
-    }
 
     /** Arranca con las etiquetas de ejemplo que carga [SeedTagsCallback] al crear la base. */
     val tagRepository: TagRepository by lazy {

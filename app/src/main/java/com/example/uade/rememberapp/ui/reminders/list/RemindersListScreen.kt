@@ -1,5 +1,8 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,17 +29,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
-import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
-import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutside
 import com.example.uade.rememberapp.ui.reminders.components.rememberSwipeRevealGroupState
 import com.example.uade.rememberapp.ui.reminders.list.components.HomeHeader
 import com.example.uade.rememberapp.ui.reminders.list.components.QuickCaptureBar
 import com.example.uade.rememberapp.ui.reminders.list.components.ReminderFilterBar
 import com.example.uade.rememberapp.ui.reminders.list.components.ReminderSectionHeader
+import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
+import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import com.example.uade.rememberapp.ui.theme.appBackground
 import java.time.Instant
@@ -61,6 +65,10 @@ fun RemindersListScreen(
     onOpenListEditor: (title: String?) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // 🖼 de la barra plegada: elegir fotos y abrir la nota rápida con ellas.
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_PHOTOS),
+    ) { uris -> viewModel.onPhotosPickedForCapture(uris.map { it.toString() }) }
     // "Ahora" fijo mientras la pantalla está abierta: decide qué es "hoy" y cuándo mostrar el "!".
     // TODO: que lo provea el ViewModel y se actualice con el paso del tiempo.
     val now = remember { Instant.now() }
@@ -88,13 +96,16 @@ fun RemindersListScreen(
                 onToggleExpanded = viewModel::onToggleExpanded,
                 onQuickCaptureClick = viewModel::onQuickCaptureClick,
                 onVoiceCapture = viewModel::onVoiceCaptureClick,
-                onPhotoCapture = viewModel::onPhotoCaptureClick,
+                onPhotoCapture = {
+                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
             ),
         )
 
         if (uiState.isQuickCaptureOpen) {
             QuickCaptureSheet(
                 initialAudioPath = uiState.capturedAudioPath,
+                initialPhotoUris = uiState.capturedPhotoUris,
                 onDismiss = viewModel::onQuickCaptureDismiss,
                 onOpenListEditor = onOpenListEditor,
             )

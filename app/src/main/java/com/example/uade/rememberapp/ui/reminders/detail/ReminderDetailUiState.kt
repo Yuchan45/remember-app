@@ -127,6 +127,13 @@ data class ReminderDetailUiState(
     val isSaving: Boolean = false,
     /** true cuando se guardó con ✓: la pantalla lo ve y se cierra. */
     val isSaved: Boolean = false,
+    /**
+     * Editando un recordatorio que todavía no existe (ver ReminderDetailViewModel.draft): ✓ no
+     * guarda, devuelve el resultado en [draftResult].
+     */
+    val isDraft: Boolean = false,
+    /** El borrador ya editado, al tocar ✓ en modo borrador; null si no hubo cambios. */
+    val draftResult: Reminder? = null,
 ) {
     val isNotFound: Boolean get() = !isLoading && !isNew && reminder == null
 
