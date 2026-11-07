@@ -4,8 +4,8 @@ package com.example.uade.rememberapp.domain.model
  * Una acción rápida que se ofrece en la notificación del recordatorio, ej. "Llamar al número:
  * Pediatría". Un recordatorio tiene como mucho una.
  *
- * TODO: por ahora solo se guarda. Ejecutarla desde la notificación con un Intent (marcador,
- * SMS / WhatsApp / Instagram, cliente de correo).
+ * La notificación la ofrece como un botón que abre la app que corresponde (marcador, SMS,
+ * WhatsApp, Instagram o correo) ya con el destinatario; ver NotificationHelper.
  */
 sealed interface NotificationAction {
     data class Call(val phone: String) : NotificationAction

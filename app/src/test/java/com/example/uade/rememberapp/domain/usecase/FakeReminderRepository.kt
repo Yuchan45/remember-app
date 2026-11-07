@@ -1,6 +1,7 @@
 package com.example.uade.rememberapp.domain.usecase
 
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderBucket
 import com.example.uade.rememberapp.domain.repository.ReminderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +14,12 @@ internal class FakeReminderRepository : ReminderRepository {
     private var nextId = 1L
 
     override fun observeAll(): Flow<List<Reminder>> = reminders.map { it.values.toList() }
+
+    override fun observeByBucket(bucket: ReminderBucket): Flow<List<Reminder>> =
+        reminders.map { map -> map.values.filter { it.bucket == bucket } }
+
+    override suspend fun getByBucket(bucket: ReminderBucket): List<Reminder> =
+        reminders.value.values.filter { it.bucket == bucket }
 
     override fun observePendingForPlace(placeId: Long): Flow<List<Reminder>> =
         throw UnsupportedOperationException()

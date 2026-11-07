@@ -25,6 +25,8 @@ data class ReminderEntity(
     val audioPath: String? = null,
     val isDone: Boolean,
     val status: String,
+    /** Desde cuándo está hecho, archivado o eliminado (epoch millis); null si está activo. */
+    val statusChangedAtMillis: Long? = null,
     @ColumnInfo(defaultValue = "None")
     val aiStatus: String = "None",
     val createdAtMillis: Long,

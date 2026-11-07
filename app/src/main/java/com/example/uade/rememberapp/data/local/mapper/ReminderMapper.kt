@@ -9,6 +9,7 @@ import com.example.uade.rememberapp.data.local.entity.ReminderEntity
 import com.example.uade.rememberapp.data.local.entity.ReminderWithDetails
 import com.example.uade.rememberapp.domain.model.AiProcessingStatus
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.AlarmRepeat
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MessageChannel
@@ -61,6 +62,7 @@ fun ReminderEntity.toDomain(
     action = action,
     isDone = isDone,
     status = enumOrDefault(status, ReminderStatus.Active),
+    statusChangedAt = statusChangedAtMillis?.let(Instant::ofEpochMilli),
     aiStatus = enumOrDefault(aiStatus, AiProcessingStatus.None),
     importance = enumOrDefault(importance, Importance.Default),
     createdAt = Instant.ofEpochMilli(createdAtMillis),
@@ -75,16 +77,21 @@ fun Reminder.toEntity(): ReminderEntity = ReminderEntity(
     audioPath = audioPath,
     isDone = isDone,
     status = status.name,
+    statusChangedAtMillis = statusChangedAt?.toEpochMilli(),
     aiStatus = aiStatus.name,
     createdAtMillis = createdAt.toEpochMilli(),
     importance = importance.name,
 )
 
-fun AlarmEntity.toDomain(): Alarm = Alarm(at = Instant.ofEpochMilli(atMillis), isSnooze = isSnooze)
+fun AlarmEntity.toDomain(): Alarm = Alarm(
+    at = Instant.ofEpochMilli(atMillis),
+    isSnooze = isSnooze,
+    repeat = enumOrDefault(repeat, AlarmRepeat.None),
+)
 
 /** La fila de un aviso por hora; el reminderId lo completa el DAO al guardar. */
 fun Alarm.toEntity(reminderId: Long = 0): AlarmEntity =
-    AlarmEntity(reminderId = reminderId, atMillis = at.toEpochMilli(), isSnooze = isSnooze)
+    AlarmEntity(reminderId = reminderId, atMillis = at.toEpochMilli(), isSnooze = isSnooze, repeat = repeat.name)
 
 fun PlaceAlertEntity.toDomain(): PlaceAlert =
     PlaceAlert(placeId = placeId, event = enumOrDefault(event, PlaceAlertEvent.Arrive))

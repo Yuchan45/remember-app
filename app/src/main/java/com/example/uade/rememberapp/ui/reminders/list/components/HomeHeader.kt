@@ -1,7 +1,6 @@
 package com.example.uade.rememberapp.ui.reminders.list.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,10 +17,9 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.components.CircleIconButton
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 
-/** Encabezado de la Home: saludo, título y los botones de vista, colapsar y buscar. */
+/** Encabezado de la Home: título y los botones de vista, colapsar y buscar. */
 @Composable
 fun HomeHeader(
-    userName: String,
     onToggleLayout: () -> Unit,
     onCollapseAll: () -> Unit,
     onSearch: () -> Unit,
@@ -31,19 +29,13 @@ fun HomeHeader(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.reminders_home_greeting, userName),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = stringResource(R.string.reminders_list_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        Text(
+            text = stringResource(R.string.reminders_list_title),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             CircleIconButton(
                 icon = R.drawable.ic_grid_view,
@@ -69,7 +61,6 @@ fun HomeHeader(
 private fun HomeHeaderPreview() {
     RememberAppTheme {
         HomeHeader(
-            userName = "Yu",
             onToggleLayout = {},
             onCollapseAll = {},
             onSearch = {},

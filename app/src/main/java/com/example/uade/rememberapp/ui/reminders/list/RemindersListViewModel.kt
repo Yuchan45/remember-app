@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
-import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.ChecklistItem
+import com.example.uade.rememberapp.domain.usecase.ArchiveReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
@@ -33,6 +35,7 @@ import java.time.Instant
 class RemindersListViewModel(
     private val observeReminders: ObserveRemindersUseCase,
     private val trashReminder: TrashReminderUseCase,
+    private val archiveReminder: ArchiveReminderUseCase,
     private val restoreReminder: RestoreReminderUseCase,
     private val markReminderDone: MarkReminderDoneUseCase,
     private val getReminder: GetReminderUseCase,
@@ -41,7 +44,7 @@ class RemindersListViewModel(
     private val now: () -> Instant = Instant::now,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(RemindersListUiState(userName = "Yu", isLoading = true))
+    private val _uiState = MutableStateFlow(RemindersListUiState(isLoading = true))
     val uiState: StateFlow<RemindersListUiState> = _uiState.asStateFlow()
 
     init {
@@ -94,25 +97,47 @@ class RemindersListViewModel(
     // Acciones que aparecen al deslizar una card hacia la izquierda.
     /**
      * Marca el recordatorio como hecho (completado).
-     * Para recordatorios tipo Checklist, exige que toda la checklist esté marcada para poder finalizarlo.
+     * Si la nota tiene ítems sin tildar no la finaliza directo: pregunta si se marcan todos (ver
+     * [onCompleteChecklistAndDone]).
      */
     fun onReminderDone(id: Long) {
         viewModelScope.launch {
             val reminder = getReminder(id) ?: return@launch
-            if (reminder.type == ReminderType.Checklist) {
-                val hasUnchecked = reminder.items.any { !it.isChecked }
-                if (hasUnchecked) {
-                    _uiState.update {
-                        it.copy(
-                            checklistIncompleteNotice = "Para finalizar el recordatorio se debe marcar toda la checklist",
-                        )
-                    }
-                    return@launch
-                }
+            if (reminder.items.any { !it.isChecked }) {
+                _uiState.update { it.copy(incompleteChecklistReminderId = id) }
+                return@launch
             }
             markReminderDone(id)
             _uiState.update { it.copy(completedReminderId = id) }
         }
+    }
+
+    /**
+     * "Marcar todo como listo y mover a Hecho": tilda todos los ítems y lo finaliza. Guarda cómo
+     * estaban, así el "Deshacer" del aviso lo devuelve a la Home tal cual (ver [onUndoDone]).
+     */
+    fun onCompleteChecklistAndDone() {
+        val id = _uiState.value.incompleteChecklistReminderId ?: return
+        _uiState.update { it.copy(incompleteChecklistReminderId = null) }
+        viewModelScope.launch {
+            val reminder = getReminder(id) ?: return@launch
+            itemsBeforeCheckAll[id] = reminder.items
+            saveReminder(reminder.copy(items = reminder.items.map { it.copy(isChecked = true) }))
+            markReminderDone(id)
+            _uiState.update { it.copy(completedReminderId = id) }
+        }
+    }
+
+    fun onIncompleteChecklistDismiss() {
+        _uiState.update { it.copy(incompleteChecklistReminderId = null) }
+    }
+
+    /**
+     * "+N más" en una card: la expande para ver todo sin abrir el detalle. Hay una sola expandida
+     * a la vez, así que expandir otra achica la anterior; tocar "Ver menos" la achica.
+     */
+    fun onToggleExpanded(id: Long) {
+        _uiState.update { it.copy(expandedReminderId = if (it.expandedReminderId == id) null else id) }
     }
 
     /** Permite tildar o destildar un ítem de una checklist directamente desde la card de la Home. */
@@ -130,21 +155,95 @@ class RemindersListViewModel(
         }
     }
 
+    /**
+     * Cómo estaban los ítems antes de "Marcar todo", por recordatorio, para poder deshacerlo. No
+     * va en el UiState: la pantalla no lo dibuja, solo lo usa [onUndoCheckAll].
+     */
+    private val itemsBeforeCheckAll = mutableMapOf<Long, List<ChecklistItem>>()
+
+    /**
+     * "Marcar todo" en la card: no marca todavía, abre el diálogo de confirmación (un toque sin
+     * querer no alcanza para tildar toda la lista). Marca recién con [onConfirmCheckAll].
+     */
+    fun onCheckAllItems(reminderId: Long) {
+        _uiState.update { it.copy(pendingCheckAllReminderId = reminderId) }
+    }
+
+    fun onCheckAllDismiss() {
+        _uiState.update { it.copy(pendingCheckAllReminderId = null) }
+    }
+
+    /**
+     * "Marcar todo" confirmado en el diálogo: tilda todos los ítems y muestra igual "Lista
+     * completa · Deshacer", por si se confirmó sin querer.
+     */
+    fun onConfirmCheckAll() {
+        val reminderId = _uiState.value.pendingCheckAllReminderId ?: return
+        _uiState.update { it.copy(pendingCheckAllReminderId = null) }
+        viewModelScope.launch {
+            val reminder = getReminder(reminderId) ?: return@launch
+            if (reminder.items.all { it.isChecked }) return@launch
+            itemsBeforeCheckAll[reminderId] = reminder.items
+            saveReminder(reminder.copy(items = reminder.items.map { it.copy(isChecked = true) }))
+            _uiState.update { it.copy(checkedAllReminderId = reminderId) }
+        }
+    }
+
+    /** "Deshacer" del aviso: deja los ítems como estaban (los que ya estaban tildados, siguen). */
+    fun onUndoCheckAll(reminderId: Long) {
+        val previous = itemsBeforeCheckAll.remove(reminderId) ?: return
+        viewModelScope.launch {
+            val reminder = getReminder(reminderId) ?: return@launch
+            saveReminder(reminder.copy(items = previous))
+        }
+    }
+
+    fun onCheckAllNoticeDone(reminderId: Long) {
+        itemsBeforeCheckAll.remove(reminderId)
+        _uiState.update { state ->
+            if (state.checkedAllReminderId == reminderId) state.copy(checkedAllReminderId = null) else state
+        }
+    }
+
+    /**
+     * "Deshacer" de "Recordatorio completado": vuelve a la Home. Si se completó con "Marcar todo y
+     * mover a Hecho", además deja los ítems como estaban antes.
+     */
     fun onUndoDone(id: Long) {
-        viewModelScope.launch { restoreReminder(id) }
+        val previousItems = itemsBeforeCheckAll.remove(id)
+        viewModelScope.launch {
+            restoreReminder(id)
+            if (previousItems != null) {
+                val reminder = getReminder(id) ?: return@launch
+                saveReminder(reminder.copy(items = previousItems))
+            }
+        }
     }
 
     fun onDoneNoticeDone(id: Long) {
+        itemsBeforeCheckAll.remove(id)
         _uiState.update { state ->
             if (state.completedReminderId == id) state.copy(completedReminderId = null) else state
         }
     }
 
-    fun onChecklistNoticeDismissed() {
-        _uiState.update { it.copy(checklistIncompleteNotice = null) }
+    /** "Archivar": lo saca de la Home al Historial y ofrece deshacerlo, igual que la papelera. */
+    fun onReminderArchive(id: Long) {
+        viewModelScope.launch {
+            archiveReminder(id)
+            _uiState.update { it.copy(archivedReminderId = id) }
+        }
     }
 
-    fun onReminderArchive(id: Long) = Unit
+    fun onUndoArchive(id: Long) {
+        viewModelScope.launch { restoreReminder(id) }
+    }
+
+    fun onArchiveNoticeDone(id: Long) {
+        _uiState.update { state ->
+            if (state.archivedReminderId == id) state.copy(archivedReminderId = null) else state
+        }
+    }
 
     /**
      * "Papelera": lo manda a la papelera y deja anotado cuál fue, para ofrecer deshacerlo. No hace
@@ -271,6 +370,7 @@ class RemindersListViewModel(
                 RemindersListViewModel(
                     observeReminders = app.container.observeRemindersUseCase,
                     trashReminder = app.container.trashReminderUseCase,
+                    archiveReminder = app.container.archiveReminderUseCase,
                     restoreReminder = app.container.restoreReminderUseCase,
                     markReminderDone = app.container.markReminderDoneUseCase,
                     getReminder = app.container.getReminderUseCase,

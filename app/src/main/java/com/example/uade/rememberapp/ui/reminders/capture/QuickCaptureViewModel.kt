@@ -154,7 +154,6 @@ class QuickCaptureViewModel(
 
     fun onVoiceClick() = Unit
     fun onPhotoClick() = Unit
-    fun onChecklistClick() = Unit
 
     fun onFullScreenToggle() {
         _uiState.update { it.copy(isFullScreen = !it.isFullScreen) }
@@ -196,7 +195,7 @@ class QuickCaptureViewModel(
             title = finalTitle,
             audioPath = state.audioPath,
             tags = allTags.value.filter { it.id in state.selectedTagIds },
-            alarms = listOfNotNull(at?.let { Alarm(it.toInstant()) }),
+            alarms = listOfNotNull(at?.let { Alarm(it.toInstant(), repeat = state.selectedRepeat.repeat) }),
             places = placeAlerts,
             importance = state.selectedImportance.importance,
             createdAt = current.toInstant(),

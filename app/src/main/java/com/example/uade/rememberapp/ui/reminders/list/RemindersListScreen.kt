@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
+import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
 import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutside
 import com.example.uade.rememberapp.ui.reminders.components.rememberSwipeRevealGroupState
@@ -55,6 +56,9 @@ fun RemindersListScreen(
     viewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
     contentPadding: PaddingValues = PaddingValues(),
     onReminderClick: (id: Long) -> Unit = {},
+    onReminderSectionClick: (id: Long, section: ReminderDetailSection) -> Unit = { _, _ -> },
+    /** El botón de lista de la nota rápida: abre el editor completo con lo ya escrito. */
+    onOpenListEditor: (title: String?) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // "Ahora" fijo mientras la pantalla está abierta: decide qué es "hoy" y cuándo mostrar el "!".
@@ -75,10 +79,13 @@ fun RemindersListScreen(
                 onSortClick = viewModel::onSortClick,
                 onSectionToggle = viewModel::onSectionToggle,
                 onReminderClick = onReminderClick,
+                onReminderSectionClick = onReminderSectionClick,
                 onReminderDone = viewModel::onReminderDone,
                 onReminderArchive = viewModel::onReminderArchive,
                 onReminderTrash = viewModel::onReminderTrash,
                 onToggleChecklistItem = viewModel::onToggleChecklistItem,
+                onCheckAllItems = viewModel::onCheckAllItems,
+                onToggleExpanded = viewModel::onToggleExpanded,
                 onQuickCaptureClick = viewModel::onQuickCaptureClick,
                 onVoiceCapture = viewModel::onVoiceCaptureClick,
                 onPhotoCapture = viewModel::onPhotoCaptureClick,
@@ -89,6 +96,7 @@ fun RemindersListScreen(
             QuickCaptureSheet(
                 initialAudioPath = uiState.capturedAudioPath,
                 onDismiss = viewModel::onQuickCaptureDismiss,
+                onOpenListEditor = onOpenListEditor,
             )
         }
 
@@ -125,10 +133,14 @@ data class RemindersListActions(
     val onSortClick: () -> Unit = {},
     val onSectionToggle: (ReminderSectionKey) -> Unit = {},
     val onReminderClick: (id: Long) -> Unit = {},
+    /** Tocar un chip de la card (hora, lugar, etiquetas): abre el detalle con ese modal. */
+    val onReminderSectionClick: (id: Long, section: ReminderDetailSection) -> Unit = { _, _ -> },
     val onReminderDone: (id: Long) -> Unit = {},
     val onReminderArchive: (id: Long) -> Unit = {},
     val onReminderTrash: (id: Long) -> Unit = {},
     val onToggleChecklistItem: (reminderId: Long, itemId: Long, index: Int) -> Unit = { _, _, _ -> },
+    val onCheckAllItems: (reminderId: Long) -> Unit = {},
+    val onToggleExpanded: (reminderId: Long) -> Unit = {},
     val onQuickCaptureClick: () -> Unit = {},
     val onVoiceCapture: () -> Unit = {},
     val onPhotoCapture: () -> Unit = {},
@@ -170,7 +182,9 @@ private fun RemindersListContent(
                 modifier = Modifier.padding(
                     start = ScreenPadding,
                     end = ScreenPadding,
-                    bottom = contentPadding.calculateBottomPadding() + 12.dp,
+                    // contentPadding ya incluye los 20dp de aire que la barra de navegación tiene arriba
+                    // (su degradé, ver MainTabs): se le restan 12 para que quede a 8dp de la barra.
+                    bottom = (contentPadding.calculateBottomPadding() - 12.dp).coerceAtLeast(0.dp),
                 ),
             )
         },
@@ -191,7 +205,6 @@ private fun RemindersListContent(
         ) {
             item(key = "header") {
                 HomeHeader(
-                    userName = uiState.userName,
                     onToggleLayout = actions.onToggleLayout,
                     onCollapseAll = actions.onCollapseAll,
                     onSearch = actions.onSearch,
@@ -247,13 +260,20 @@ private fun RemindersListContent(
                                 ?.let { uiState.placeNames[it.placeId] },
                             now = now,
                             onClick = { actions.onReminderClick(reminder.id) },
+                            onSectionClick = { section -> actions.onReminderSectionClick(reminder.id, section) },
                             onDone = { actions.onReminderDone(reminder.id) },
                             onArchive = { actions.onReminderArchive(reminder.id) },
                             onTrash = { actions.onReminderTrash(reminder.id) },
                             onToggleChecklistItem = { itemId, index ->
                                 actions.onToggleChecklistItem(reminder.id, itemId, index)
                             },
-                            modifier = Modifier.padding(horizontal = ScreenPadding),
+                            onCheckAllItems = { actions.onCheckAllItems(reminder.id) },
+                            isExpanded = uiState.expandedReminderId == reminder.id,
+                            onToggleExpanded = { actions.onToggleExpanded(reminder.id) },
+                            // animateItem: al expandir o achicar una card, las de abajo se corren animadas.
+                            modifier = Modifier
+                                .padding(horizontal = ScreenPadding)
+                                .animateItem(),
                             revealGroup = revealGroup,
                         )
                     }
@@ -281,7 +301,7 @@ private fun RemindersListContentPreview() {
 private fun RemindersListContentEmptyPreview() {
     RememberAppTheme {
         RemindersListContent(
-            uiState = RemindersListUiState(userName = "Yu"),
+            uiState = RemindersListUiState(),
             now = Instant.now(),
             actions = RemindersListActions(),
         )

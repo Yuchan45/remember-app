@@ -9,12 +9,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.AiAnalysisResult
+import com.example.uade.rememberapp.domain.model.AlarmRepeat
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.CropRect
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.domain.model.MessageChannel
 import com.example.uade.rememberapp.domain.model.NotificationAction
+import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.ReminderType
@@ -22,30 +24,30 @@ import com.example.uade.rememberapp.domain.repository.AiReminderService
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ImportPhotosUseCase
+import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
+import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveCoverUseCase
 import com.example.uade.rememberapp.domain.usecase.SaveReminderUseCase
 import com.example.uade.rememberapp.ui.navigation.Routes
 import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
-import com.example.uade.rememberapp.domain.model.PlaceAlert
-import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
-import com.example.uade.rememberapp.ui.reminders.model.toDomain
-import com.example.uade.rememberapp.ui.reminders.model.toUi
+import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.model.resolveReminderTime
+import com.example.uade.rememberapp.ui.reminders.model.toDomain
+import com.example.uade.rememberapp.ui.reminders.model.toUi
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
 
-import com.example.uade.rememberapp.domain.usecase.MarkReminderDoneUseCase
 
 /**
  * ViewModel de la pantalla de un recordatorio. Sirve para dos casos:
@@ -80,11 +82,34 @@ class ReminderDetailViewModel(
     private val reminderId: Long? = savedStateHandle[Routes.ARG_REMINDER_ID]
 
     private val _uiState = MutableStateFlow(
-        if (reminderId == null) ReminderDetailUiState(isLoading = false, isNew = true) else ReminderDetailUiState(),
+        if (reminderId == null) {
+            // Nota nueva: puede venir con el título de la nota rápida y con la lista ya abierta
+            // (un ítem vacío, para escribir el primero).
+            ReminderDetailUiState(
+                isLoading = false,
+                isNew = true,
+                title = savedStateHandle.get<String>(Routes.ARG_TITLE).orEmpty(),
+                items = if (savedStateHandle.get<Boolean>(Routes.ARG_WITH_LIST) == true) {
+                    listOf(ChecklistItem(text = ""))
+                } else {
+                    emptyList()
+                },
+                // Con la lista abierta, el foco va al primer ítem para escribir enseguida.
+                focusItemIndex = if (savedStateHandle.get<Boolean>(Routes.ARG_WITH_LIST) == true) 0 else null,
+            )
+        } else {
+            ReminderDetailUiState()
+        },
     )
     val uiState: StateFlow<ReminderDetailUiState> = _uiState.asStateFlow()
 
     init {
+        // Se tocó un chip de la card en la Home (hora, lugar, etiquetas): al cargar se abre ese
+        // modal. Se saca de la ruta guardada para que no se vuelva a abrir si Android recrea
+        // la pantalla (ej. al girar el teléfono, o al volver de otra app).
+        val openSection = savedStateHandle.get<String>(Routes.ARG_OPEN_SECTION)
+            ?.let { name -> ReminderDetailSection.entries.firstOrNull { it.name == name } }
+        savedStateHandle.remove<String>(Routes.ARG_OPEN_SECTION)
         if (reminderId != null) {
             viewModelScope.launch {
                 val reminder = getReminder(reminderId)
@@ -92,17 +117,28 @@ class ReminderDetailViewModel(
                     it.copy(
                         isLoading = false,
                         reminder = reminder,
-                        type = reminder?.type ?: ReminderType.Note,
                         items = reminder?.items.orEmpty(),
                         title = reminder?.title.orEmpty(),
                         description = reminder?.description.orEmpty(),
                         tagIds = reminder?.tags.orEmpty().map { tag -> tag.id }.toSet(),
                         alarms = reminder?.alarms.orEmpty().map { alarm -> alarm.at }.sorted(),
+                        alarmRepeats = reminder?.alarms.orEmpty()
+                            .filter { alarm -> alarm.repeat != AlarmRepeat.None }
+                            .associate { alarm -> alarm.at to alarm.repeat },
                         importance = reminder?.importance ?: Importance.Default,
                         action = reminder?.action,
                         photos = reminder?.photos.orEmpty(),
                         photoPath = reminder?.photoPath,
                     )
+                }
+                // Recién con el recordatorio cargado: el modal arranca con sus valores actuales.
+                if (reminder != null) {
+                    when (openSection) {
+                        ReminderDetailSection.Time -> onTimeClick()
+                        ReminderDetailSection.Place -> onPlaceClick()
+                        ReminderDetailSection.Tags -> onTagsClick()
+                        null -> Unit
+                    }
                 }
             }
         }
@@ -360,8 +396,43 @@ class ReminderDetailViewModel(
     fun onSavePhotos() {
         _uiState.update { state ->
             val editor = state.photosEditor ?: return@update state
-            state.copy(photos = editor.photos, photoPath = editor.coverPath, photosEditor = null)
+            val (photos, cover) = withDefaultCover(editor.photos, editor.coverPath)
+            state.copy(photos = photos, photoPath = cover, photosEditor = null)
         }
+    }
+
+    /**
+     * "Agregar banner": la foto elegida se copia dentro de la app y pasa a ser la portada (la
+     * primera de la pila). Es el camino explícito; el otro es adjuntar fotos con "Imagen", donde
+     * la primera queda de portada si no se elige otra (ver [withDefaultCover]).
+     */
+    fun onBannerPicked(uri: String?) {
+        if (uri == null) return
+        viewModelScope.launch {
+            val imported = try {
+                importPhotos(listOf(uri), alreadyCount = 0).firstOrNull()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            } ?: return@launch
+            _uiState.update { state ->
+                val photos = listOf(ReminderPhoto(imported, isCover = true)) +
+                    state.photos.map { it.copy(isCover = false) }
+                state.copy(photos = photos.take(MAX_PHOTOS), photoPath = imported)
+            }
+        }
+    }
+
+    /**
+     * Si hay fotos pero ninguna es la portada, la primera pasa a serlo (sin recortar; se puede
+     * recortar después desde "Imágenes"). Así una nota con fotos siempre tiene banner, sin que el
+     * usuario tenga que saber que hay que elegirlo.
+     */
+    private fun withDefaultCover(photos: List<ReminderPhoto>, cover: String?): Pair<List<ReminderPhoto>, String?> {
+        if (cover != null || photos.isEmpty()) return photos to cover
+        val first = photos.first()
+        return photos.map { it.copy(isCover = it.path == first.path) } to first.path
     }
 
     /** "Cancelar" (o cerrar el modal): deja las fotos como estaban. */
@@ -447,6 +518,7 @@ class ReminderDetailViewModel(
                     selectedTime = TimeShortcut.PickDate,
                     pickedDate = local.toLocalDate(),
                     pickedTime = local.toLocalTime(),
+                    selectedRepeat = RepeatOption.of(state.alarmRepeats[at] ?: AlarmRepeat.None),
                 )
             }.ifEmpty { listOf(AlarmDraft()) }
             // Con una sola tarjeta, desplegada; con varias, todas plegadas (se ve el resumen).
@@ -525,8 +597,13 @@ class ReminderDetailViewModel(
     fun onSaveAlarms() {
         _uiState.update { state ->
             val editor = state.alarmsEditor ?: return@update state
+            val chosen = editor.items.filter { it.at != null }.distinctBy { it.at }
             state.copy(
-                alarms = editor.items.mapNotNull { it.at }.distinct().sorted(),
+                alarms = chosen.mapNotNull { it.at }.sorted(),
+                // Solo las que se repiten: sin entrada en el mapa = no se repite.
+                alarmRepeats = chosen
+                    .filter { it.selectedRepeat != RepeatOption.None }
+                    .associate { it.at!! to it.selectedRepeat.repeat },
                 alarmsEditor = null,
             )
         }
@@ -546,19 +623,48 @@ class ReminderDetailViewModel(
     private fun resolveAt(shortcut: TimeShortcut, date: LocalDate?, time: LocalTime?): Instant? =
         resolveReminderTime(shortcut, date, time, now().atZone(zone))?.toInstant()
 
-    fun setInitialType(type: ReminderType) {
-        if (reminderId == null) {
-            _uiState.update { it.copy(type = type) }
-        }
-    }
-
     fun onToggleItem(index: Int) {
         _uiState.update { state ->
             val updated = state.items.mapIndexed { i, item ->
                 if (i == index) item.copy(isChecked = !item.isChecked) else item
             }
-            state.copy(items = updated)
+            // Tocar un ítem a mano después de "Marcar todo" confirma el nuevo estado.
+            state.copy(items = updated, checkedBeforeCheckAll = null)
         }
+    }
+
+    /**
+     * "Marcar todo": tilda todos los ítems y guarda cuáles estaban tildados, así el mismo botón
+     * pasa a "Deshacer" (la protección contra un toque sin querer). Se persiste recién con ✓.
+     */
+    fun onCheckAll() {
+        _uiState.update { state ->
+            if (state.items.all { it.isChecked }) return@update state
+            state.copy(
+                checkedBeforeCheckAll = state.items.map { it.isChecked },
+                items = state.items.map { it.copy(isChecked = true) },
+            )
+        }
+    }
+
+    /**
+     * "Deshacer" de "Marcar todo": vuelve a dejar tildados solo los que lo estaban. Restaura solo
+     * las marcas (no los textos), así no se pierde nada de lo que se escribió mientras tanto.
+     */
+    fun onUndoCheckAll() {
+        _uiState.update { state ->
+            val previous = state.checkedBeforeCheckAll ?: return@update state
+            if (previous.size != state.items.size) return@update state.copy(checkedBeforeCheckAll = null)
+            state.copy(
+                items = state.items.mapIndexed { i, item -> item.copy(isChecked = previous[i]) },
+                checkedBeforeCheckAll = null,
+            )
+        }
+    }
+
+    /** El ítem que tenía que recibir el foco ya lo recibió (ver [ReminderDetailUiState.focusItemIndex]). */
+    fun onItemFocused() {
+        _uiState.update { it.copy(focusItemIndex = null) }
     }
 
     fun onItemTextChange(index: Int, text: String) {
@@ -592,13 +698,40 @@ class ReminderDetailViewModel(
             state.copy(
                 items = updated,
                 expandedItemNoteIndex = if (state.expandedItemNoteIndex == index) null else state.expandedItemNoteIndex,
+                checkedBeforeCheckAll = null,
             )
         }
     }
 
+    /**
+     * Agrega un ítem al final ("Añadir elemento" o "Agregar lista") y le pasa el foco, así se
+     * puede escribir directamente sin tocarlo.
+     */
     fun onAddItem(text: String = "") {
         _uiState.update { state ->
-            state.copy(items = state.items + ChecklistItem(text = text))
+            state.copy(
+                items = state.items + ChecklistItem(text = text),
+                focusItemIndex = state.items.size,
+                checkedBeforeCheckAll = null,
+            )
+        }
+    }
+
+    /**
+     * "Siguiente" del teclado en el ítem [index]: crea uno nuevo justo debajo y pasa el foco ahí,
+     * como en Keep o Notas. Si el ítem está vacío no crea otro (evita filas vacías en cadena).
+     */
+    fun onItemImeNext(index: Int) {
+        _uiState.update { state ->
+            if (state.items.getOrNull(index)?.text.isNullOrBlank()) return@update state
+            val list = state.items.toMutableList().apply { add(index + 1, ChecklistItem(text = "")) }
+            state.copy(
+                items = list,
+                focusItemIndex = index + 1,
+                checkedBeforeCheckAll = null,
+                // La nota abierta se corre una posición si estaba debajo del ítem nuevo.
+                expandedItemNoteIndex = state.expandedItemNoteIndex?.let { if (it > index) it + 1 else it },
+            )
         }
     }
 
@@ -788,8 +921,11 @@ class ReminderDetailViewModel(
      * ✓: guarda y cierra. Título y descripción vacíos se guardan como null. Las etiquetas y los
      * avisos se guardan como quedaron en sus modales.
      *
-     * - Nota o Checklist nueva: la crea, salvo que no tenga título, descripción, foto ni ítems.
+     * - Nota nueva: la crea, salvo que no tenga título, descripción, foto ni ítems.
      * - Existente: guarda los cambios, salvo que no haya cambios.
+     *
+     * El tipo se deduce del contenido: con ítems es [ReminderType.Checklist] y si no,
+     * [ReminderType.Note]. Se sigue guardando para la card, la IA y los datos viejos.
      */
     fun onDone() {
         val state = _uiState.value
@@ -797,12 +933,13 @@ class ReminderDetailViewModel(
         val title = state.cleanTitle
         val description = state.cleanDescription
         val reminder = state.reminder
-        val validItems = state.items.filter { it.text.isNotBlank() }
+        val validItems = state.validItems
+        val type = typeFor(validItems)
 
         val toSave = when {
-            !state.hasUnsavedChanges -> null
+            !state.hasUnsavedChanges || !state.hasContent -> null
             state.isNew -> Reminder(
-                type = state.type,
+                type = type,
                 title = title,
                 description = description,
                 items = validItems,
@@ -815,10 +952,10 @@ class ReminderDetailViewModel(
                 photos = state.photos,
                 createdAt = now(),
             )
-            reminder != null && (title != null || description != null || state.photoPath != null || validItems.isNotEmpty() || state.places.isNotEmpty() || state.alarms.isNotEmpty()) ->
-                // Los avisos por lugar quedan como estaban (copy los conserva).
+            reminder != null ->
+                // Lo que no se edita acá (audio, estado) queda como estaba: copy lo conserva.
                 reminder.copy(
-                    type = state.type,
+                    type = type,
                     title = title,
                     description = description,
                     items = validItems,
@@ -850,13 +987,13 @@ class ReminderDetailViewModel(
     fun onFinalizeReminder() {
         val state = _uiState.value
         if (state.isSaving || state.isSaved) return
-        val validItems = state.items.filter { it.text.isNotBlank() }
+        val validItems = state.validItems
         val reminder = state.reminder
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             if (reminder == null) {
                 val toSave = Reminder(
-                    type = state.type,
+                    type = typeFor(validItems),
                     title = state.cleanTitle,
                     description = state.cleanDescription,
                     items = validItems,
@@ -868,12 +1005,13 @@ class ReminderDetailViewModel(
                     photoPath = state.photoPath,
                     photos = state.photos,
                     isDone = true,
+                    statusChangedAt = now(),
                     createdAt = now(),
                 )
                 saveReminder(toSave)
             } else {
                 val updated = reminder.copy(
-                    type = state.type,
+                    type = typeFor(validItems),
                     title = state.cleanTitle,
                     description = state.cleanDescription,
                     items = validItems,
@@ -892,6 +1030,10 @@ class ReminderDetailViewModel(
             _uiState.update { it.copy(isSaved = true, isSaving = false) }
         }
     }
+
+    /** El tipo que se guarda: con ítems, lista; si no, nota (el usuario no lo elige). */
+    private fun typeFor(items: List<ChecklistItem>): ReminderType =
+        if (items.isNotEmpty()) ReminderType.Checklist else ReminderType.Note
 
     // TODO: compartir el recordatorio (crear link). Por ahora es maquetado.
     fun onShareClick() = Unit

@@ -82,8 +82,13 @@ fun PhotoStack(
             },
     ) {
         val extra = visible.size - 1
-        // El alto se achica solo si el ancho no alcanza para la de adelante y las franjas mínimas.
-        val height = min(StackHeight, (maxWidth - MinPeek * extra) / aspectRatio)
+        // Una sola foto es el banner: ocupa todo el ancho, con la proporción del recorte. Con
+        // varias, el alto se achica solo si el ancho no alcanza para la de adelante y las franjas.
+        val height = if (extra == 0) {
+            maxWidth / aspectRatio
+        } else {
+            min(StackHeight, (maxWidth - MinPeek * extra) / aspectRatio)
+        }
         val cardWidth = height * aspectRatio
         val peek: Dp = if (extra > 0) ((maxWidth - cardWidth) / extra).coerceIn(MinPeek, MaxPeek) else 0.dp
 

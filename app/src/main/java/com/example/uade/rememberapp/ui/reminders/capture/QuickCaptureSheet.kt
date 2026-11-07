@@ -113,6 +113,8 @@ private val SheetPadding = 16.dp
 fun QuickCaptureSheet(
     onDismiss: () -> Unit,
     initialAudioPath: String? = null,
+    /** Abre el editor completo con una lista (botón de lista), con el título ya escrito. */
+    onOpenListEditor: (title: String?) -> Unit = {},
     viewModel: QuickCaptureViewModel = viewModel(factory = QuickCaptureViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -221,7 +223,17 @@ fun QuickCaptureSheet(
                 onSearchAddress = viewModel::onSearchAddress,
                 onVoice = viewModel::onVoiceClick,
                 onPhoto = viewModel::onPhotoClick,
-                onChecklist = viewModel::onChecklistClick,
+                onChecklist = {
+                    // Las listas se arman en el editor completo: se baja el modal y se abre la
+                    // nota con lo ya escrito como título.
+                    val title = uiState.title.trim().ifBlank { null }
+                    scope.launch {
+                        sheetState.hide()
+                        viewModel.onDismissed()
+                        onDismiss()
+                        onOpenListEditor(title)
+                    }
+                },
                 onToggleFullScreen = viewModel::onFullScreenToggle,
                 onRemoveAudio = viewModel::onRemoveAudio,
                 onSave = {

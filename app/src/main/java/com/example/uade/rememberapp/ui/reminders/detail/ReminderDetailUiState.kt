@@ -3,6 +3,7 @@ package com.example.uade.rememberapp.ui.reminders.detail
 import androidx.annotation.DrawableRes
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.AlarmRepeat
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
@@ -58,6 +59,8 @@ data class ReminderDetailUiState(
 
     /** Los avisos por hora, ordenados (lo que muestra la fila "Recordatorio"). */
     val alarms: List<Instant> = emptyList(),
+    /** Cada cuánto se repite cada aviso de [alarms], por hora; sin entrada = no se repite. */
+    val alarmRepeats: Map<Instant, AlarmRepeat> = emptyMap(),
     /**
      * El modal "Establecer recordatorio" mientras está abierto (null = cerrado). Es una copia
      * de trabajo: "Guardar" la pasa a [alarms] y "Cancelar" la descarta.
@@ -94,10 +97,21 @@ data class ReminderDetailUiState(
      */
     val photosEditor: PhotosEditor? = null,
 
-    /** Tipo de recordatorio (Nota o Checklist). */
-    val type: ReminderType = ReminderType.Note,
-    /** Ítems si es de tipo lista (Checklist). */
+    /**
+     * Los ítems de la lista de la nota. Vacía = la nota no tiene lista (se ofrece "Agregar
+     * lista"). No hay un "tipo" que elegir: lo decide el contenido (ver [hasChecklist]).
+     */
     val items: List<ChecklistItem> = emptyList(),
+    /**
+     * El ítem que tiene que tomar el foco (con el teclado abierto) apenas se dibuje, o null. Lo
+     * pone el ViewModel al agregar un ítem y la pantalla lo limpia con onItemFocused.
+     */
+    val focusItemIndex: Int? = null,
+    /**
+     * Qué ítems estaban tildados antes de "Marcar todo", mientras se puede deshacer (el botón
+     * dice "Deshacer"); null = no hay nada que deshacer.
+     */
+    val checkedBeforeCheckAll: List<Boolean>? = null,
     /** Si la sección COMPLETADOS está desplegada. */
     val isCompletedExpanded: Boolean = true,
     /** Índice del ítem cuya nota está abierta para edición (null = ninguna abierta). */
@@ -123,26 +137,41 @@ data class ReminderDetailUiState(
      * true si hay algo para guardar (el ✓ se pinta de verde). Compara como se guardaría: sin
      * espacios de los bordes y con "vacío" igual a null.
      *
-     * - Nota nueva: hace falta título, descripción o portada (solo etiquetas o avisos no alcanza).
+     * - Nota nueva: hace falta contenido ([hasContent]); solo etiquetas o avisos no alcanza.
      * - Existente: cambió el título, la descripción, las etiquetas, los avisos por hora, la
-     *   importancia, la acción de notificación o las fotos.
+     *   importancia, la acción de notificación, las fotos o los ítems.
      */
     val hasUnsavedChanges: Boolean
         get() = when {
-            isNew -> cleanTitle != null || cleanDescription != null || photoPath != null || items.isNotEmpty() || alarms.isNotEmpty() || places.isNotEmpty()
+            isNew -> hasContent
             reminder != null -> cleanTitle != reminder.title ||
                 cleanDescription != reminder.description ||
                 tagIds != reminder.tags.map { it.id }.toSet() ||
-                alarms != reminder.alarms.map { it.at } ||
+                // Como conjuntos: el orden no importa, y así también cuenta cambiar la repetición.
+                alarmsToSave.toSet() != reminder.alarms.toSet() ||
                 places != reminder.places ||
                 importance != reminder.importance ||
                 action != reminder.action ||
                 photos != reminder.photos ||
                 photoPath != reminder.photoPath ||
-                items != reminder.items ||
-                type != reminder.type
+                items != reminder.items
             else -> false
         }
+
+    /** Si la nota muestra su lista (aunque tenga un solo ítem vacío, recién agregado). */
+    val hasChecklist: Boolean get() = items.isNotEmpty()
+
+    /** Los ítems con texto: los vacíos no se guardan. */
+    val validItems: List<ChecklistItem> get() = items.filter { it.text.isNotBlank() }
+
+    /**
+     * Si hay algo que guardar como recordatorio. Es la misma regla que el `init` de [Reminder]:
+     * sin esto, una nota nueva con solo un aviso, o con "Agregar lista" sin escribir nada,
+     * tiraba la excepción del `require` al guardar.
+     */
+    val hasContent: Boolean
+        get() = cleanTitle != null || cleanDescription != null || photoPath != null ||
+            validItems.isNotEmpty() || reminder?.audioPath != null
 
     /**
      * Las etiquetas asignadas, con su nombre y color actual. Si una se borró, ya no está en
@@ -171,7 +200,7 @@ data class ReminderDetailUiState(
 
     @get:DrawableRes
     val typeIcon: Int
-        get() = if (type == ReminderType.Checklist) R.drawable.ic_checklist else (reminder?.typeIcon() ?: R.drawable.ic_description)
+        get() = if (hasChecklist) R.drawable.ic_checklist else (reminder?.typeIcon() ?: R.drawable.ic_description)
 
     /** El título y la descripción como se guardarían: sin espacios de los bordes, vacío = null. */
     val cleanTitle: String? get() = title.trim().ifEmpty { null }
@@ -179,10 +208,13 @@ data class ReminderDetailUiState(
 
     /**
      * Los avisos como se guardarían, para armar el Reminder. Los que ya existían conservan si eran
-     * un aviso pospuesto (la pantalla solo maneja las horas).
+     * un aviso pospuesto; la repetición sale de [alarmRepeats].
      */
     val alarmsToSave: List<Alarm>
-        get() = alarms.map { at -> reminder?.alarms?.firstOrNull { it.at == at } ?: Alarm(at) }
+        get() = alarms.map { at ->
+            val base = reminder?.alarms?.firstOrNull { it.at == at } ?: Alarm(at)
+            base.copy(repeat = alarmRepeats[at] ?: AlarmRepeat.None)
+        }
 }
 
 /**

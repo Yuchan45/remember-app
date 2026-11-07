@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -50,6 +51,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
@@ -61,8 +63,20 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import kotlin.math.roundToInt
 
-/** Parte del ancho que pueden ocupar las acciones: la card nunca queda por debajo del 45%. */
-private const val RevealFraction = 0.55f
+/**
+ * Parte del ancho que ocupa cada acción: con tres, la card nunca queda por debajo del 45%; con
+ * menos, se angosta menos.
+ */
+private const val RevealFractionPerAction = 0.55f / 3
+
+/** Una acción del bloque que aparece al deslizar: ícono, texto, color de fondo y qué hace. */
+@Immutable
+data class SwipeCardAction(
+    @get:DrawableRes val icon: Int,
+    val label: String,
+    val color: Color,
+    val onClick: () -> Unit,
+)
 
 /** Radio de las esquinas de [ReminderCard]; el bloque de acciones usa el mismo. */
 private val CornerRadius = 20.dp
@@ -108,6 +122,54 @@ fun SwipeableReminderCard(
     modifier: Modifier = Modifier,
     revealGroup: SwipeRevealGroupState = rememberSwipeRevealGroupState(),
     onToggleChecklistItem: ((itemId: Long, index: Int) -> Unit)? = null,
+    onCheckAllItems: (() -> Unit)? = null,
+    isExpanded: Boolean = false,
+    onToggleExpanded: (() -> Unit)? = null,
+    onSectionClick: ((ReminderDetailSection) -> Unit)? = null,
+) {
+    SwipeableReminderCard(
+        reminder = reminder,
+        placeName = placeName,
+        now = now,
+        onClick = onClick,
+        actions = homeSwipeActions(onDone, onArchive, onTrash),
+        modifier = modifier,
+        revealGroup = revealGroup,
+        onToggleChecklistItem = onToggleChecklistItem,
+        onCheckAllItems = onCheckAllItems,
+        isExpanded = isExpanded,
+        onToggleExpanded = onToggleExpanded,
+        onSectionClick = onSectionClick,
+    )
+}
+
+/** Las tres acciones de la Home: Hecho, Archivar y Papelera. */
+@Composable
+private fun homeSwipeActions(onDone: () -> Unit, onArchive: () -> Unit, onTrash: () -> Unit) = listOf(
+    SwipeCardAction(R.drawable.ic_check_circle, stringResource(R.string.reminders_action_done), SwipeDoneColor, onDone),
+    SwipeCardAction(R.drawable.ic_archive, stringResource(R.string.reminders_action_archive), SwipeArchiveColor, onArchive),
+    SwipeCardAction(R.drawable.ic_delete, stringResource(R.string.reminders_action_trash), SwipeTrashColor, onTrash),
+)
+
+/**
+ * La misma card deslizable con acciones a elección (ej. en el Historial: "Restaurar" y
+ * "Borrar"). Las acciones se reparten el ancho por igual; la franja bajo las esquinas de la card
+ * toma el color de la primera.
+ */
+@Composable
+fun SwipeableReminderCard(
+    reminder: Reminder,
+    placeName: String?,
+    now: Instant,
+    onClick: () -> Unit,
+    actions: List<SwipeCardAction>,
+    modifier: Modifier = Modifier,
+    revealGroup: SwipeRevealGroupState = rememberSwipeRevealGroupState(),
+    onToggleChecklistItem: ((itemId: Long, index: Int) -> Unit)? = null,
+    onCheckAllItems: (() -> Unit)? = null,
+    isExpanded: Boolean = false,
+    onToggleExpanded: (() -> Unit)? = null,
+    onSectionClick: ((ReminderDetailSection) -> Unit)? = null,
 ) {
     val isOpen = revealGroup.openId == reminder.id
     fun setOpen(open: Boolean) = revealGroup.setOpen(reminder.id, open)
@@ -119,7 +181,7 @@ fun SwipeableReminderCard(
             // "afuera".
             .then(if (isOpen) Modifier.markAsInsideOpenCard(revealGroup) else Modifier),
     ) {
-        val revealWidth = maxWidth * RevealFraction
+        val revealWidth = maxWidth * (RevealFractionPerAction * actions.size)
         val revealPx = with(LocalDensity.current) { revealWidth.toPx() }
         val scope = rememberCoroutineScope()
         // Cuánto se deslizó, en px: 0 = cerrada, -revealPx = abierta. La card se angosta en esa medida.
@@ -145,9 +207,8 @@ fun SwipeableReminderCard(
                 .matchParentSize()
                 .graphicsLayer { alpha = if (offset.value < 0f) 1f else 0f },
             // Cada acción cierra la card además de avisar, así no queda abierta.
-            onDone = { onDone(); settle(open = false) },
-            onArchive = { onArchive(); settle(open = false) },
-            onTrash = { onTrash(); settle(open = false) },
+            actions = actions,
+            onActionClick = { action -> action.onClick(); settle(open = false) },
         )
 
         ReminderCard(
@@ -156,6 +217,10 @@ fun SwipeableReminderCard(
             now = now,
             onClick = { if (isOpen) settle(open = false) else onClick() },
             onToggleChecklistItem = onToggleChecklistItem,
+            onCheckAllItems = onCheckAllItems,
+            isExpanded = isExpanded,
+            onToggleExpanded = onToggleExpanded,
+            onSectionClick = onSectionClick,
             modifier = Modifier
                 .shrinkBy { offset.value }
                 .draggable(
@@ -245,16 +310,15 @@ private fun Modifier.shrinkBy(dx: () -> Float): Modifier = layout { measurable, 
 }
 
 /**
- * El bloque de las tres acciones, pegado a la derecha. Ocupa [revealWidth] (lo que se angosta la
- * card) más [CornerRadius] que queda debajo de la card: esa franja oculta se pinta del color de
- * la primera acción, para que las esquinas redondeadas de la card no dejen ver el fondo.
+ * El bloque de acciones, pegado a la derecha. Ocupa [revealWidth] (lo que se angosta la card)
+ * más [CornerRadius] que queda debajo de la card: esa franja oculta se pinta del color de la
+ * primera acción, para que las esquinas redondeadas de la card no dejen ver el fondo.
  */
 @Composable
 private fun SwipeActions(
     revealWidth: Dp,
-    onDone: () -> Unit,
-    onArchive: () -> Unit,
-    onTrash: () -> Unit,
+    actions: List<SwipeCardAction>,
+    onActionClick: (SwipeCardAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.CenterEnd) {
@@ -268,11 +332,11 @@ private fun SwipeActions(
                 Modifier
                     .width(CornerRadius)
                     .fillMaxHeight()
-                    .background(SwipeDoneColor),
+                    .background(actions.firstOrNull()?.color ?: Color.Transparent),
             )
-            SwipeAction(R.drawable.ic_check_circle, stringResource(R.string.reminders_action_done), SwipeDoneColor, onDone)
-            SwipeAction(R.drawable.ic_archive, stringResource(R.string.reminders_action_archive), SwipeArchiveColor, onArchive)
-            SwipeAction(R.drawable.ic_delete, stringResource(R.string.reminders_action_trash), SwipeTrashColor, onTrash)
+            actions.forEach { action ->
+                SwipeAction(action.icon, action.label, action.color, onClick = { onActionClick(action) })
+            }
         }
     }
 }
@@ -328,8 +392,9 @@ private fun SwipeableReminderCardPreview() {
             // Abierta (así queda al soltar): una card alta y una baja.
             listOf(reminders[0], reminders[3]).forEach { reminder ->
                 BoxWithConstraints {
-                    val reveal = maxWidth * RevealFraction
-                    SwipeActions(revealWidth = reveal, onDone = {}, onArchive = {}, onTrash = {}, modifier = Modifier.matchParentSize())
+                    val actions = homeSwipeActions({}, {}, {})
+                    val reveal = maxWidth * (RevealFractionPerAction * actions.size)
+                    SwipeActions(revealWidth = reveal, actions = actions, onActionClick = {}, modifier = Modifier.matchParentSize())
                     ReminderCard(reminder, null, now, {}, Modifier.padding(end = reveal))
                 }
             }

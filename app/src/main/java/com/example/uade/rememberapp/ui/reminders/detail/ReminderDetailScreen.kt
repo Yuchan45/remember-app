@@ -2,32 +2,24 @@
 
 import android.Manifest
 import android.os.Build
-import androidx.compose.ui.platform.LocalContext
-import com.example.uade.rememberapp.RememberApp
-import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
-import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationActionSheetActions
-import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationActionSheet
-import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
-import com.example.uade.rememberapp.domain.model.NotificationAction
-import com.example.uade.rememberapp.domain.model.MessageChannel
-import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
-import com.example.uade.rememberapp.ui.components.DialogDismissButton
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.AnimatedVisibility
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -43,18 +35,19 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -67,60 +60,89 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.sp
-import com.example.uade.rememberapp.domain.model.ChecklistItem
-import com.example.uade.rememberapp.domain.model.ReminderType
-import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.domain.model.Reminder
-import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.RememberApp
+import com.example.uade.rememberapp.domain.model.AlarmRepeat
+import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.Importance
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
+import com.example.uade.rememberapp.domain.model.MessageChannel
+import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.Place
 import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
+import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
+import com.example.uade.rememberapp.ui.components.AppDialogDefaults
+import com.example.uade.rememberapp.ui.components.DialogDismissButton
+import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
+import com.example.uade.rememberapp.ui.components.ImageCropDialog
+import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
 import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
+import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
+import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
+import com.example.uade.rememberapp.ui.reminders.components.formatReminderTime
+import com.example.uade.rememberapp.ui.reminders.components.isSameDay
+import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheet
+import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheetActions
+import com.example.uade.rememberapp.ui.reminders.detail.components.ChecklistDragState
+import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationActionSheet
+import com.example.uade.rememberapp.ui.reminders.detail.components.NotificationActionSheetActions
+import com.example.uade.rememberapp.ui.reminders.detail.components.PhotoStack
+import com.example.uade.rememberapp.ui.reminders.detail.components.PhotosSheet
+import com.example.uade.rememberapp.ui.reminders.detail.components.PhotosSheetActions
+import com.example.uade.rememberapp.ui.reminders.model.NotificationActionKind
 import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
 import com.example.uade.rememberapp.ui.reminders.model.ReminderImportance
 import com.example.uade.rememberapp.ui.reminders.model.RepeatOption
 import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
-import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
-import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
-import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheet
-import com.example.uade.rememberapp.ui.reminders.detail.components.AlarmsSheetActions
-import com.example.uade.rememberapp.ui.reminders.detail.components.PhotoStack
-import com.example.uade.rememberapp.ui.reminders.detail.components.PhotosSheet
-import com.example.uade.rememberapp.ui.reminders.detail.components.PhotosSheetActions
-import com.example.uade.rememberapp.ui.components.ImageCropDialog
-import com.example.uade.rememberapp.ui.reminders.components.formatReminderTime
-import com.example.uade.rememberapp.ui.reminders.components.isSameDay
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
+import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.tags.TagPickerPanel
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import com.example.uade.rememberapp.ui.theme.UnsavedChangesGreen
@@ -129,6 +151,9 @@ import com.example.uade.rememberapp.ui.theme.rememberAppLocale
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /** Margen lateral de la pantalla. */
 private val ScreenPadding = 16.dp
@@ -145,16 +170,11 @@ private const val CoverAspectRatio = 16f / 9f
 @Composable
 fun ReminderDetailScreen(
     onBack: () -> Unit,
-    initialType: ReminderType = ReminderType.Note,
     viewModel: ReminderDetailViewModel = viewModel(factory = ReminderDetailViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // "Ahora" fijo mientras la pantalla está abierta: decide si el aviso dice "Hoy 18:00".
     val now = remember { Instant.now() }
-
-    LaunchedEffect(initialType) {
-        viewModel.setInitialType(initialType)
-    }
 
     // Guardado con ✓: recién ahí se cierra, así no se sale antes de que termine de guardar.
     LaunchedEffect(uiState.isSaved) {
@@ -198,11 +218,41 @@ fun ReminderDetailScreen(
     val onImageClick = {
         if (uiState.photos.isEmpty()) pickPhotos() else viewModel.onImageClick()
     }
+    // "Agregar banner": una sola foto, que queda de portada.
+    val bannerPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> viewModel.onBannerPicked(uri?.toString()) }
+    val pickBanner = {
+        bannerPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
+    // Salir (con ← o con el "atrás" del sistema) con cambios sin guardar pregunta antes, para no
+    // perder lo escrito. Sin cambios, sale directo. Mientras guarda, no hay nada que preguntar.
+    var showUnsavedDialog by rememberSaveable { mutableStateOf(false) }
+    val requestBack = {
+        if (uiState.hasUnsavedChanges && !uiState.isSaving) showUnsavedDialog = true else onBack()
+    }
+    BackHandler(enabled = uiState.hasUnsavedChanges && !uiState.isSaving && !uiState.isSaved) {
+        showUnsavedDialog = true
+    }
+    if (showUnsavedDialog) {
+        UnsavedChangesDialog(
+            onSave = {
+                showUnsavedDialog = false
+                viewModel.onDone()
+            },
+            onDiscard = {
+                showUnsavedDialog = false
+                onBack()
+            },
+            onKeepEditing = { showUnsavedDialog = false },
+        )
+    }
 
     ReminderDetailContent(
         uiState = uiState,
         now = now,
-        onBack = onBack,
+        onBack = requestBack,
         onShare = viewModel::onShareClick,
         onDone = viewModel::onDone,
         onTitleChange = viewModel::onTitleChange,
@@ -213,17 +263,24 @@ fun ReminderDetailScreen(
         onBehaviorClick = viewModel::onBehaviorClick,
         onActionClick = viewModel::onActionClick,
         onDescriptionChange = viewModel::onDescriptionChange,
-        onToggleItem = viewModel::onToggleItem,
-        onItemTextChange = viewModel::onItemTextChange,
-        onItemNoteChange = viewModel::onItemNoteChange,
-        onToggleItemNoteExpanded = viewModel::onToggleItemNoteExpanded,
-        onDeleteItem = viewModel::onDeleteItem,
-        onAddItem = viewModel::onAddItem,
-        onMoveItem = viewModel::onMoveItem,
-        onToggleCompletedExpanded = viewModel::onToggleCompletedExpanded,
-        onOpenPasteDialog = viewModel::onOpenPasteDialog,
-        onOpenVoiceCapture = viewModel::onOpenVoiceCapture,
-        onFinalizeReminder = viewModel::onFinalizeReminder,
+        onAddBanner = pickBanner,
+        checklistActions = ChecklistActions(
+            onToggleItem = viewModel::onToggleItem,
+            onItemTextChange = viewModel::onItemTextChange,
+            onItemNoteChange = viewModel::onItemNoteChange,
+            onToggleItemNoteExpanded = viewModel::onToggleItemNoteExpanded,
+            onDeleteItem = viewModel::onDeleteItem,
+            onAddItem = viewModel::onAddItem,
+            onItemImeNext = viewModel::onItemImeNext,
+            onItemFocused = viewModel::onItemFocused,
+            onMoveItem = viewModel::onMoveItem,
+            onToggleCompletedExpanded = viewModel::onToggleCompletedExpanded,
+            onCheckAll = viewModel::onCheckAll,
+            onUndoCheckAll = viewModel::onUndoCheckAll,
+            onOpenPasteDialog = viewModel::onOpenPasteDialog,
+            onOpenVoiceCapture = viewModel::onOpenVoiceCapture,
+            onFinalizeReminder = viewModel::onFinalizeReminder,
+        ),
     )
 
     uiState.tagsEditor?.let { assigned ->
@@ -548,18 +605,9 @@ private fun ReminderDetailContent(
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
-    onToggleItem: (Int) -> Unit = {},
-    onItemTextChange: (Int, String) -> Unit = { _, _ -> },
-    onItemNoteChange: (Int, String) -> Unit = { _, _ -> },
-    onToggleItemNoteExpanded: (Int) -> Unit = {},
-    onDeleteItem: (Int) -> Unit = {},
-    onAddItem: (String) -> Unit = {},
-    onMoveItem: (Int, Int) -> Unit = { _, _ -> },
-    onToggleCompletedExpanded: () -> Unit = {},
-    onOpenPasteDialog: () -> Unit = {},
-    onOpenVoiceCapture: () -> Unit = {},
-    onFinalizeReminder: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onAddBanner: () -> Unit = {},
+    checklistActions: ChecklistActions = ChecklistActions(),
 ) {
     Column(
         modifier = modifier
@@ -588,17 +636,8 @@ private fun ReminderDetailContent(
                 onBehaviorClick = onBehaviorClick,
                 onActionClick = onActionClick,
                 onDescriptionChange = onDescriptionChange,
-                onToggleItem = onToggleItem,
-                onItemTextChange = onItemTextChange,
-                onItemNoteChange = onItemNoteChange,
-                onToggleItemNoteExpanded = onToggleItemNoteExpanded,
-                onDeleteItem = onDeleteItem,
-                onAddItem = onAddItem,
-                onMoveItem = onMoveItem,
-                onToggleCompletedExpanded = onToggleCompletedExpanded,
-                onOpenPasteDialog = onOpenPasteDialog,
-                onOpenVoiceCapture = onOpenVoiceCapture,
-                onFinalizeReminder = onFinalizeReminder,
+                onAddBanner = onAddBanner,
+                checklistActions = checklistActions,
             )
 
             uiState.isNotFound -> Text(
@@ -678,17 +717,8 @@ private fun ReminderDetailBody(
     onBehaviorClick: () -> Unit,
     onActionClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
-    onToggleItem: (Int) -> Unit,
-    onItemTextChange: (Int, String) -> Unit,
-    onItemNoteChange: (Int, String) -> Unit,
-    onToggleItemNoteExpanded: (Int) -> Unit,
-    onDeleteItem: (Int) -> Unit,
-    onAddItem: (String) -> Unit,
-    onMoveItem: (Int, Int) -> Unit,
-    onToggleCompletedExpanded: () -> Unit,
-    onOpenPasteDialog: () -> Unit,
-    onOpenVoiceCapture: () -> Unit,
-    onFinalizeReminder: () -> Unit = {},
+    onAddBanner: () -> Unit,
+    checklistActions: ChecklistActions,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // La descripción tiene que llegar hasta el panel de opciones, así todo ese espacio se
@@ -710,9 +740,19 @@ private fun ReminderDetailBody(
                     .padding(start = ScreenPadding, end = ScreenPadding, top = 8.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                val stackPhotos = uiState.stackPhotos
+                if (stackPhotos.isEmpty()) {
+                    // Arriba de todo, donde va a quedar el banner: así se ve que se puede poner
+                    // uno (antes había que adivinar que adjuntar una foto lo crea).
+                    ChecklistActionPill(
+                        icon = R.drawable.ic_add_photo_alternate,
+                        label = stringResource(R.string.reminder_detail_add_banner),
+                        onClick = onAddBanner,
+                    )
+                }
+
                 DetailHeader(typeIcon = uiState.typeIcon, title = uiState.title, onTitleChange = onTitleChange)
 
-                val stackPhotos = uiState.stackPhotos
                 if (stackPhotos.isNotEmpty()) {
                     // Hasta 5 fotos apiladas, la portada adelante (con la proporción del recorte)
                     // y "+n" si hay más. Tocarlas abre el modal de imágenes.
@@ -723,55 +763,53 @@ private fun ReminderDetailBody(
                     )
                 }
 
-                if (uiState.type == ReminderType.Checklist) {
+                // Una sola nota para todo: el texto siempre está, y la lista aparece debajo cuando
+                // tiene ítems. Sin lista, el texto ocupa todo el alto (se puede tocar en cualquier
+                // lado para escribir) y debajo se ofrece "Agregar lista".
+                DescriptionField(
+                    value = uiState.description,
+                    onValueChange = onDescriptionChange,
+                    modifier = if (uiState.hasChecklist) {
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    },
+                )
+
+                if (uiState.hasChecklist) {
                     ChecklistDetailContent(
                         items = uiState.items,
                         isCompletedExpanded = uiState.isCompletedExpanded,
                         expandedItemNoteIndex = uiState.expandedItemNoteIndex,
                         isGeneratingItems = uiState.isGeneratingItems,
-                        onToggleItem = onToggleItem,
-                        onItemTextChange = onItemTextChange,
-                        onItemNoteChange = onItemNoteChange,
-                        onToggleItemNoteExpanded = onToggleItemNoteExpanded,
-                        onDeleteItem = onDeleteItem,
-                        onAddItem = onAddItem,
-                        onMoveItem = onMoveItem,
-                        onToggleCompletedExpanded = onToggleCompletedExpanded,
-                        onOpenPasteDialog = onOpenPasteDialog,
-                        onOpenVoiceCapture = onOpenVoiceCapture,
-                        onFinalizeReminder = onFinalizeReminder,
-                    )
-
-                    ReminderOptionsPanel(
-                        uiState = uiState,
-                        now = now,
-                        onTagsClick = onTagsClick,
-                        onTimeClick = onTimeClick,
-                        onPlaceClick = onPlaceClick,
-                        onImageClick = onImageClick,
-                        onBehaviorClick = onBehaviorClick,
-                        onActionClick = onActionClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
+                        focusItemIndex = uiState.focusItemIndex,
+                        canUndoCheckAll = uiState.checkedBeforeCheckAll != null,
+                        actions = checklistActions,
                     )
                 } else {
-                    DescriptionField(
-                        value = uiState.description,
-                        onValueChange = onDescriptionChange,
-                        // Todo el alto que queda: si el texto es más largo, se desplaza adentro.
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
+                    ChecklistActionPill(
+                        icon = R.drawable.ic_checklist,
+                        label = stringResource(R.string.reminders_checklist_add_list),
+                        onClick = { checklistActions.onAddItem("") },
                     )
                 }
             }
         }
 
-        if (uiState.type != ReminderType.Checklist && !WindowInsets.isImeVisible) {
+        // Un solo lugar para el panel: fijo abajo, y oculto mientras se escribe para no tapar.
+        // Plegarlo con la flecha es estado puramente visual: vive acá (rememberSaveable lo
+        // conserva al girar el teléfono) y no en el ViewModel.
+        var isOptionsCollapsed by rememberSaveable { mutableStateOf(false) }
+        if (!WindowInsets.isImeVisible) {
             ReminderOptionsPanel(
                 uiState = uiState,
                 now = now,
+                isCollapsed = isOptionsCollapsed,
+                onToggleCollapsed = { isOptionsCollapsed = !isOptionsCollapsed },
                 onTagsClick = onTagsClick,
                 onTimeClick = onTimeClick,
                 onPlaceClick = onPlaceClick,
@@ -833,7 +871,7 @@ private fun DescriptionField(
 }
 
 /**
- * Cuerpo del editor cuando el recordatorio es de tipo [ReminderType.Checklist] (Mockup 04.B).
+ * La lista de la nota, debajo del texto (Mockup 04.B). Solo se muestra si tiene ítems.
  *
  * Muestra los ítems activos reordenables con nota opcional, botones de ayuda IA ("Dictar ítems"
  * y "Pegar texto"), y la sección colapsable "COMPLETADOS (n)".
@@ -844,65 +882,112 @@ private fun ChecklistDetailContent(
     isCompletedExpanded: Boolean,
     expandedItemNoteIndex: Int?,
     isGeneratingItems: Boolean,
-    onToggleItem: (Int) -> Unit,
-    onItemTextChange: (Int, String) -> Unit,
-    onItemNoteChange: (Int, String) -> Unit,
-    onToggleItemNoteExpanded: (Int) -> Unit,
-    onDeleteItem: (Int) -> Unit,
-    onAddItem: (String) -> Unit,
-    onMoveItem: (Int, Int) -> Unit,
-    onToggleCompletedExpanded: () -> Unit,
-    onOpenPasteDialog: () -> Unit,
-    onOpenVoiceCapture: () -> Unit,
-    onFinalizeReminder: (() -> Unit)? = null,
+    focusItemIndex: Int?,
+    canUndoCheckAll: Boolean,
+    actions: ChecklistActions,
     modifier: Modifier = Modifier,
 ) {
-    val activeItemsWithIndices = items.mapIndexed { index, item -> index to item }.filter { !it.second.isChecked }
-    val completedItemsWithIndices = items.mapIndexed { index, item -> index to item }.filter { it.second.isChecked }
+    // Solo se recalcula si cambian los ítems, no en cada recomposición (ej. al tipear el título).
+    val activeItemsWithIndices = remember(items) {
+        items.mapIndexed { index, item -> index to item }.filter { !it.second.isChecked }
+    }
+    val completedItemsWithIndices = remember(items) {
+        items.mapIndexed { index, item -> index to item }.filter { it.second.isChecked }
+    }
+    val haptics = LocalHapticFeedback.current
+    val spacingPx = with(LocalDensity.current) { 6.dp.toPx() }
+    val dragState = remember { ChecklistDragState() }
+    dragState.spacingPx = spacingPx
+    // Cada vez que llegan los ítems ya movidos, se puede volver a mover (ver ChecklistDragState).
+    SideEffect { dragState.onItemsUpdated(items) }
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // Ítems activos reordenables
-        activeItemsWithIndices.forEach { (index, item) ->
+        // Ítems activos, reordenables arrastrando la manija ≡.
+        activeItemsWithIndices.forEachIndexed { position, (index, item) ->
+            val isDragged = dragState.draggedIndex == index
             ChecklistActiveItemRow(
-                index = index,
                 item = item,
                 isNoteExpanded = expandedItemNoteIndex == index,
-                onToggle = { onToggleItem(index) },
-                onTextChange = { onItemTextChange(index, it) },
-                onNoteChange = { onItemNoteChange(index, it) },
-                onToggleNote = { onToggleItemNoteExpanded(index) },
-                onDelete = { onDeleteItem(index) },
-                onMoveUp = if (index > 0) { { onMoveItem(index, index - 1) } } else null,
-                onMoveDown = if (index < items.size - 1) { { onMoveItem(index, index + 1) } } else null,
+                requestFocus = focusItemIndex == index,
+                onFocused = actions.onItemFocused,
+                onToggle = { actions.onToggleItem(index) },
+                onTextChange = { actions.onItemTextChange(index, it) },
+                onImeNext = { actions.onItemImeNext(index) },
+                onNoteChange = { actions.onItemNoteChange(index, it) },
+                onToggleNote = { actions.onToggleItemNoteExpanded(index) },
+                onDelete = { actions.onDeleteItem(index) },
+                onDragStart = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    dragState.start(index)
+                },
+                onDrag = { dy -> dragState.drag(dy, activeItemsWithIndices.map { it.first }, actions.onMoveItem) },
+                onDragEnd = dragState::end,
+                modifier = Modifier
+                    .onSizeChanged { dragState.rowHeights[position] = it.height }
+                    // El que se arrastra va arriba de los demás, levantado y siguiendo al dedo.
+                    // El offset se lee al dibujar: arrastrar no recompone la lista.
+                    .zIndex(if (isDragged) 1f else 0f)
+                    .graphicsLayer {
+                        translationY = if (isDragged) dragState.offset else 0f
+                        shadowElevation = if (isDragged) 8.dp.toPx() else 0f
+                        shape = RoundedCornerShape(12.dp)
+                        clip = isDragged
+                    }
+                    .background(
+                        if (isDragged) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
+                        RoundedCornerShape(12.dp),
+                    ),
             )
         }
 
-        // Fila "+ Añadir elemento"
+        // "+ Añadir elemento" a la izquierda y "Marcar todo" (o "Deshacer") a la derecha.
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .clickable { onAddItem("") }
-                .padding(vertical = 10.dp, horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_add),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = "Añadir elemento",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                ),
-            )
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { actions.onAddItem("") }
+                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_add),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = stringResource(R.string.reminders_checklist_add_item),
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    ),
+                )
+            }
+            // Contra el toque sin querer: está separado de "Añadir elemento" y, una vez usado, el
+            // mismo botón pasa a "Deshacer" hasta que se toque otro ítem.
+            if (canUndoCheckAll) {
+                TextButton(onClick = actions.onUndoCheckAll) {
+                    Text(stringResource(R.string.reminders_undo))
+                }
+            } else if (activeItemsWithIndices.isNotEmpty() && items.size > 1) {
+                TextButton(onClick = actions.onCheckAll) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_done_all),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.reminders_checklist_check_all))
+                }
+            }
         }
 
         // Botones de acciones IA: [ 🎤 Dictar ítems ] [ ✨ Pegar texto ]
@@ -913,13 +998,13 @@ private fun ChecklistDetailContent(
         ) {
             ChecklistActionPill(
                 icon = R.drawable.ic_mic,
-                label = "Dictar ítems",
-                onClick = onOpenVoiceCapture,
+                label = stringResource(R.string.reminders_checklist_dictate),
+                onClick = actions.onOpenVoiceCapture,
             )
             ChecklistActionPill(
                 icon = R.drawable.ic_auto_awesome,
-                label = "Pegar texto",
-                onClick = onOpenPasteDialog,
+                label = stringResource(R.string.reminders_checklist_paste),
+                onClick = actions.onOpenPasteDialog,
             )
         }
 
@@ -935,7 +1020,7 @@ private fun ChecklistDetailContent(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "Generando ítems con IA…",
+                    text = stringResource(R.string.reminders_checklist_generating),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -949,12 +1034,12 @@ private fun ChecklistDetailContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(6.dp))
-                    .clickable(onClick = onToggleCompletedExpanded)
+                    .clickable(onClick = actions.onToggleCompletedExpanded)
                     .padding(vertical = 6.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "COMPLETADOS (${completedItemsWithIndices.size})",
+                    text = stringResource(R.string.reminders_checklist_completed_header, completedItemsWithIndices.size),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp,
@@ -977,15 +1062,15 @@ private fun ChecklistDetailContent(
                     completedItemsWithIndices.forEach { (index, item) ->
                         ChecklistCompletedItemRow(
                             item = item,
-                            onToggle = { onToggleItem(index) },
-                            onDelete = { onDeleteItem(index) },
+                            onToggle = { actions.onToggleItem(index) },
+                            onDelete = { actions.onDeleteItem(index) },
                         )
                     }
                 }
             }
         }
 
-        if (activeItemsWithIndices.isEmpty() && completedItemsWithIndices.isNotEmpty() && onFinalizeReminder != null) {
+        if (activeItemsWithIndices.isEmpty() && completedItemsWithIndices.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(12.dp),
@@ -993,7 +1078,7 @@ private fun ChecklistDetailContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onFinalizeReminder),
+                    .clickable(onClick = actions.onFinalizeReminder),
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -1018,6 +1103,70 @@ private fun ChecklistDetailContent(
 
         Spacer(Modifier.height(16.dp))
     }
+}
+
+/**
+ * Los eventos de la lista de la nota, agrupados (como RemindersListActions) para no pasar quince
+ * lambdas sueltas por cada nivel. Los índices son posiciones en `items`.
+ */
+data class ChecklistActions(
+    val onToggleItem: (Int) -> Unit = {},
+    val onItemTextChange: (Int, String) -> Unit = { _, _ -> },
+    val onItemNoteChange: (Int, String) -> Unit = { _, _ -> },
+    val onToggleItemNoteExpanded: (Int) -> Unit = {},
+    val onDeleteItem: (Int) -> Unit = {},
+    val onAddItem: (String) -> Unit = {},
+    val onItemImeNext: (Int) -> Unit = {},
+    val onItemFocused: () -> Unit = {},
+    val onMoveItem: (Int, Int) -> Unit = { _, _ -> },
+    val onToggleCompletedExpanded: () -> Unit = {},
+    val onCheckAll: () -> Unit = {},
+    val onUndoCheckAll: () -> Unit = {},
+    val onOpenPasteDialog: () -> Unit = {},
+    val onOpenVoiceCapture: () -> Unit = {},
+    val onFinalizeReminder: () -> Unit = {},
+)
+
+/**
+ * "¿Guardar los cambios?" al salir con cambios sin guardar:
+ * ```
+ * ¿Guardar los cambios?
+ * Tenés cambios sin guardar. Si salís sin guardar, se pierden.
+ *                                  [Descartar]  [Guardar]
+ * ```
+ * Tocar afuera o el "atrás" del sistema cierra el diálogo y sigue editando: la opción segura.
+ */
+@Composable
+private fun UnsavedChangesDialog(
+    onSave: () -> Unit,
+    onDiscard: () -> Unit,
+    onKeepEditing: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onKeepEditing,
+        shape = AppDialogDefaults.shape,
+        containerColor = AppDialogDefaults.containerColor,
+        title = {
+            Text(
+                text = stringResource(R.string.reminder_detail_unsaved_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.reminder_detail_unsaved_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            DialogFilledConfirmButton(text = stringResource(R.string.reminder_detail_unsaved_save), onClick = onSave)
+        },
+        dismissButton = {
+            DialogDismissButton(text = stringResource(R.string.reminder_detail_unsaved_discard), onClick = onDiscard)
+        },
+    )
 }
 
 /** Píldora de acción de ayuda con IA. */
@@ -1057,52 +1206,109 @@ private fun ChecklistActionPill(
     }
 }
 
-/** Fila de un ítem activo en la lista, fiel al mockup 04.B. */
+/**
+ * Fila de un ítem activo en la lista, fiel al mockup 04.B.
+ *
+ * Con [requestFocus] el campo toma el foco (y abre el teclado) apenas se dibuja: es lo que pasa al
+ * tocar "Añadir elemento", así se escribe directo. Después avisa por [onFocused] para que el
+ * ViewModel no lo vuelva a pedir en la próxima recomposición. "Siguiente" en el teclado
+ * ([onImeNext]) crea el ítem de abajo.
+ *
+ * ```
+ * ≡  ☐  Texto del ítem                 📝  ✕
+ *        Nota (opcional)
+ * ```
+ * La primera línea es una Row centrada verticalmente: así el checkbox queda a la altura del
+ * texto (con `Alignment.Top` y paddings a mano quedaba más abajo). La nota va en otra fila,
+ * corrida para quedar debajo del texto.
+ *
+ * ≡ es la manija para reordenar: mantenerla apretada y arrastrar mueve el ítem (avisa por
+ * [onDragStart], [onDrag] con cuánto se movió el dedo y [onDragEnd]). Quien arma la lista decide
+ * cuándo cambiarlo de lugar; esta fila solo se dibuja corrida con [modifier].
+ */
 @Composable
 private fun ChecklistActiveItemRow(
-    index: Int,
     item: ChecklistItem,
     isNoteExpanded: Boolean,
+    requestFocus: Boolean,
+    onFocused: () -> Unit,
     onToggle: () -> Unit,
     onTextChange: (String) -> Unit,
+    onImeNext: () -> Unit,
     onNoteChange: (String) -> Unit,
     onToggleNote: () -> Unit,
     onDelete: () -> Unit,
-    onMoveUp: (() -> Unit)?,
-    onMoveDown: (() -> Unit)?,
+    onDragStart: () -> Unit,
+    onDrag: (dy: Float) -> Unit,
+    onDragEnd: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val isNoteVisible = !item.note.isNullOrBlank() || isNoteExpanded
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        // Checkbox para marcar el ítem como terminado (o no)
-        IconButton(
-            onClick = onToggle,
-            modifier = Modifier
-                .padding(top = 0.dp, end = 4.dp)
-                .size(32.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_check_box_outline_blank),
-                contentDescription = "Marcar como terminado",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                modifier = Modifier.size(22.dp),
-            )
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(requestFocus) {
+        if (requestFocus) {
+            focusRequester.requestFocus()
+            onFocused()
         }
+    }
+    // El gesto empieza en esta fila pero, si el ítem se mueve, la fila pasa a mostrar otro: con
+    // rememberUpdatedState el gesto en curso sigue usando las lambdas más nuevas sin reiniciarse.
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
+    val currentOnDrag by rememberUpdatedState(onDrag)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
 
-        Column(
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .padding(top = 2.dp),
+                .fillMaxWidth()
+                .padding(vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Manija para arrastrar: mantener apretado y mover.
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { currentOnDragStart() },
+                            onDrag = { change, amount ->
+                                change.consume()
+                                currentOnDrag(amount.y)
+                            },
+                            onDragEnd = { currentOnDragEnd() },
+                            onDragCancel = { currentOnDragEnd() },
+                        )
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_reorder_lines),
+                    contentDescription = stringResource(R.string.reminders_checklist_reorder),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+
+            // Checkbox para marcar el ítem como terminado.
+            IconButton(
+                onClick = onToggle,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_check_box_outline_blank),
+                    contentDescription = stringResource(R.string.reminders_checklist_mark_done),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+
             BasicTextField(
                 value = item.text,
                 onValueChange = onTextChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                 ),
@@ -1111,11 +1317,12 @@ private fun ChecklistActiveItemRow(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Next,
                 ),
+                keyboardActions = KeyboardActions(onNext = { onImeNext() }),
                 decorationBox = { innerTextField ->
                     Box {
                         if (item.text.isEmpty()) {
                             Text(
-                                text = "Elemento",
+                                text = stringResource(R.string.reminders_checklist_item_hint),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             )
@@ -1125,41 +1332,6 @@ private fun ChecklistActiveItemRow(
                 },
             )
 
-            if (isNoteVisible) {
-                BasicTextField(
-                    value = item.note.orEmpty(),
-                    onValueChange = onNoteChange,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp),
-                    textStyle = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                        imeAction = ImeAction.Done,
-                    ),
-                    decorationBox = { innerTextField ->
-                        Box {
-                            if (item.note.isNullOrEmpty()) {
-                                Text(
-                                    text = "Nota (opcional)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                )
-                            }
-                            innerTextField()
-                        }
-                    },
-                )
-            }
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
             IconButton(
                 onClick = onToggleNote,
                 modifier = Modifier.size(32.dp),
@@ -1168,23 +1340,60 @@ private fun ChecklistActiveItemRow(
                     painter = painterResource(
                         if (isNoteVisible) R.drawable.ic_expand_less else R.drawable.ic_notes,
                     ),
-                    contentDescription = if (isNoteVisible) "Ocultar nota" else "Agregar nota",
-                    tint = if (isNoteVisible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    contentDescription = stringResource(
+                        if (isNoteVisible) R.string.reminders_checklist_hide_note else R.string.reminders_checklist_add_note,
+                    ),
+                    tint = if (isNoteVisible) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    },
                     modifier = Modifier.size(20.dp),
                 )
             }
-
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier.size(32.dp),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_close),
-                    contentDescription = "Eliminar",
+                    contentDescription = stringResource(R.string.reminders_checklist_delete_item),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(18.dp),
                 )
             }
+        }
+
+        if (isNoteVisible) {
+            BasicTextField(
+                value = item.note.orEmpty(),
+                onValueChange = onNoteChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // Debajo del texto: manija (32) + checkbox (32) + separación (4) a la izquierda,
+                    // y los dos botones (32 + 32 + 2 + 2) a la derecha.
+                    .padding(start = 68.dp, end = 68.dp, bottom = 4.dp),
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (item.note.isNullOrEmpty()) {
+                            Text(
+                                text = stringResource(R.string.reminders_checklist_note_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+            )
         }
     }
 }
@@ -1208,7 +1417,7 @@ private fun ChecklistCompletedItemRow(
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_check_box),
-                contentDescription = "Desmarcar ítem",
+                contentDescription = stringResource(R.string.reminders_checklist_unmark),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(22.dp),
             )
@@ -1241,7 +1450,7 @@ private fun ChecklistCompletedItemRow(
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_close),
-                contentDescription = "Eliminar",
+                contentDescription = stringResource(R.string.reminders_checklist_delete_item),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.size(18.dp),
             )
@@ -1269,13 +1478,13 @@ private fun PasteItemsDialog(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                 )
-                Text(text = "Pegar texto")
+                Text(text = stringResource(R.string.reminders_checklist_paste))
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Pega un mensaje, lista de compras o ingredientes. La IA detectará los ítems automáticamente.",
+                    text = stringResource(R.string.reminders_checklist_paste_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1287,7 +1496,7 @@ private fun PasteItemsDialog(
                         .heightIn(min = 120.dp, max = 220.dp),
                     placeholder = {
                         Text(
-                            text = "Ej:\nVacío 5kg (en el Coto)\nAsado 3kg (en Res)\nChorizo y morcilla",
+                            text = stringResource(R.string.reminders_checklist_paste_example),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     },
@@ -1296,7 +1505,7 @@ private fun PasteItemsDialog(
         },
         confirmButton = {
             DialogFilledConfirmButton(
-                text = "Generar ítems",
+                text = stringResource(R.string.reminders_checklist_generate),
                 onClick = { onSubmit(text) },
             )
         },
@@ -1367,11 +1576,23 @@ private fun DetailHeader(
 /**
  * El panel de opciones, compacto: etiquetas en una fila y el resto en una grilla de 2 columnas.
  * Cada opción muestra su valor actual.
+ *
+ * Arriba, centrada, una flecha para plegarlo ([isCollapsed]): queda solo la flecha y la nota
+ * gana todo ese alto para leerla completa. Tocarla otra vez lo vuelve a mostrar.
+ * ```
+ *        ⌄               ← desplegado: tocar pliega
+ * 🏷 Etiquetas …
+ * ┌ ⏰ … ┐ ┌ 📍 … ┐
+ *
+ *        ⌃               ← plegado: tocar despliega
+ * ```
  */
 @Composable
 private fun ReminderOptionsPanel(
     uiState: ReminderDetailUiState,
     now: Instant,
+    isCollapsed: Boolean,
+    onToggleCollapsed: () -> Unit,
     onTagsClick: () -> Unit,
     onTimeClick: () -> Unit,
     onPlaceClick: () -> Unit,
@@ -1381,66 +1602,144 @@ private fun ReminderOptionsPanel(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
+        // Siempre a todo el ancho: plegado no se achica, queda una barra con la flecha.
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
+        // Arrastrar la barra de la flecha también pliega (hacia abajo) o despliega (hacia arriba),
+        // como la manija de un bottom sheet. Se decide al soltar: con haber movido el dedo 24dp
+        // alcanza, o con un deslizamiento rápido aunque sea corto.
+        val currentIsCollapsed by rememberUpdatedState(isCollapsed)
+        val currentOnToggle by rememberUpdatedState(onToggleCollapsed)
+        val thresholdPx = with(LocalDensity.current) { 24.dp.toPx() }
+        var dragTotal by remember { mutableFloatStateOf(0f) }
+        val dragState = rememberDraggableState { delta -> dragTotal += delta }
+
         Column(
-            modifier = Modifier.padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = if (isCollapsed) 0.dp else 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            TagsOption(tags = uiState.tags, onClick = onTagsClick)
-            OptionRow {
-                OptionCard(
-                    icon = R.drawable.ic_alarm,
-                    title = stringResource(R.string.reminder_detail_time),
-                    value = timeValue(uiState.alarms, now),
-                    onClick = onTimeClick,
-                )
-                OptionCard(
-                    icon = R.drawable.ic_location_on,
-                    title = stringResource(R.string.reminder_detail_place),
-                    value = placeValue(uiState.places, uiState.placeName),
-                    onClick = onPlaceClick,
-                )
-            }
-            OptionRow {
-                OptionCard(
-                    icon = R.drawable.ic_visibility,
-                    title = stringResource(R.string.reminder_detail_behavior),
-                    value = stringResource(ReminderImportance.of(uiState.importance).label),
-                    onClick = onBehaviorClick,
-                )
-                OptionCard(
-                    icon = R.drawable.ic_bolt,
-                    title = stringResource(R.string.reminder_detail_notification_action),
-                    value = actionValue(uiState.action),
-                    onClick = onActionClick,
-                )
-            }
-            OptionRow {
-                OptionCard(
-                    icon = R.drawable.ic_image,
-                    title = stringResource(R.string.reminder_detail_image),
-                    value = imageValue(photoCount = uiState.photos.size, hasCover = uiState.photoPath != null),
-                    onClick = onImageClick,
-                )
-                OptionCard(
-                    icon = R.drawable.ic_attach_file,
-                    title = stringResource(R.string.reminder_detail_attachments),
-                    // TODO: los adjuntos todavía no existen en el modelo.
-                    value = stringResource(R.string.reminder_detail_attachments_none),
+            // Todo el ancho del panel se puede tocar o arrastrar (no solo la flecha), y es bajo
+            // para no comerle alto a la nota. Un Box y no un IconButton: el IconButton dibuja el
+            // efecto del toque como un círculo, que a todo el ancho se vería raro.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .draggable(
+                        state = dragState,
+                        orientation = Orientation.Vertical,
+                        onDragStarted = { dragTotal = 0f },
+                        onDragStopped = { velocity ->
+                            // Positivo = hacia abajo (en pantalla, y crece hacia abajo).
+                            val down = dragTotal > thresholdPx || velocity > 1000f
+                            val up = dragTotal < -thresholdPx || velocity < -1000f
+                            if ((down && !currentIsCollapsed) || (up && currentIsCollapsed)) currentOnToggle()
+                        },
+                    )
+                    .clickable(role = Role.Button, onClick = onToggleCollapsed),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(
+                        if (isCollapsed) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
+                    ),
+                    contentDescription = stringResource(
+                        if (isCollapsed) R.string.reminder_detail_options_show else R.string.reminder_detail_options_hide,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            OptionRow {
-                OptionCard(
-                    icon = R.drawable.ic_share,
-                    title = stringResource(R.string.reminder_detail_share_option),
-                    value = stringResource(R.string.reminder_detail_share_value),
+            // expandVertically / shrinkVertically: el panel crece o se achica desde la flecha en
+            // vez de aparecer o desaparecer de golpe.
+            AnimatedVisibility(
+                visible = !isCollapsed,
+                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+            ) {
+                ReminderOptionsGrid(
+                    uiState = uiState,
+                    now = now,
+                    onTagsClick = onTagsClick,
+                    onTimeClick = onTimeClick,
+                    onPlaceClick = onPlaceClick,
+                    onImageClick = onImageClick,
+                    onBehaviorClick = onBehaviorClick,
+                    onActionClick = onActionClick,
                 )
-                // Mitad vacía: así "Compartir" tiene el mismo ancho que el resto de la grilla.
-                Spacer(Modifier.weight(1f))
             }
+        }
+    }
+}
+
+/** Las opciones en sí: etiquetas en una fila y el resto en una grilla de 2 columnas. */
+@Composable
+private fun ReminderOptionsGrid(
+    uiState: ReminderDetailUiState,
+    now: Instant,
+    onTagsClick: () -> Unit,
+    onTimeClick: () -> Unit,
+    onPlaceClick: () -> Unit,
+    onImageClick: () -> Unit,
+    onBehaviorClick: () -> Unit,
+    onActionClick: () -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        TagsOption(tags = uiState.tags, onClick = onTagsClick)
+        OptionRow {
+            OptionCard(
+                icon = R.drawable.ic_alarm,
+                title = stringResource(R.string.reminder_detail_time),
+                value = timeValue(uiState.alarms, uiState.alarmRepeats, now),
+                onClick = onTimeClick,
+            )
+            OptionCard(
+                icon = R.drawable.ic_location_on,
+                title = stringResource(R.string.reminder_detail_place),
+                value = placeValue(uiState.places, uiState.placeName),
+                onClick = onPlaceClick,
+            )
+        }
+        OptionRow {
+            OptionCard(
+                icon = R.drawable.ic_visibility,
+                title = stringResource(R.string.reminder_detail_behavior),
+                value = stringResource(ReminderImportance.of(uiState.importance).label),
+                onClick = onBehaviorClick,
+            )
+            OptionCard(
+                icon = R.drawable.ic_bolt,
+                title = stringResource(R.string.reminder_detail_notification_action),
+                value = actionValue(uiState.action),
+                onClick = onActionClick,
+            )
+        }
+        OptionRow {
+            OptionCard(
+                icon = R.drawable.ic_image,
+                title = stringResource(R.string.reminder_detail_image),
+                value = imageValue(photoCount = uiState.photos.size, hasCover = uiState.photoPath != null),
+                onClick = onImageClick,
+            )
+            OptionCard(
+                icon = R.drawable.ic_attach_file,
+                title = stringResource(R.string.reminder_detail_attachments),
+                // TODO: los adjuntos todavía no existen en el modelo.
+                value = stringResource(R.string.reminder_detail_attachments_none),
+            )
+        }
+        OptionRow {
+            OptionCard(
+                icon = R.drawable.ic_share,
+                title = stringResource(R.string.reminder_detail_share_option),
+                value = stringResource(R.string.reminder_detail_share_value),
+            )
+            // Mitad vacía: así "Compartir" tiene el mismo ancho que el resto de la grilla.
+            Spacer(Modifier.weight(1f))
         }
     }
 }
@@ -1567,7 +1866,7 @@ private fun OptionValue(text: String) {
  * "Hoy 18:00 +2", o "Sin fecha". Si ya pasaron todos, muestra el último.
  */
 @Composable
-private fun timeValue(alarms: List<Instant>, now: Instant): String {
+private fun timeValue(alarms: List<Instant>, repeats: Map<Instant, AlarmRepeat>, now: Instant): String {
     val next = alarms.filter { !it.isBefore(now) }.minOrNull() ?: alarms.maxOrNull()
         ?: return stringResource(R.string.reminder_detail_time_none)
     val locale = rememberAppLocale()
@@ -1581,8 +1880,12 @@ private fun timeValue(alarms: List<Instant>, now: Instant): String {
     return if (extra > 0) {
         stringResource(R.string.reminder_detail_time_more, whenText, extra)
     } else {
-        // TODO: la repetición todavía no se guarda: siempre "No se repite".
-        stringResource(R.string.reminder_detail_time_value, whenText)
+        val repeat = repeats[next] ?: AlarmRepeat.None
+        if (repeat == AlarmRepeat.None) {
+            stringResource(R.string.reminder_detail_time_value, whenText)
+        } else {
+            stringResource(R.string.reminder_detail_time_repeat, whenText, stringResource(RepeatOption.of(repeat).label))
+        }
     }
 }
 
