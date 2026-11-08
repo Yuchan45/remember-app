@@ -715,4 +715,11 @@
     <string name="notification_action_send_sms">Enviar SMS</string>
     <string name="notification_action_send_email">Enviar correo</string>
     <string name="notification_action_call">Llamar</string>
+    <string name="scheduled_message_field_title">Título del recordatorio</string>
+    <string name="scheduled_message_field_title_placeholder">Ej: Saludar por cumpleaños…</string>
+    <string name="scheduled_message_pick_contact">Elegir contacto</string>
+    <string name="scheduled_message_contacts_permission_denied">Se necesita permiso para acceder a tus contactos</string>
+    <string name="scheduled_message_no_phone_found">El contacto seleccionado no tiene un número de teléfono</string>
+    <string name="scheduled_message_no_email_found">El contacto seleccionado no tiene una dirección de correo</string>
+    <string name="scheduled_message_notifications_permission_needed">Se necesitan permisos de notificaciones para avisarte a la hora programada.</string>
 </resources>

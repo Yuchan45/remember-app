@@ -31,6 +31,7 @@ import java.time.Instant
 object NotificationHelper {
 
     const val CHANNEL_AI = "ai_channel"
+    const val CHANNEL_SCHEDULED_MESSAGES = "scheduled_messages_channel_v3"
     const val EXTRA_NAVIGATE_TO_REMINDER_ID = "extra_navigate_to_reminder_id"
 
     /** true si el recordatorio que se abre es un mensaje programado (tiene su propia pantalla). */
@@ -120,7 +121,19 @@ object NotificationHelper {
             this.description = "Avisos de transcripción y estructuración de audio"
         }
 
-        notificationManager.createNotificationChannels(listOf(low, default, high, critical, aiChannel))
+        val scheduledChannel = NotificationChannel(
+            CHANNEL_SCHEDULED_MESSAGES,
+            "Mensajes programados",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Avisos de mensajes programados (WhatsApp, SMS, Correo)"
+            enableVibration(vibrationEnabled)
+            vibrationPattern = longArrayOf(0, 500, 200, 500)
+            setShowBadge(true)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        }
+
+        notificationManager.createNotificationChannels(listOf(low, default, high, critical, aiChannel, scheduledChannel))
         notificationManager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
     }
 
@@ -173,9 +186,12 @@ object NotificationHelper {
             if (reminder.importance == Importance.Critical) flags = flags or Notification.FLAG_INSISTENT
         }
         return try {
-            NotificationManagerCompat.from(context).notify(reminder.id.toInt(), notification)
+            val notificationId = if (reminder.id != 0L) reminder.id.toInt() else System.currentTimeMillis().toInt()
+            android.util.Log.d("NotificationHelper", "Posting notification id=$notificationId for reminder id=${reminder.id}")
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
             true
-        } catch (_: SecurityException) {
+        } catch (e: SecurityException) {
+            android.util.Log.e("NotificationHelper", "SecurityException posting notification (POST_NOTIFICATIONS not granted)", e)
             // En Android 13+, si el usuario denegó POST_NOTIFICATIONS.
             false
         }
@@ -219,10 +235,10 @@ object NotificationHelper {
     fun showReminderNotification(context: Context, reminder: Reminder, alarmAt: Instant) {
         val prefs = context.getSharedPreferences("hey_app_settings", Context.MODE_PRIVATE)
         val timeAlertsEnabled = prefs.getBoolean("notif_time_alerts", true)
-        if (!timeAlertsEnabled) return
+        if (!timeAlertsEnabled && reminder.type != ReminderType.ScheduledMessage) return
 
         val highPriorityOnly = prefs.getBoolean("notif_high_priority_only", false)
-        if (highPriorityOnly && reminder.importance != Importance.High && reminder.importance != Importance.Critical) {
+        if (highPriorityOnly && reminder.type != ReminderType.ScheduledMessage && reminder.importance != Importance.High && reminder.importance != Importance.Critical) {
             return
         }
 
@@ -282,12 +298,22 @@ object NotificationHelper {
             R.drawable.ic_alarm
         }
 
-        val builder = NotificationCompat.Builder(context, channelId(reminder.importance))
+        val channelIdToUse = if (reminder.type == ReminderType.ScheduledMessage && reminder.importance != Importance.Critical) {
+            CHANNEL_SCHEDULED_MESSAGES
+        } else {
+            channelId(reminder.importance)
+        }
+        val builder = NotificationCompat.Builder(context, channelIdToUse)
             .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .applyImportance(reminder.importance)
             // Después de la importancia: si el usuario eligió la alarma de un minuto, gana eso.
             .apply {
+                if (reminder.type == ReminderType.ScheduledMessage) {
+                    setPriority(NotificationCompat.PRIORITY_MAX)
+                    setCategory(NotificationCompat.CATEGORY_ALARM)
+                    setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                }
                 if (!reminder.description.isNullOrBlank()) {
                     setContentText(reminder.description)
                 }
@@ -343,10 +369,10 @@ object NotificationHelper {
     ) {
         val prefs = context.getSharedPreferences("hey_app_settings", Context.MODE_PRIVATE)
         val placeAlertsEnabled = prefs.getBoolean("notif_place_alerts", true)
-        if (!placeAlertsEnabled) return
+        if (!placeAlertsEnabled && reminder.type != ReminderType.ScheduledMessage) return
 
         val highPriorityOnly = prefs.getBoolean("notif_high_priority_only", false)
-        if (highPriorityOnly && reminder.importance != Importance.High && reminder.importance != Importance.Critical) {
+        if (highPriorityOnly && reminder.type != ReminderType.ScheduledMessage && reminder.importance != Importance.High && reminder.importance != Importance.Critical) {
             return
         }
 
@@ -402,7 +428,12 @@ object NotificationHelper {
             R.drawable.ic_location_on
         }
 
-        val builder = NotificationCompat.Builder(context, channelId(reminder.importance))
+        val channelIdToUse = if (reminder.type == ReminderType.ScheduledMessage && reminder.importance != Importance.Critical) {
+            CHANNEL_SCHEDULED_MESSAGES
+        } else {
+            channelId(reminder.importance)
+        }
+        val builder = NotificationCompat.Builder(context, channelIdToUse)
             .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .setContentText(text)
@@ -461,7 +492,8 @@ object NotificationHelper {
                 .build()
 
             NotificationManagerCompat.from(context).notify(id, notification)
-        } catch (_: SecurityException) {
+        } catch (e: SecurityException) {
+            android.util.Log.e("NotificationHelper", "SecurityException posting notification (POST_NOTIFICATIONS not granted)", e)
             // Sin permiso POST_NOTIFICATIONS
         }
     }
