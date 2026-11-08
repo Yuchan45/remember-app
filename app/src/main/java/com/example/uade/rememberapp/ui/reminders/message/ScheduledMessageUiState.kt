@@ -1,14 +1,19 @@
 package com.example.uade.rememberapp.ui.reminders.message
 
 import androidx.annotation.StringRes
+import com.example.uade.rememberapp.domain.model.AlarmRepeat
+import com.example.uade.rememberapp.domain.model.Importance
+import com.example.uade.rememberapp.domain.model.MessageChannel
 import com.example.uade.rememberapp.domain.model.NotificationAction
 import com.example.uade.rememberapp.domain.model.Place
+import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderPhoto
 import com.example.uade.rememberapp.domain.model.Tag
-import com.example.uade.rememberapp.ui.reminders.model.PlaceEvent
-import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
-import java.time.LocalDate
-import java.time.LocalTime
+import com.example.uade.rememberapp.ui.reminders.detail.AlarmsEditor
+import com.example.uade.rememberapp.ui.reminders.detail.PhotosEditor
+import com.example.uade.rememberapp.ui.reminders.detail.PlaceEditor
+import java.time.Instant
 
 /**
  * Estado inmutable de la pantalla de creación o edición de un mensaje programado.
@@ -19,6 +24,9 @@ data class ScheduledMessageUiState(
     val isLoading: Boolean = false,
     val originalReminder: Reminder? = null,
 
+    // Título personalizado del recordatorio
+    val title: String = "",
+
     // Canal y destinatario
     val channel: ScheduledMessageChannel = ScheduledMessageChannel.WhatsApp,
     val recipient: String = "",
@@ -27,56 +35,82 @@ data class ScheduledMessageUiState(
     val subject: String = "",
     val messageText: String = "",
 
-    // Programación
-    val scheduleType: ScheduleTriggerType = ScheduleTriggerType.Time,
+    // Fotos e imágenes
+    val photos: List<ReminderPhoto> = emptyList(),
+    val photoPath: String? = null,
+    val photosEditor: PhotosEditor? = null,
 
-    // Disparador por hora
-    val scheduledDate: LocalDate = LocalDate.now(),
-    val scheduledTime: LocalTime = LocalTime.now().plusHours(1).withMinute(0),
-    val selectedTimeShortcut: TimeShortcut? = null,
+    // Avisos por hora (Alarms)
+    val alarms: List<Instant> = emptyList(),
+    val alarmRepeats: Map<Instant, AlarmRepeat> = emptyMap(),
+    val alarmsEditor: AlarmsEditor? = null,
 
-    // Disparador por ubicación
-    val selectedPlaceId: Long? = null,
-    val placeEvent: PlaceEvent = PlaceEvent.Arrive,
+    // Avisos por ubicación (Places)
+    val places: List<PlaceAlert> = emptyList(),
     val availablePlaces: List<Place> = emptyList(),
+    val placeEditor: PlaceEditor? = null,
 
-    // Diálogos abiertos
-    val isDatePickerOpen: Boolean = false,
-    val isTimePickerOpen: Boolean = false,
+    // Comportamiento / Importancia
+    val importance: Importance = Importance.High,
+    val importanceEditor: Importance? = null,
 
     // Etiquetas
     val selectedTagIds: Set<Long> = emptySet(),
     val allTags: List<Tag> = emptyList(),
+    val isTagsSheetOpen: Boolean = false,
+    val tagsDraft: Set<Long> = emptySet(),
 
     // Finalización
     val isSaved: Boolean = false,
     @get:StringRes val errorMessage: Int? = null,
 ) {
     /**
+     * Fotos apiladas: primero la portada y luego las demás sin repetir la portada.
+     */
+    val stackPhotos: List<String>
+        get() = if (photoPath != null) {
+            listOf(photoPath) + photos.filterNot { it.isCover }.map { it.path }
+        } else {
+            photos.map { it.path }
+        }
+
+    /**
      * Valida que se hayan completado los campos requeridos para poder programar.
      */
     val canSave: Boolean
         get() = recipient.isNotBlank() &&
             messageText.isNotBlank() &&
-            (scheduleType != ScheduleTriggerType.Location || selectedPlaceId != null)
+            (alarms.isNotEmpty() || places.isNotEmpty())
 
     /**
-     * Nombre del lugar seleccionado, si existe.
+     * Primer lugar asignado, si existe.
      */
-    val selectedPlaceName: String?
-        get() = availablePlaces.firstOrNull { it.id == selectedPlaceId }?.name
+    val firstPlace: PlaceAlert?
+        get() = places.firstOrNull()
+
+    /**
+     * Nombre del primer lugar seleccionado, si existe.
+     */
+    val placeName: String?
+        get() = firstPlace?.let { alert -> availablePlaces.firstOrNull { it.id == alert.placeId }?.name }
+
+    /**
+     * Lista de etiquetas asignadas actualmente.
+     */
+    val tags: List<Tag>
+        get() = allTags.filter { it.id in selectedTagIds }
 
     /**
      * Devuelve el objeto [NotificationAction] configurado.
      */
     fun toNotificationAction(): NotificationAction = when (channel) {
         ScheduledMessageChannel.WhatsApp -> NotificationAction.Message(
-            channel = com.example.uade.rememberapp.domain.model.MessageChannel.WhatsApp,
+            channel = MessageChannel.WhatsApp,
             to = recipient.trim(),
             text = messageText.trim(),
         )
         ScheduledMessageChannel.Sms -> NotificationAction.Message(
-            channel = com.example.uade.rememberapp.domain.model.MessageChannel.Sms,
+            channel = MessageChannel.Sms,
             to = recipient.trim(),
             text = messageText.trim(),
         )
