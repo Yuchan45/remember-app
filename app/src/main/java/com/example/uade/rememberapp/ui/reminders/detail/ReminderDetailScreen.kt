@@ -1,7 +1,5 @@
 ﻿package com.example.uade.rememberapp.ui.reminders.detail
 
-import android.Manifest
-import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -83,7 +81,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -104,7 +101,6 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.AlarmRepeat
 import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.Importance
@@ -116,12 +112,11 @@ import com.example.uade.rememberapp.domain.model.PlaceAlert
 import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
 import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Tag
-import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
 import com.example.uade.rememberapp.ui.components.AppDialogDefaults
 import com.example.uade.rememberapp.ui.components.DialogDismissButton
 import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
 import com.example.uade.rememberapp.ui.components.ImageCropDialog
-import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
+import com.example.uade.rememberapp.ui.permissions.rememberTriggerPermissionsCoordinator
 import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
 import com.example.uade.rememberapp.ui.reminders.components.ImportanceOptionsPanel
 import com.example.uade.rememberapp.ui.reminders.components.PlaceOptionsPanel
@@ -152,9 +147,6 @@ import com.example.uade.rememberapp.ui.theme.rememberAppLocale
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 /** Margen lateral de la pantalla. */
 private val ScreenPadding = 16.dp
@@ -195,28 +187,21 @@ fun ReminderDetailScreen(
         }
     }
 
-    val context = LocalContext.current
-    var showLocationPermissionDialog by remember { mutableStateOf(false) }
+    val permissionsCoordinator = rememberTriggerPermissionsCoordinator()
 
-    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { isGranted ->
-        if (isGranted) {
-            val app = context.applicationContext as? RememberApp
-            app?.let {
-                CoroutineScope(Dispatchers.IO).launch {
-                    it.container.rescheduleRemindersUseCase()
-                }
+    val onDoneWithPermissions = {
+        val shouldCheckPermissions = !uiState.isDraft &&
+            uiState.hasUnsavedChanges &&
+            uiState.hasContent
+        if (shouldCheckPermissions) {
+            permissionsCoordinator.runWithPermissions(
+                needsTimeAlarm = uiState.alarmsToSave.isNotEmpty(),
+                needsPlaceAlert = uiState.places.isNotEmpty(),
+            ) {
+                viewModel.onDone()
             }
-        }
-    }
-
-    val foregroundPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-    ) { permissions ->
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        if (fineGranted && !LocationPermissionHelper.hasBackgroundLocation(context)) {
-            showLocationPermissionDialog = true
+        } else {
+            viewModel.onDone()
         }
     }
 
@@ -253,7 +238,7 @@ fun ReminderDetailScreen(
         UnsavedChangesDialog(
             onSave = {
                 showUnsavedDialog = false
-                viewModel.onDone()
+                onDoneWithPermissions()
             },
             onDiscard = {
                 showUnsavedDialog = false
@@ -268,7 +253,7 @@ fun ReminderDetailScreen(
         now = now,
         onBack = requestBack,
         onShare = viewModel::onShareClick,
-        onDone = viewModel::onDone,
+        onDone = onDoneWithPermissions,
         onTitleChange = viewModel::onTitleChange,
         onTagsClick = viewModel::onTagsClick,
         onTimeClick = viewModel::onTimeClick,
@@ -356,33 +341,10 @@ fun ReminderDetailScreen(
             onSave = {
                 viewModel.onSavePlace()
                 if (editor.selectedPlaceId != null) {
-                    if (!LocationPermissionHelper.hasFineLocation(context)) {
-                        foregroundPermissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                            ),
-                        )
-                    } else if (!LocationPermissionHelper.hasBackgroundLocation(context)) {
-                        showLocationPermissionDialog = true
-                    }
+                    permissionsCoordinator.requestLocationInContext()
                 }
             },
             onClose = viewModel::onClosePlace,
-        )
-    }
-
-    if (showLocationPermissionDialog) {
-        LocationPermissionDialog(
-            onConfirm = {
-                showLocationPermissionDialog = false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } else {
-                    LocationPermissionHelper.openAppSettings(context)
-                }
-            },
-            onDismiss = { showLocationPermissionDialog = false },
         )
     }
 

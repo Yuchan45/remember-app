@@ -1,7 +1,5 @@
 package com.example.uade.rememberapp.ui.reminders.capture
 
-import android.Manifest
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -60,7 +58,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -70,12 +67,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
-import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
 import com.example.uade.rememberapp.ui.components.FadedDivider
-import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
 import com.example.uade.rememberapp.ui.components.observeVerticalDrag
+import com.example.uade.rememberapp.ui.permissions.rememberTriggerPermissionsCoordinator
 import com.example.uade.rememberapp.ui.places.edit.PlaceEditSheet
 import com.example.uade.rememberapp.ui.reminders.capture.components.CapturePhotosRow
 import com.example.uade.rememberapp.ui.reminders.capture.components.CaptureToolbar
@@ -95,8 +90,6 @@ import com.example.uade.rememberapp.ui.tags.TagPickerPanel
 import com.example.uade.rememberapp.ui.tags.previewTagPickerState
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import kotlin.math.exp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /** Margen lateral del contenido del modal. */
@@ -151,30 +144,7 @@ fun QuickCaptureSheet(
         }
     }
 
-    val context = LocalContext.current
-    var showLocationPermissionDialog by remember { mutableStateOf(false) }
-
-    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { isGranted ->
-        if (isGranted) {
-            val app = context.applicationContext as? RememberApp
-            app?.let {
-                CoroutineScope(Dispatchers.IO).launch {
-                    it.container.rescheduleRemindersUseCase()
-                }
-            }
-        }
-    }
-
-    val foregroundPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-    ) { permissions ->
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        if (fineGranted && !LocationPermissionHelper.hasBackgroundLocation(context)) {
-            showLocationPermissionDialog = true
-        }
-    }
+    val permissionsCoordinator = rememberTriggerPermissionsCoordinator()
 
     val density = LocalDensity.current
     val maxStretchPx = with(density) { HandleMaxStretch.toPx() }
@@ -221,16 +191,10 @@ fun QuickCaptureSheet(
                 onTimeSelected = viewModel::onTimeSelected,
                 onRepeatSelected = viewModel::onRepeatSelected,
                 onPlaceSelected = { placeId ->
+                    val selecting = uiState.selectedPlaceId != placeId
                     viewModel.onPlaceSelected(placeId)
-                    if (!LocationPermissionHelper.hasFineLocation(context)) {
-                        foregroundPermissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                            ),
-                        )
-                    } else if (!LocationPermissionHelper.hasBackgroundLocation(context)) {
-                        showLocationPermissionDialog = true
+                    if (selecting) {
+                        permissionsCoordinator.requestLocationInContext()
                     }
                 },
                 onPlaceEventSelected = viewModel::onPlaceEventSelected,
@@ -255,18 +219,11 @@ fun QuickCaptureSheet(
                 onRemoveAudio = viewModel::onRemoveAudio,
                 onRemovePhoto = viewModel::onRemovePhoto,
                 onSave = {
-                    viewModel.onSave()
-                    if (uiState.selectedPlaceId != null) {
-                        if (!LocationPermissionHelper.hasFineLocation(context)) {
-                            foregroundPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                ),
-                            )
-                        } else if (!LocationPermissionHelper.hasBackgroundLocation(context)) {
-                            showLocationPermissionDialog = true
-                        }
+                    permissionsCoordinator.runWithPermissions(
+                        needsTimeAlarm = uiState.hasTime,
+                        needsPlaceAlert = uiState.hasPlace,
+                    ) {
+                        viewModel.onSave()
                     }
                 },
             ),
@@ -300,20 +257,6 @@ fun QuickCaptureSheet(
     if (uiState.isCreatingPlace) {
         PlaceEditSheet(
             onDismiss = viewModel::onDismissPlaceSheet,
-        )
-    }
-
-    if (showLocationPermissionDialog) {
-        LocationPermissionDialog(
-            onConfirm = {
-                showLocationPermissionDialog = false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } else {
-                    LocationPermissionHelper.openAppSettings(context)
-                }
-            },
-            onDismiss = { showLocationPermissionDialog = false },
         )
     }
 }

@@ -360,32 +360,57 @@
     <string name="places_kind_parking">Estacionamiento</string>
     <string name="places_kind_other">Otro</string>
 
-    <!-- Permisos de inicio (Startup Permissions) -->
-    <string name="startup_permissions_dialog_title">Permisos para Hey!</string>
-    <string name="startup_permissions_dialog_subtitle">Para recordarte tus pendientes a tiempo y en el lugar indicado, Hey! necesita los siguientes permisos:</string>
-    <string name="startup_permissions_item_notifications_title">Notificaciones</string>
-    <string name="startup_permissions_item_notifications_desc">Para avisarte al momento exacto de tus tareas y alarmas.</string>
-    <string name="startup_permissions_item_location_title">Ubicación</string>
-    <string name="startup_permissions_item_location_desc">Para avisarte automáticamente al llegar o salir de un lugar guardado.</string>
-    <string name="startup_permissions_item_audio_title">Micrófono</string>
-    <string name="startup_permissions_item_audio_desc">Para crear recordatorios por voz y procesarlos con inteligencia artificial.</string>
-    <string name="startup_permissions_item_biometric_title">Seguridad biométrica</string>
-    <string name="startup_permissions_item_biometric_desc">Para proteger el acceso a tus notas y recordatorios con tu huella o rostro.</string>
-    <string name="startup_permissions_btn_continue">Continuar</string>
-    <string name="startup_permissions_btn_not_now">Ahora no</string>
-    <string name="startup_permissions_permanent_title">Permisos necesarios</string>
-    <string name="startup_permissions_permanent_desc">Algunos permisos necesarios para avisarte o grabar notas fueron deshabilitados. Podés activarlos en los Ajustes de la app.</string>
-    <string name="startup_permissions_btn_settings">Abrir Ajustes</string>
-    <string name="startup_permissions_btn_close">Entendido</string>
-
     <!-- Permisos de ubicación para avisos por lugar -->
     <string name="location_permission_dialog_title">Permiso de ubicación todo el tiempo</string>
-    <string name="location_permission_dialog_desc">Para avisarte al llegar o salir de un lugar incluso cuando la app esté en segundo plano o cerrada, Remember necesita el permiso de ubicación \"Permitir todo el tiempo\".</string>
-    <string name="location_permission_dialog_action_settings">Configurar</string>
-    <string name="location_permission_dialog_action_dismiss">Ahora no</string>
-    <string name="location_permission_banner_warning">Para recibir avisos al llegar o salir con la app cerrada, activá \"Permitir todo el tiempo\" en ubicación.</string>
+    <string name="location_permission_dialog_desc">Para avisarte al llegar o salir de un lugar incluso cuando la app esté en segundo plano o cerrada, elegí \"Permitir todo el tiempo\" en la configuración de ubicación de Android.</string>
+    <string name="location_permission_dialog_action_settings">Permitir</string>
+    <string name="location_permission_dialog_action_dismiss">Rechazar</string>
+    <string name="location_permission_banner_warning">Sin ubicación \"Permitir todo el tiempo\", los avisos al llegar o salir no se activarán con la app cerrada. Habilitalo en Ajustes → Aplicaciones → Hey! → Permisos → Ubicación.</string>
     <string name="location_permission_banner_action">Activar</string>
-    <string name="location_permission_gps_disabled_warning">El servicio de ubicación (GPS) está desactivado en tu teléfono. Activalo para que funcionen los avisos por lugar.</string>
+    <string name="location_permission_gps_disabled_warning">El servicio de ubicación (GPS) está desactivado en tu teléfono. Activalo en Ajustes → Ubicación para que funcionen los avisos por lugar.</string>
+    <string name="location_permission_gps_action">Ajustes</string>
+
+    <!-- Permisos contextuales y degradación (RNF07 / RNF04) -->
+    <string name="permission_dialog_allow">Permitir</string>
+    <string name="permission_dialog_reject">Rechazar</string>
+    <string name="notifications_permission_dialog_title">Permitir notificaciones</string>
+    <string name="notifications_permission_dialog_desc">Para avisarte cuando llegue la hora de un recordatorio o al entrar o salir de un lugar guardado, habilitá las notificaciones en la configuración de Android.</string>
+    <string name="foreground_location_permission_dialog_title">Permitir acceso a la ubicación</string>
+    <string name="foreground_location_permission_dialog_desc">Para detectar tu ubicación al buscar direcciones y habilitar los avisos por lugar, permití el acceso a la ubicación en la configuración de Android.</string>
+    <string name="microphone_permission_dialog_title">Permitir acceso al micrófono</string>
+    <string name="microphone_permission_dialog_desc">Para grabar notas de voz y transcribir tus recordatorios automáticamente con IA, permití el uso del micrófono en la configuración de Android.</string>
+    <string name="contacts_permission_dialog_title">Permitir acceso a contactos</string>
+    <string name="contacts_permission_dialog_desc">Para elegir un destinatario desde tu agenda al programar mensajes, permití el acceso a tus contactos en la configuración de Android.</string>
+    <string name="exact_alarm_permission_dialog_title">Permitir alarmas exactas</string>
+    <string name="exact_alarm_permission_dialog_desc">Para que tus recordatorios por hora suenen en el minuto exacto incluso con la app cerrada, activá \"Alarmas y recordatorios\" en la configuración de Android.</string>
+    <string name="exact_alarm_permission_dialog_confirm">Permitir</string>
+    <string name="exact_alarm_permission_dialog_dismiss">Rechazar</string>
+
+    <string name="permission_limitation_dialog_title_reminder">Recordatorio guardado con aviso limitado</string>
+    <string name="permission_limitation_dialog_title_place">Lugar guardado con aviso limitado</string>
+    <string name="permission_limitation_dialog_title_draft">Aviso guardado con funcionalidad limitada</string>
+    <string name="permission_limitation_notifications_title">Notificaciones desactivadas</string>
+    <string name="permission_limitation_notifications_desc">El recordatorio se guardó, pero no recibirás notificaciones cuando corresponda. Habilitalo en Ajustes → Aplicaciones → Hey! → Notificaciones.</string>
+    <string name="permission_limitation_exact_alarms_title">Alarmas exactas desactivadas</string>
+    <string name="permission_limitation_exact_alarms_desc">El recordatorio se guardó con una alarma aproximada y el aviso puede demorarse algunos minutos. Habilitalo en Ajustes → Aplicaciones → Hey! → Alarmas y recordatorios.</string>
+    <string name="permission_limitation_location_title">Ubicación en segundo plano desactivada</string>
+    <string name="permission_limitation_location_desc">Se guardó igualmente, pero no avisará al llegar o salir cuando la app esté cerrada. Habilitalo en Ajustes → Aplicaciones → Hey! → Permisos → Ubicación → Permitir todo el tiempo.</string>
+    <string name="permission_limitation_btn_settings">Abrir Ajustes</string>
+    <string name="permission_limitation_btn_ok">Entendido</string>
+    <string name="permission_limitation_snackbar_notifications">Guardado. Activá notificaciones en Ajustes para recibir avisos.</string>
+    <string name="permission_limitation_snackbar_exact_alarms">Guardado. Sin alarmas exactas, el aviso puede demorarse.</string>
+    <string name="permission_limitation_snackbar_location">Guardado. Activá ubicación \"Permitir todo el tiempo\" para avisos cerrada.</string>
+    <string name="permission_limitation_snackbar_multiple">Guardado con avisos limitados. Revisá los permisos en Ajustes.</string>
+    <string name="permission_limitation_snackbar_action">Ajustes</string>
+
+    <string name="voice_capture_permission_denied_title">Micrófono desactivado</string>
+    <string name="voice_capture_permission_denied_desc">Sin acceso al micrófono no podés grabar notas de voz ni dictar recordatorios, pero podés seguir creando recordatorios por texto, checklist o foto.\n\nHabilitalo en: Ajustes → Aplicaciones → Hey! → Permisos → Micrófono.</string>
+    <string name="voice_capture_open_settings">Abrir Ajustes</string>
+    <string name="voice_capture_retry_permission">Permitir micrófono</string>
+
+    <string name="place_edit_location_denied_desc">Sin permiso de ubicación no podemos detectar tu posición actual, pero podés buscar la dirección arriba. Para activarlo: Ajustes → Aplicaciones → Hey! → Permisos → Ubicación.</string>
+    <string name="scheduled_message_contacts_denied_title">Permiso de contactos desactivado</string>
+    <string name="scheduled_message_contacts_denied_desc">Sin acceso a tus contactos no podés elegir un destinatario desde la agenda, pero podés escribir el número o correo manualmente.\n\nHabilitalo en: Ajustes → Aplicaciones → Hey! → Permisos → Contactos.</string>
 
     <!-- Ajustes: General y secciones -->
     <string name="settings_title">Ajustes</string>

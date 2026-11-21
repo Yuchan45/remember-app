@@ -72,6 +72,7 @@ import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.ui.components.AppDialogDefaults
 import com.example.uade.rememberapp.ui.components.DialogDismissButton
 import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
+import com.example.uade.rememberapp.ui.permissions.rememberTriggerPermissionsCoordinator
 import com.example.uade.rememberapp.ui.reminders.detail.ReminderDetailScreen
 import com.example.uade.rememberapp.ui.theme.CardSurface
 import com.example.uade.rememberapp.ui.theme.Outline
@@ -98,6 +99,7 @@ fun ReviewProposedRemindersScreen(
     viewModel: ReviewProposedRemindersViewModel = viewModel(factory = ReviewProposedRemindersViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val permissionsCoordinator = rememberTriggerPermissionsCoordinator()
 
     LaunchedEffect(analysisResult) {
         viewModel.initialize(analysisResult)
@@ -137,7 +139,23 @@ fun ReviewProposedRemindersScreen(
             onMergeAllIntoOne = viewModel::onMergeAllIntoOne,
             onUnmergeSelected = viewModel::onUnmergeSelected,
             onUnmergeProposal = viewModel::onUnmergeProposal,
-            onCreateClick = viewModel::onCreateClick,
+            onCreateClick = {
+                val selected = uiState.proposals.filter { it.isSelected }
+                val needsTime = selected.any { proposal ->
+                    val hasDraftAlarms = proposal.draft?.alarms?.isNotEmpty() == true
+                    val hasProposedAlarms = proposal.alarms.isNotEmpty() ||
+                        (!proposal.triggerDisplayTime.isNullOrBlank() &&
+                            !proposal.triggerDisplayTime.equals("Sin fecha", ignoreCase = true))
+                    hasDraftAlarms || (proposal.draft == null && hasProposedAlarms)
+                }
+                val needsPlace = selected.any { it.draft?.places?.isNotEmpty() == true }
+                permissionsCoordinator.runWithPermissions(
+                    needsTimeAlarm = needsTime,
+                    needsPlaceAlert = needsPlace,
+                ) {
+                    viewModel.onCreateClick()
+                }
+            },
         )
 
         // ✏️ de una propuesta: el mismo editor que cualquier recordatorio (no un modal aparte).

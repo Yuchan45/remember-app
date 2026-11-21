@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -48,6 +51,9 @@ import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
 import com.example.uade.rememberapp.ui.components.NavigationBarFadeColor
 import com.example.uade.rememberapp.ui.components.UndoSnackbarEffect
 import com.example.uade.rememberapp.ui.history.HistoryScreen
+import com.example.uade.rememberapp.ui.permissions.LocalPermissionNoticeController
+import com.example.uade.rememberapp.ui.permissions.openSettingsForCapability
+import com.example.uade.rememberapp.ui.permissions.snackbarMessageResFor
 import com.example.uade.rememberapp.ui.places.list.PlacesListScreen
 import com.example.uade.rememberapp.ui.reminders.create.CreateReminderOption
 import com.example.uade.rememberapp.ui.reminders.create.CreateReminderSheet
@@ -100,6 +106,29 @@ fun MainTabs(
     // Uno solo para toda la app: lo usan la Home y el Historial, y el Scaffold lo dibuja encima
     // de la barra inferior.
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val permissionNoticeController = LocalPermissionNoticeController.current
+    val permissionSnackbarNotice = permissionNoticeController?.snackbarNotice
+    LaunchedEffect(permissionSnackbarNotice?.id) {
+        val notice = permissionSnackbarNotice ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = resources.getString(snackbarMessageResFor(notice.capabilities)),
+            actionLabel = resources.getString(R.string.permission_limitation_snackbar_action),
+            withDismissAction = true,
+            duration = SnackbarDuration.Long,
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            if (notice.capabilities.size == 1) {
+                permissionNoticeController.dismissSnackbar(notice.id)
+                openSettingsForCapability(context, notice.capabilities.first())
+            } else {
+                permissionNoticeController.showDialogFromSnackbar(notice)
+            }
+        } else {
+            permissionNoticeController.dismissSnackbar(notice.id)
+        }
+    }
     val undoLabel = stringResource(R.string.reminders_undo)
     UndoSnackbarEffect(
         targetId = remindersState.trashedReminderId,

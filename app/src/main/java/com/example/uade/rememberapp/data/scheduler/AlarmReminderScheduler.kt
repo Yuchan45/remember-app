@@ -55,18 +55,24 @@ class AlarmReminderScheduler(
         )
 
         try {
-            // setAlarmClock es el mecanismo más confiable de Android:
-            // 1. Despierta al dispositivo incluso en Doze mode profundo.
-            // 2. Es 100% exacto al milisegundo (no sufre throttling ni retrasos por ahorro de energía).
-            // 3. No requiere el permiso runtime SCHEDULE_EXACT_ALARM.
-            // 4. Muestra el ícono de reloj en la barra de estado dando certeza al usuario.
-            alarmManager.setAlarmClock(
-                AlarmManager.AlarmClockInfo(triggerMillis, showPendingIntent),
-                pendingIntent,
-            )
-            Log.d(TAG, "Alarma programada con setAlarmClock para id=$reminderId a las $at (triggerMillis=$triggerMillis)")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                // RNF04: si el usuario no otorgó alarmas exactas, usamos alarma inexacta sin lanzar excepción.
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerMillis,
+                    pendingIntent,
+                )
+                Log.d(TAG, "Alarma inexacta programada para id=$reminderId a las $at (sin permiso de alarmas exactas)")
+            } else {
+                // setAlarmClock despierta al dispositivo en Doze mode y es exacto al minuto/segundo.
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(triggerMillis, showPendingIntent),
+                    pendingIntent,
+                )
+                Log.d(TAG, "Alarma programada con setAlarmClock para id=$reminderId a las $at (triggerMillis=$triggerMillis)")
+            }
         } catch (e: Exception) {
-            Log.w(TAG, "Fallo setAlarmClock para id=$reminderId, probando setExactAndAllowWhileIdle", e)
+            Log.w(TAG, "Fallo setAlarmClock para id=$reminderId, probando fallback", e)
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     if (alarmManager.canScheduleExactAlarms()) {

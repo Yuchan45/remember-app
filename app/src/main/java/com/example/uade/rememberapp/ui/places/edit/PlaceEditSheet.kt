@@ -2,18 +2,20 @@ package com.example.uade.rememberapp.ui.places.edit
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.example.uade.rememberapp.RememberApp
-import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
-import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.uade.rememberapp.platform.permissions.PermissionsHelper
+import com.example.uade.rememberapp.platform.permissions.findActivity
+import com.example.uade.rememberapp.ui.components.ContextualPermission
+import com.example.uade.rememberapp.ui.components.ContextualPermissionDialog
+import com.example.uade.rememberapp.ui.permissions.rememberTriggerPermissionsCoordinator
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -88,19 +90,20 @@ fun PlaceEditSheet(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val permissionsCoordinator = rememberTriggerPermissionsCoordinator()
 
-    var showBackgroundPermissionDialog by remember { mutableStateOf(false) }
+    var showLocationDeniedBanner by remember { mutableStateOf(false) }
+    var showLocationExplanationDialog by remember { mutableStateOf(false) }
+    var pendingSearchAfterPrompt by remember { mutableStateOf(false) }
+    var waitingLocationSettingsReturn by remember { mutableStateOf(false) }
 
-    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { isGranted ->
-        if (isGranted) {
-            val app = context.applicationContext as? RememberApp
-            app?.let {
-                CoroutineScope(Dispatchers.IO).launch {
-                    it.container.rescheduleRemindersUseCase()
-                }
-            }
+    fun finishLocationPrompt(granted: Boolean) {
+        viewModel.onLocationPermissionResult(granted)
+        showLocationDeniedBanner = !granted
+        if (pendingSearchAfterPrompt) {
+            pendingSearchAfterPrompt = false
+            viewModel.onSearchAddress()
         }
     }
 
@@ -109,23 +112,36 @@ fun PlaceEditSheet(
     ) { permissions ->
         val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
         val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        viewModel.onLocationPermissionResult(fineGranted || coarseGranted)
-        if (fineGranted && !LocationPermissionHelper.hasBackgroundLocation(context)) {
-            showBackgroundPermissionDialog = true
-        }
+        finishLocationPrompt(fineGranted || coarseGranted)
     }
 
     LaunchedEffect(place) {
         viewModel.init(place)
-        val hasFine = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        val hasCoarse = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        viewModel.onLocationPermissionResult(hasFine || hasCoarse)
+        val hasFine = PermissionsHelper.hasFineLocationPermission(context)
+        val hasCoarse = PermissionsHelper.hasCoarseLocationPermission(context)
+        val granted = hasFine || hasCoarse
+        viewModel.onLocationPermissionResult(granted)
+        if (!granted && !PermissionsHelper.hasPromptedLocation(context)) {
+            showLocationExplanationDialog = true
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val granted = PermissionsHelper.hasFineLocationPermission(context) ||
+                    PermissionsHelper.hasCoarseLocationPermission(context)
+                if (waitingLocationSettingsReturn) {
+                    waitingLocationSettingsReturn = false
+                    finishLocationPrompt(granted)
+                } else if (granted) {
+                    showLocationDeniedBanner = false
+                    viewModel.onLocationPermissionResult(true)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(uiState.isSaved) {
@@ -142,11 +158,22 @@ fun PlaceEditSheet(
     ) {
         PlaceEditContent(
             uiState = uiState,
+            showLocationDeniedBanner = showLocationDeniedBanner,
+            onOpenAppSettings = { PermissionsHelper.openAppSettings(context) },
             onNameChanged = viewModel::onNameChanged,
             onKindChanged = viewModel::onKindChanged,
             onRadiusChanged = viewModel::onRadiusChanged,
             onAddressQueryChanged = viewModel::onAddressQueryChanged,
-            onSearchAddress = viewModel::onSearchAddress,
+            onSearchAddress = {
+                val hasLocation = PermissionsHelper.hasFineLocationPermission(context) ||
+                    PermissionsHelper.hasCoarseLocationPermission(context)
+                if (!hasLocation && !PermissionsHelper.hasPromptedLocation(context)) {
+                    pendingSearchAfterPrompt = true
+                    showLocationExplanationDialog = true
+                } else {
+                    viewModel.onSearchAddress()
+                }
+            },
             onSuggestionSelected = viewModel::onAddressSuggestionSelected,
             onUseCurrentLocation = {
                 val hasFine = ContextCompat.checkSelfPermission(
@@ -158,8 +185,44 @@ fun PlaceEditSheet(
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                 ) == PackageManager.PERMISSION_GRANTED
                 if (hasFine || hasCoarse) {
+                    showLocationDeniedBanner = false
                     viewModel.onUseCurrentLocation()
                 } else {
+                    showLocationExplanationDialog = true
+                }
+            },
+            onSave = {
+                if (uiState.canSave) {
+                    permissionsCoordinator.runWithPermissions(
+                        needsTimeAlarm = false,
+                        needsPlaceAlert = true,
+                        isPlaceOnly = true,
+                    ) {
+                        viewModel.onSave()
+                    }
+                } else {
+                    viewModel.onSave()
+                }
+            },
+            onDismiss = onDismiss,
+            modifier = Modifier.navigationBarsPadding(),
+        )
+    }
+
+    if (showLocationExplanationDialog) {
+        ContextualPermissionDialog(
+            permission = ContextualPermission.ForegroundLocation,
+            onAllow = {
+                showLocationExplanationDialog = false
+                PermissionsHelper.setLocationPrompted(context, true)
+                val activity = context.findActivity()
+                val isPermanentlyDenied = activity != null &&
+                    PermissionsHelper.isPermanentlyDenied(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+                if (isPermanentlyDenied) {
+                    waitingLocationSettingsReturn = true
+                    PermissionsHelper.openAppSettings(context)
+                } else {
+                    PermissionsHelper.markPermissionRequested(context, Manifest.permission.ACCESS_FINE_LOCATION)
                     permissionLauncher.launch(
                         arrayOf(
                             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -168,28 +231,11 @@ fun PlaceEditSheet(
                     )
                 }
             },
-            onSave = {
-                viewModel.onSave()
-                if (!LocationPermissionHelper.hasBackgroundLocation(context)) {
-                    showBackgroundPermissionDialog = true
-                }
+            onReject = {
+                showLocationExplanationDialog = false
+                PermissionsHelper.setLocationPrompted(context, true)
+                finishLocationPrompt(false)
             },
-            onDismiss = onDismiss,
-            modifier = Modifier.navigationBarsPadding(),
-        )
-    }
-
-    if (showBackgroundPermissionDialog) {
-        LocationPermissionDialog(
-            onConfirm = {
-                showBackgroundPermissionDialog = false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } else {
-                    LocationPermissionHelper.openAppSettings(context)
-                }
-            },
-            onDismiss = { showBackgroundPermissionDialog = false },
         )
     }
 }
@@ -208,6 +254,8 @@ private fun PlaceEditContent(
     onSave: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    showLocationDeniedBanner: Boolean = false,
+    onOpenAppSettings: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
@@ -320,6 +368,32 @@ private fun PlaceEditContent(
                         contentDescription = stringResource(R.string.places_edit_use_current_location),
                         tint = MaterialTheme.colorScheme.primary,
                     )
+                }
+            }
+
+            if (showLocationDeniedBanner) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.place_edit_location_denied_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(
+                            onClick = onOpenAppSettings,
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text(text = stringResource(R.string.permission_limitation_btn_settings))
+                        }
+                    }
                 }
             }
 

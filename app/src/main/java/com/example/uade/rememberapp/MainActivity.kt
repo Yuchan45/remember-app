@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,9 +30,9 @@ import com.example.uade.rememberapp.platform.notification.NotificationHelper
 import com.example.uade.rememberapp.ui.components.NavigationBarScrim
 import com.example.uade.rememberapp.ui.navigation.AppNavHost
 import com.example.uade.rememberapp.ui.navigation.Routes
-import com.example.uade.rememberapp.ui.permissions.StartupPermissionsHandler
 import com.example.uade.rememberapp.ui.security.AppLockScreen
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
+import kotlinx.coroutines.launch
 
 /**
  * Única Activity de la app. Monta el [AppNavHost], aplica el tema reactivo según los
@@ -128,12 +129,33 @@ class MainActivity : ComponentActivity() {
                         onUnlockSuccess = { isUnlockedThisSession = true },
                     )
                 } else {
+                    // Al volver desde segundo plano (por ejemplo, tras habilitar permisos en
+                    // Ajustes del sistema), reprogramamos alarmas y geocercas pendientes sin
+                    // mostrar diálogos de permisos al inicio (RNF07).
+                    val reschedulerScope = rememberCoroutineScope()
+                    DisposableEffect(lifecycleOwner) {
+                        var wasPaused = false
+                        val observer = LifecycleEventObserver { _, event ->
+                            when (event) {
+                                Lifecycle.Event.ON_PAUSE -> wasPaused = true
+                                Lifecycle.Event.ON_RESUME -> if (wasPaused) {
+                                    wasPaused = false
+                                    reschedulerScope.launch {
+                                        container.rescheduleRemindersUseCase()
+                                    }
+                                }
+                                else -> {}
+                            }
+                        }
+                        lifecycleOwner.lifecycle.addObserver(observer)
+                        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                    }
+
                     Box(modifier = Modifier.fillMaxSize()) {
                         AppNavHost(
                             reminderToOpen = reminderToOpen,
                             onReminderOpened = { reminderToOpen = null },
                         )
-                        StartupPermissionsHandler()
                         // Encima de todas las pantallas: la barra del sistema negra y translúcida.
                         // Solo en tema oscuro: con el tema claro, una franja negra abajo desentona.
                         if (isDarkTheme) {

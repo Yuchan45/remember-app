@@ -1,7 +1,6 @@
 package com.example.uade.rememberapp.ui.reminders.voice
 
 import android.Manifest
-import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -26,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -36,6 +36,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,11 +55,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.AiAnalysisResult
+import com.example.uade.rememberapp.platform.permissions.PermissionsHelper
+import com.example.uade.rememberapp.platform.permissions.findActivity
+import com.example.uade.rememberapp.ui.components.ContextualPermission
+import com.example.uade.rememberapp.ui.components.ContextualPermissionDialog
 import com.example.uade.rememberapp.ui.reminders.voice.components.VoiceWaveform
 import com.example.uade.rememberapp.ui.theme.CardSurface
 import com.example.uade.rememberapp.ui.theme.Outline
@@ -88,27 +95,49 @@ fun VoiceCaptureSheet(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val snackbarHostState = remember { SnackbarHostState() }
     // LocalResources y no context.resources: se actualiza si cambia la configuración (ej. idioma).
     val resources = LocalResources.current
 
+    fun computeCanRetryMic(): Boolean {
+        val activity = context.findActivity() ?: return true
+        return !PermissionsHelper.isPermanentlyDenied(activity, Manifest.permission.RECORD_AUDIO)
+    }
+
+    var canRetryMicPermission by remember { mutableStateOf(computeCanRetryMic()) }
+    var showMicExplanationDialog by remember { mutableStateOf(false) }
+
     // Se graba recién al tocar el botón de grabar, no al abrir el modal: así se puede pensar qué
-    // decir (o cerrarlo) sin que ya esté grabando. Si falta el permiso del micrófono, se pide en
-    // ese momento y, si lo da, la grabación arranca sola (no hace falta tocar de nuevo).
+    // decir (o cerrarlo) sin que ya esté grabando. Si falta el permiso del micrófono, se solicita
+    // en contexto mediante una ventana explicativa la primera vez (RNF07).
     var startAfterPermission by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
         viewModel.onPermissionResult(isGranted)
+        canRetryMicPermission = computeCanRetryMic()
         if (isGranted && startAfterPermission) viewModel.startRecording()
         startAfterPermission = false
+    }
+    val launchMicPermission = {
+        PermissionsHelper.setMicrophonePrompted(context, true)
+        val activity = context.findActivity()
+        val permanentlyDenied = activity != null &&
+            PermissionsHelper.isPermanentlyDenied(activity, Manifest.permission.RECORD_AUDIO)
+        if (permanentlyDenied) {
+            PermissionsHelper.openAppSettings(context)
+        } else {
+            PermissionsHelper.markPermissionRequested(context, Manifest.permission.RECORD_AUDIO)
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
     val onRecordClick = {
         if (uiState.hasAudioPermission) {
             viewModel.startRecording()
         } else {
             startAfterPermission = true
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            showMicExplanationDialog = true
         }
     }
 
@@ -130,13 +159,27 @@ fun VoiceCaptureSheet(
         }
     }
 
-    // Al abrir solo se fija si ya hay permiso; pedirlo queda para cuando se toque grabar.
+    // Al abrir verifica el permiso y, solo la primera vez que se usa voz sin permiso, muestra la explicación.
     LaunchedEffect(Unit) {
-        val hasPerm = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO,
-        ) == PackageManager.PERMISSION_GRANTED
+        val hasPerm = PermissionsHelper.hasRecordAudioPermission(context)
         viewModel.onPermissionResult(hasPerm)
+        canRetryMicPermission = computeCanRetryMic()
+        if (!hasPerm && !PermissionsHelper.hasPromptedMicrophone(context)) {
+            showMicExplanationDialog = true
+        }
+    }
+
+    // Al volver desde Ajustes del sistema, actualiza el estado por si habilitó el micrófono.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val hasPerm = PermissionsHelper.hasRecordAudioPermission(context)
+                viewModel.onPermissionResult(hasPerm)
+                canRetryMicPermission = computeCanRetryMic()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(uiState.isSaved) {
@@ -192,7 +235,9 @@ fun VoiceCaptureSheet(
         Box(modifier = Modifier.fillMaxWidth()) {
             VoiceCaptureContent(
                 uiState = uiState,
-                onRequestPermission = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                onRequestPermission = { showMicExplanationDialog = true },
+                onOpenSettings = { PermissionsHelper.openAppSettings(context) },
+                canRequestRuntimePermission = canRetryMicPermission,
                 onStartRecording = onRecordClick,
                 onDiscard = viewModel::onDiscard,
                 onStopAndSave = viewModel::onStopAndSave,
@@ -209,18 +254,35 @@ fun VoiceCaptureSheet(
             )
         }
     }
+
+    if (showMicExplanationDialog) {
+        ContextualPermissionDialog(
+            permission = ContextualPermission.Microphone,
+            onAllow = {
+                showMicExplanationDialog = false
+                launchMicPermission()
+            },
+            onReject = {
+                showMicExplanationDialog = false
+                startAfterPermission = false
+                PermissionsHelper.setMicrophonePrompted(context, true)
+            },
+        )
+    }
 }
 
 @Composable
 fun VoiceCaptureContent(
     uiState: VoiceCaptureUiState,
     onRequestPermission: () -> Unit,
-    onStartRecording: () -> Unit = {},
     onDiscard: () -> Unit,
     onStopAndSave: () -> Unit,
     onPauseToggle: () -> Unit,
     onSwitchAiToggled: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    onStartRecording: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    canRequestRuntimePermission: Boolean = true,
 ) {
     Column(
         modifier = modifier
@@ -230,22 +292,57 @@ fun VoiceCaptureContent(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (!uiState.hasAudioPermission) {
-            // Estado si falta permiso de micrófono
+            // Degradación si falta permiso de micrófono: explica limitación y cómo habilitarlo en Ajustes (RNF07)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 32.dp),
+                    .padding(vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_mic),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
                 Text(
-                    text = stringResource(R.string.voice_capture_permission_required),
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = stringResource(R.string.voice_capture_permission_denied_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                 )
-                Button(onClick = onRequestPermission) {
-                    Text(text = stringResource(R.string.voice_capture_grant_permission))
+                Text(
+                    text = stringResource(R.string.voice_capture_permission_denied_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Row(
+                    modifier = Modifier.padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (canRequestRuntimePermission) {
+                        OutlinedButton(onClick = onOpenSettings) {
+                            Text(text = stringResource(R.string.voice_capture_open_settings))
+                        }
+                        Button(onClick = onRequestPermission) {
+                            Text(text = stringResource(R.string.voice_capture_retry_permission))
+                        }
+                    } else {
+                        Button(onClick = onOpenSettings) {
+                            Text(text = stringResource(R.string.voice_capture_open_settings))
+                        }
+                    }
                 }
             }
             return
