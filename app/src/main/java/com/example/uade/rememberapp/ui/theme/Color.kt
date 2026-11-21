@@ -25,14 +25,16 @@ val OnSurfaceVariant = Color(0xFF9AA8B2)
 
 // Colores propios que no tienen lugar en el ColorScheme de Material.
 
-/** El "!" de un aviso cercano o vencido. */
+/** El "!" de un aviso cercano o vencido (oscuro / claro con contraste WCAG AA). */
 val DueSoonAmber = Color(0xFFF2C94C)
+val DueSoonAmberLight = Color(0xFF9A5B00)
 
 /**
- * Chip de la hora del aviso en las cards: lila, para distinguirse del celeste del lugar y leerse
- * bien sobre el fondo de la card (va sobre un fondo del mismo tono, transparente).
+ * Chip de la hora del aviso en las cards: lila en tema oscuro, violeta profundo en tema claro,
+ * para distinguirse del color del lugar y leerse con buen contraste sobre la card.
  */
 val TriggerTimeColor = Color(0xFFCDBBFF)
+val TriggerTimeColorLight = Color(0xFF5B3FA6)
 
 /** Barra de navegación inferior flotante y su destino seleccionado. */
 val NavBarContainer = Color(0xFFB9E3FF)
@@ -63,6 +65,7 @@ val SwipeActionContent = Color(0xFFFFFFFF)
 
 /** El ✓ de guardar cuando hay cambios sin guardar. */
 val UnsavedChangesGreen = Color(0xFF6FCF97)
+val UnsavedChangesGreenLight = Color(0xFF1B7F46)
 
 // Colores de marca de los canales de "Enviar mensaje" (acción de notificación).
 val WhatsAppGreen = Color(0xFF25D366)

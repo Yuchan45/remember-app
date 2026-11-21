@@ -140,8 +140,10 @@ import com.example.uade.rememberapp.ui.reminders.model.TimeShortcut
 import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
 import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.tags.TagPickerPanel
+import com.example.uade.rememberapp.ui.theme.LocalIsDarkTheme
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import com.example.uade.rememberapp.ui.theme.UnsavedChangesGreen
+import com.example.uade.rememberapp.ui.theme.UnsavedChangesGreenLight
 import com.example.uade.rememberapp.ui.theme.appBackground
 import com.example.uade.rememberapp.ui.theme.rememberAppLocale
 import java.time.Instant
@@ -641,9 +643,10 @@ private fun DetailTopBar(
     onDone: () -> Unit,
 ) {
     val defaultTint = MaterialTheme.colorScheme.onSurface
+    val unsavedTint = if (LocalIsDarkTheme.current) UnsavedChangesGreen else UnsavedChangesGreenLight
     // Animado: el cambio de color se nota sin ser brusco.
     val doneTint by animateColorAsState(
-        targetValue = if (hasUnsavedChanges) UnsavedChangesGreen else defaultTint,
+        targetValue = if (hasUnsavedChanges) unsavedTint else defaultTint,
         label = "doneTint",
     )
     Row(
@@ -1163,8 +1166,8 @@ private fun ChecklistActionPill(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF132029),
-        border = BorderStroke(1.dp, Color(0xFF2A3D4C)),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick),
