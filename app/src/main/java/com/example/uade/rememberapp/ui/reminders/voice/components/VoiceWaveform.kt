@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -18,7 +19,6 @@ import androidx.compose.ui.unit.dp
 
 // Colores del visualizador inspirados en la imagen 2
 private val WaveformActiveColor = Color(0xFFEF5350)
-private val WaveformInactiveColor = Color(0xFF3B4B56)
 private const val TOTAL_BARS = 28
 
 /**
@@ -53,7 +53,8 @@ fun VoiceWaveform(
 
             // Las barras más recientes (a la derecha o en el centro) son más activas
             val isRecent = index >= TOTAL_BARS / 2 || amp > 0.15f
-            val barColor = if (isRecent && isRecording) WaveformActiveColor else WaveformInactiveColor
+            val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+            val barColor = if (isRecent && isRecording) WaveformActiveColor else inactiveColor
 
             Box(
                 modifier = Modifier

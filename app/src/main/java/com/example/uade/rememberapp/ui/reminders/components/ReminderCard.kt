@@ -257,6 +257,7 @@ private fun ReminderCardFooter(
             reminder = reminder,
             placeName = placeName,
             now = now,
+            onDarkBackground = reminder.photoPath != null,
             onTimeClick = onSectionClick?.let { { it(ReminderDetailSection.Time) } },
             onPlaceClick = onSectionClick?.let { { it(ReminderDetailSection.Place) } },
         )
