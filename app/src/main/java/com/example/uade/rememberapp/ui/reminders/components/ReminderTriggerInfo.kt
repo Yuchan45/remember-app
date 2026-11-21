@@ -6,6 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,6 +56,7 @@ import java.time.Instant
  * [placeName] es el nombre del primer lugar: PlaceAlert solo guarda el id. Con [onTimeClick] y
  * [onPlaceClick] cada chip se puede tocar (ej. para abrir el detalle con ese modal).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReminderTriggerInfo(
     reminder: Reminder,
@@ -68,9 +71,9 @@ fun ReminderTriggerInfo(
     val useDarkColors = LocalIsDarkTheme.current || onDarkBackground
     val dueSoonColor = if (useDarkColors) DueSoonAmber else DueSoonAmberLight
     val timeColor = if (useDarkColors) TriggerTimeColor else TriggerTimeColorLight
-    Row(
+    FlowRow(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (next != null) {

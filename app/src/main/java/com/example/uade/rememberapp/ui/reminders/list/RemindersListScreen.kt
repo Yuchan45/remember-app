@@ -1,29 +1,55 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,6 +58,7 @@ import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
 import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
+import com.example.uade.rememberapp.ui.reminders.components.ReminderCard
 import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
 import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutside
 import com.example.uade.rememberapp.ui.reminders.components.rememberSwipeRevealGroupState
@@ -74,6 +101,10 @@ fun RemindersListScreen(
     // TODO: que lo provea el ViewModel y se actualice con el paso del tiempo.
     val now = remember { Instant.now() }
 
+    BackHandler(enabled = uiState.isSearchActive) {
+        viewModel.onSearchClose()
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         RemindersListContent(
             uiState = uiState,
@@ -83,6 +114,8 @@ fun RemindersListScreen(
                 onToggleLayout = viewModel::onToggleLayout,
                 onCollapseAll = viewModel::onCollapseAll,
                 onSearch = viewModel::onSearchClick,
+                onSearchQueryChange = viewModel::onSearchQueryChange,
+                onSearchClose = viewModel::onSearchClose,
                 onTypeFilterClick = viewModel::onTypeFilterClick,
                 onGroupingClick = viewModel::onGroupingClick,
                 onSortClick = viewModel::onSortClick,
@@ -140,6 +173,8 @@ data class RemindersListActions(
     val onToggleLayout: () -> Unit = {},
     val onCollapseAll: () -> Unit = {},
     val onSearch: () -> Unit = {},
+    val onSearchQueryChange: (String) -> Unit = {},
+    val onSearchClose: () -> Unit = {},
     val onTypeFilterClick: () -> Unit = {},
     val onGroupingClick: () -> Unit = {},
     val onSortClick: () -> Unit = {},
@@ -220,8 +255,26 @@ private fun RemindersListContent(
                     onToggleLayout = actions.onToggleLayout,
                     onCollapseAll = actions.onCollapseAll,
                     onSearch = actions.onSearch,
+                    isGridLayout = uiState.isGridLayout,
+                    areAllCollapsed = uiState.areAllSectionsCollapsed,
+                    isSearchActive = uiState.isSearchActive,
                     modifier = Modifier.padding(horizontal = ScreenPadding),
                 )
+            }
+
+            item(key = "search-bar") {
+                AnimatedVisibility(
+                    visible = uiState.isSearchActive,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    HomeSearchBar(
+                        query = uiState.searchQuery,
+                        onQueryChange = actions.onSearchQueryChange,
+                        onClose = actions.onSearchClose,
+                        modifier = Modifier.padding(horizontal = ScreenPadding),
+                    )
+                }
             }
 
             item(key = "filters") {
@@ -238,8 +291,13 @@ private fun RemindersListContent(
 
             if (uiState.isEmpty) {
                 item(key = "empty") {
+                    val emptyText = if (uiState.isSearchActive && uiState.searchQuery.isNotBlank()) {
+                        stringResource(R.string.reminders_search_empty, uiState.searchQuery.trim())
+                    } else {
+                        stringResource(R.string.reminders_empty)
+                    }
                     Text(
-                        text = stringResource(R.string.reminders_empty),
+                        text = emptyText,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -260,39 +318,148 @@ private fun RemindersListContent(
                     )
                 }
                 if (section.isExpanded) {
-                    items(
-                        items = section.reminders,
-                        // Con la sección en la key, un recordatorio puede estar en dos secciones (ej. agrupado
-                        // por etiqueta) sin repetir keys, que en un LazyColumn es un crash.
-                        key = { "${section.key}-${it.id}" },
-                    ) { reminder ->
-                        SwipeableReminderCard(
-                            reminder = reminder,
-                            placeName = reminder.places.firstOrNull()
-                                ?.let { uiState.placeNames[it.placeId] },
-                            now = now,
-                            onClick = { actions.onReminderClick(reminder.id, reminder.type) },
-                            onSectionClick = { section -> actions.onReminderSectionClick(reminder.id, section) },
-                            onDone = { actions.onReminderDone(reminder.id) },
-                            onArchive = { actions.onReminderArchive(reminder.id) },
-                            onTrash = { actions.onReminderTrash(reminder.id) },
-                            onToggleChecklistItem = { itemId, index ->
-                                actions.onToggleChecklistItem(reminder.id, itemId, index)
-                            },
-                            onCheckAllItems = { actions.onCheckAllItems(reminder.id) },
-                            isExpanded = uiState.expandedReminderId == reminder.id,
-                            onToggleExpanded = { actions.onToggleExpanded(reminder.id) },
-                            // animateItem: al expandir o achicar una card, las de abajo se corren animadas.
-                            modifier = Modifier
-                                .padding(horizontal = ScreenPadding)
-                                .animateItem(),
-                            revealGroup = revealGroup,
-                        )
+                    if (uiState.isGridLayout) {
+                        val rows = section.reminders.chunked(2)
+                        items(
+                            items = rows,
+                            key = { pair -> "${section.key}-grid-${pair.first().id}" },
+                        ) { pair ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = ScreenPadding)
+                                    .height(IntrinsicSize.Max)
+                                    .animateItem(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                pair.forEach { reminder ->
+                                    ReminderCard(
+                                        reminder = reminder,
+                                        placeName = reminder.places.firstOrNull()
+                                            ?.let { uiState.placeNames[it.placeId] },
+                                        now = now,
+                                        onClick = { actions.onReminderClick(reminder.id, reminder.type) },
+                                        onToggleChecklistItem = { itemId, index ->
+                                            actions.onToggleChecklistItem(reminder.id, itemId, index)
+                                        },
+                                        isExpanded = uiState.expandedReminderId == reminder.id,
+                                        onToggleExpanded = { actions.onToggleExpanded(reminder.id) },
+                                        onSectionClick = { sec -> actions.onReminderSectionClick(reminder.id, sec) },
+                                        isGridCard = true,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .heightIn(min = 132.dp),
+                                    )
+                                }
+                                if (pair.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    } else {
+                        items(
+                            items = section.reminders,
+                            // Con la sección en la key, un recordatorio puede estar en dos secciones (ej. agrupado
+                            // por etiqueta) sin repetir keys, que en un LazyColumn es un crash.
+                            key = { "${section.key}-${it.id}" },
+                        ) { reminder ->
+                            SwipeableReminderCard(
+                                reminder = reminder,
+                                placeName = reminder.places.firstOrNull()
+                                    ?.let { uiState.placeNames[it.placeId] },
+                                now = now,
+                                onClick = { actions.onReminderClick(reminder.id, reminder.type) },
+                                onSectionClick = { sec -> actions.onReminderSectionClick(reminder.id, sec) },
+                                onDone = { actions.onReminderDone(reminder.id) },
+                                onArchive = { actions.onReminderArchive(reminder.id) },
+                                onTrash = { actions.onReminderTrash(reminder.id) },
+                                onToggleChecklistItem = { itemId, index ->
+                                    actions.onToggleChecklistItem(reminder.id, itemId, index)
+                                },
+                                onCheckAllItems = { actions.onCheckAllItems(reminder.id) },
+                                isExpanded = uiState.expandedReminderId == reminder.id,
+                                onToggleExpanded = { actions.onToggleExpanded(reminder.id) },
+                                // animateItem: al expandir o achicar una card, las de abajo se corren animadas.
+                                modifier = Modifier
+                                    .padding(horizontal = ScreenPadding)
+                                    .animateItem(),
+                                revealGroup = revealGroup,
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun HomeSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester),
+        singleLine = true,
+        shape = RoundedCornerShape(16.dp),
+        placeholder = {
+            Text(
+                text = stringResource(R.string.reminders_search_placeholder),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        trailingIcon = {
+            IconButton(
+                onClick = {
+                    if (query.isNotEmpty()) {
+                        onQueryChange("")
+                    } else {
+                        focusManager.clearFocus()
+                        onClose()
+                    }
+                },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(
+                        if (query.isNotEmpty()) R.string.reminders_search_clear else R.string.reminders_search_close,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+        ),
+    )
 }
 
 @Preview(showBackground = true, heightDp = 860)

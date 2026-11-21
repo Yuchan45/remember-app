@@ -5,8 +5,15 @@
     <!-- %1$s = nombre del usuario. -->
     <string name="reminders_list_title">Recordatorios</string>
     <string name="reminders_home_action_toggle_layout">Cambiar vista</string>
+    <string name="reminders_home_action_grid_layout">Vista en cuadrados</string>
+    <string name="reminders_home_action_list_layout">Vista en lista</string>
     <string name="reminders_home_action_collapse_all">Colapsar todo</string>
+    <string name="reminders_home_action_expand_all">Expandir todo</string>
     <string name="reminders_home_action_search">Buscar</string>
+    <string name="reminders_search_placeholder">Buscar recordatorios…</string>
+    <string name="reminders_search_clear">Limpiar búsqueda</string>
+    <string name="reminders_search_close">Cerrar búsqueda</string>
+    <string name="reminders_search_empty">No se encontraron recordatorios para «%1$s»</string>
 
     <!-- Home: filtros. %1$s = valor elegido, ej. "Tipo: Todo". -->
     <string name="reminders_filter_type_label">Tipo: %1$s</string>
