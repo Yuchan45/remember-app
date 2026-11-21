@@ -1,7 +1,11 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
-import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.Alarm
+import com.example.uade.rememberapp.domain.model.ChecklistItem
+import com.example.uade.rememberapp.domain.model.PlaceAlert
+import com.example.uade.rememberapp.domain.model.PlaceAlertEvent
+import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.Tag
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -85,5 +89,39 @@ class ReminderSectionsTest {
         )
 
         assertEquals(mapOf(ReminderSectionKey.NoDate to listOf(2L, 1L)), sections.ids())
+    }
+
+    @Test
+    fun `filterRemindersByQuery busca por titulo, checklist, etiqueta y lugar ignorando tildes`() {
+        val reminders = listOf(
+            Reminder(
+                id = 1,
+                title = "Tomar medicación",
+                description = "Después de cenar",
+                tags = listOf(Tag(id = 1, name = "Salud", colorArgb = 0xFF00FF00)),
+                createdAt = now,
+            ),
+            Reminder(
+                id = 2,
+                title = "Compras",
+                items = listOf(ChecklistItem(id = 1, text = "Leche descremada")),
+                places = listOf(PlaceAlert(placeId = 10L, event = PlaceAlertEvent.Arrive)),
+                createdAt = now,
+            ),
+            Reminder(
+                id = 3,
+                title = "Llamar al técnico",
+                transcript = "Que venga el viernes",
+                createdAt = now,
+            ),
+        )
+        val placeNames = mapOf(10L to "Supermercado")
+
+        assertEquals(listOf(1L), filterRemindersByQuery(reminders, "medicacion", placeNames).map { it.id })
+        assertEquals(listOf(1L), filterRemindersByQuery(reminders, "SALUD", placeNames).map { it.id })
+        assertEquals(listOf(2L), filterRemindersByQuery(reminders, "leche", placeNames).map { it.id })
+        assertEquals(listOf(2L), filterRemindersByQuery(reminders, "super", placeNames).map { it.id })
+        assertEquals(listOf(3L), filterRemindersByQuery(reminders, "viernes", placeNames).map { it.id })
+        assertEquals(listOf(1L, 2L, 3L), filterRemindersByQuery(reminders, "   ", placeNames).map { it.id })
     }
 }

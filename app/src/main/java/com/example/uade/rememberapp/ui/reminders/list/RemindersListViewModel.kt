@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.R
 import com.example.uade.rememberapp.domain.model.ChecklistItem
+import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.usecase.ArchiveReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.GetReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.ObservePlacesUseCase
@@ -47,24 +48,55 @@ class RemindersListViewModel(
     private val _uiState = MutableStateFlow(RemindersListUiState(isLoading = true))
     val uiState: StateFlow<RemindersListUiState> = _uiState.asStateFlow()
 
+    /** Última lista de recordatorios activos emitida por Room, para re-filtrar al buscar. */
+    private var allActiveReminders: List<Reminder> = emptyList()
+
     init {
         viewModelScope.launch {
             observePlaces().collect { places ->
                 val names = places.associate { it.id to it.name }
-                _uiState.update { it.copy(placeNames = names) }
+                _uiState.update { state ->
+                    state.copy(
+                        placeNames = names,
+                        sections = buildVisibleSections(
+                            reminders = allActiveReminders,
+                            query = if (state.isSearchActive) state.searchQuery else "",
+                            placeNames = names,
+                            existingSections = state.sections,
+                            forceExpandAll = state.isSearchActive && state.searchQuery.isNotBlank(),
+                        ),
+                    )
+                }
             }
         }
         viewModelScope.launch {
             observeReminders().collect { reminders ->
+                allActiveReminders = reminders
                 _uiState.update { state ->
-                    // Las secciones se rearman, pero cada una conserva si estaba colapsada.
-                    val expanded = state.sections.associate { it.key to it.isExpanded }
-                    val sections = groupByDate(reminders, now()).map { section ->
-                        section.copy(isExpanded = expanded[section.key] ?: true)
-                    }
+                    val sections = buildVisibleSections(
+                        reminders = reminders,
+                        query = if (state.isSearchActive) state.searchQuery else "",
+                        placeNames = state.placeNames,
+                        existingSections = state.sections,
+                        forceExpandAll = state.isSearchActive && state.searchQuery.isNotBlank(),
+                    )
                     state.copy(isLoading = false, sections = sections)
                 }
             }
+        }
+    }
+
+    private fun buildVisibleSections(
+        reminders: List<Reminder>,
+        query: String,
+        placeNames: Map<Long, String>,
+        existingSections: List<ReminderSection>,
+        forceExpandAll: Boolean,
+    ): List<ReminderSection> {
+        val filtered = filterRemindersByQuery(reminders, query, placeNames)
+        val expanded = existingSections.associate { it.key to it.isExpanded }
+        return groupByDate(filtered, now()).map { section ->
+            section.copy(isExpanded = if (forceExpandAll) true else expanded[section.key] ?: true)
         }
     }
 
@@ -73,14 +105,72 @@ class RemindersListViewModel(
     fun onGroupingClick() = Unit
     fun onSortClick() = Unit
 
-    // TODO: alternar entre lista y grilla (isGridLayout).
-    fun onToggleLayout() = Unit
+    /** Alterna entre vista en lista y vista en cuadrados (grilla de 2 columnas). */
+    fun onToggleLayout() {
+        _uiState.update { it.copy(isGridLayout = !it.isGridLayout) }
+    }
 
-    // TODO: colapsar todas las secciones.
-    fun onCollapseAll() = Unit
+    /** Si hay alguna sección desplegada, colapsa todas; si todas están colapsadas, las expande. */
+    fun onCollapseAll() {
+        _uiState.update { state ->
+            if (state.sections.isEmpty()) return@update state
+            val targetExpanded = state.areAllSectionsCollapsed
+            state.copy(
+                sections = state.sections.map { it.copy(isExpanded = targetExpanded) },
+            )
+        }
+    }
 
-    // TODO: abrir la búsqueda.
-    fun onSearchClick() = Unit
+    /** Abre o cierra la barra de búsqueda de recordatorios en la Home. */
+    fun onSearchClick() {
+        _uiState.update { state ->
+            val opening = !state.isSearchActive
+            val nextQuery = if (opening) state.searchQuery else ""
+            state.copy(
+                isSearchActive = opening,
+                searchQuery = nextQuery,
+                sections = buildVisibleSections(
+                    reminders = allActiveReminders,
+                    query = nextQuery,
+                    placeNames = state.placeNames,
+                    existingSections = state.sections,
+                    forceExpandAll = false,
+                ),
+            )
+        }
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { state ->
+            state.copy(
+                searchQuery = query,
+                sections = buildVisibleSections(
+                    reminders = allActiveReminders,
+                    query = query,
+                    placeNames = state.placeNames,
+                    existingSections = state.sections,
+                    forceExpandAll = query.isNotBlank(),
+                ),
+            )
+        }
+    }
+
+    fun onSearchClose() {
+        _uiState.update { state ->
+            if (!state.isSearchActive && state.searchQuery.isEmpty()) return@update state
+            state.copy(
+                isSearchActive = false,
+                searchQuery = "",
+                sections = buildVisibleSections(
+                    reminders = allActiveReminders,
+                    query = "",
+                    placeNames = state.placeNames,
+                    existingSections = state.sections,
+                    forceExpandAll = false,
+                ),
+            )
+        }
+    }
 
     /** Colapsa o expande la sección [key]. */
     fun onSectionToggle(key: ReminderSectionKey) {

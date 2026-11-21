@@ -56,6 +56,8 @@ data class RemindersListUiState(
     val grouping: ReminderGrouping = ReminderGrouping.Date,
     val sort: ReminderSort = ReminderSort.Upcoming,
     val isGridLayout: Boolean = false,
+    val isSearchActive: Boolean = false,
+    val searchQuery: String = "",
     val sections: List<ReminderSection> = emptyList(),
     /** Nombre de cada lugar por id, para mostrar "Al llegar a Casa" (PlaceAlert solo guarda el id). */
     val placeNames: Map<Long, String> = emptyMap(),
@@ -95,4 +97,5 @@ data class RemindersListUiState(
     val expandedReminderId: Long? = null,
 ) {
     val isEmpty: Boolean get() = !isLoading && sections.all { it.reminders.isEmpty() }
+    val areAllSectionsCollapsed: Boolean get() = sections.isNotEmpty() && sections.none { it.isExpanded }
 }
