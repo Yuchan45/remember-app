@@ -30,6 +30,7 @@ import com.example.uade.rememberapp.platform.notification.NotificationHelper
 import com.example.uade.rememberapp.ui.components.NavigationBarScrim
 import com.example.uade.rememberapp.ui.navigation.AppNavHost
 import com.example.uade.rememberapp.ui.navigation.Routes
+import com.example.uade.rememberapp.ui.permissions.StartupEssentialPermissionsHandler
 import com.example.uade.rememberapp.ui.security.AppLockScreen
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import kotlinx.coroutines.launch
@@ -156,6 +157,7 @@ class MainActivity : ComponentActivity() {
                             reminderToOpen = reminderToOpen,
                             onReminderOpened = { reminderToOpen = null },
                         )
+                        StartupEssentialPermissionsHandler()
                         // Encima de todas las pantallas: la barra del sistema negra y translúcida.
                         // Solo en tema oscuro: con el tema claro, una franja negra abajo desentona.
                         if (isDarkTheme) {
