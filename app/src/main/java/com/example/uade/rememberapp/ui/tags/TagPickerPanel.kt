@@ -48,9 +48,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
+import com.example.uade.rememberapp.domain.model.InvalidTagNameException
 import com.example.uade.rememberapp.domain.model.Tag
-import com.example.uade.rememberapp.domain.repository.InvalidTagNameException
-import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.ui.components.DialogDismissButton
 import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
 import com.example.uade.rememberapp.ui.components.HueSlider
@@ -409,7 +408,7 @@ private fun NameField(
                 },
             )
             Text(
-                text = stringResource(R.string.tags_name_counter, name.length, TagRepository.MaxNameLength),
+                text = stringResource(R.string.tags_name_counter, name.length, Tag.MaxNameLength),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),

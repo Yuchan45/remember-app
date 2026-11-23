@@ -1,8 +1,8 @@
 package com.example.uade.rememberapp.ui.tags
 
 import androidx.compose.ui.graphics.toArgb
+import com.example.uade.rememberapp.domain.model.InvalidTagNameException
 import com.example.uade.rememberapp.domain.model.Tag
-import com.example.uade.rememberapp.domain.repository.InvalidTagNameException
 import com.example.uade.rememberapp.ui.components.tagColorForHue
 
 /** Tono con el que arranca el editor para una etiqueta nueva (celeste). */

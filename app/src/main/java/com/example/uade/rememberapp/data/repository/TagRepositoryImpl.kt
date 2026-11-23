@@ -5,8 +5,8 @@ import com.example.uade.rememberapp.data.local.entity.TagEntity
 import com.example.uade.rememberapp.data.local.mapper.toDomain
 import com.example.uade.rememberapp.data.local.mapper.toEntity
 import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.domain.model.validTagName
 import com.example.uade.rememberapp.domain.repository.TagRepository
-import com.example.uade.rememberapp.domain.repository.validTagName
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

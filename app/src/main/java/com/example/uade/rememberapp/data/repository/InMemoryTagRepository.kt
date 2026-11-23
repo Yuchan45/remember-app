@@ -1,8 +1,8 @@
 package com.example.uade.rememberapp.data.repository
 
 import com.example.uade.rememberapp.domain.model.Tag
+import com.example.uade.rememberapp.domain.model.validTagName
 import com.example.uade.rememberapp.domain.repository.TagRepository
-import com.example.uade.rememberapp.domain.repository.validTagName
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

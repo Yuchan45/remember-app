@@ -1,7 +1,7 @@
 package com.example.uade.rememberapp.data.repository
 
+import com.example.uade.rememberapp.domain.model.InvalidTagNameException
 import com.example.uade.rememberapp.domain.model.Tag
-import com.example.uade.rememberapp.domain.repository.InvalidTagNameException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
