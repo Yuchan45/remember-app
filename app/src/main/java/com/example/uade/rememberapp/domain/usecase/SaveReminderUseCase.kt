@@ -31,7 +31,7 @@ class SaveReminderUseCase(
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) {
     suspend operator fun invoke(reminder: Reminder): Long {
-        // Las de antes, para cancelarlas: AlarmManager no permite preguntar cuáles hay.
+
         val previous = if (reminder.id != 0L) reminders.getById(reminder.id) else null
         val toSave = reminder.copy(alarms = reminder.alarms.rolledForward(now(), zone))
         val id = reminders.save(toSave)
