@@ -2,7 +2,6 @@ package com.example.uade.rememberapp.data.remote
 
 import com.example.uade.rememberapp.data.remote.dto.GroqChatRequest
 import com.example.uade.rememberapp.data.remote.dto.GroqMessage
-import com.example.uade.rememberapp.data.remote.dto.GroqParsedReminderDto
 import com.example.uade.rememberapp.data.remote.dto.GroqReminderAnalysisDto
 import com.example.uade.rememberapp.domain.model.AiAnalysisResult
 import com.example.uade.rememberapp.domain.model.AiProcessingError
@@ -11,6 +10,7 @@ import com.example.uade.rememberapp.domain.model.ChecklistItem
 import com.example.uade.rememberapp.domain.model.ProposedReminder
 import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.domain.repository.AiReminderService
+import com.example.uade.rememberapp.domain.repository.GroqApiService
 import com.google.gson.Gson
 import java.io.File
 import java.io.IOException

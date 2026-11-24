@@ -53,7 +53,7 @@ import com.example.uade.rememberapp.domain.usecase.SnoozeReminderUseCase
 import com.example.uade.rememberapp.domain.usecase.TrashReminderUseCase
 import com.example.uade.rememberapp.platform.audio.AudioRecorder
 import com.example.uade.rememberapp.platform.location.AndroidAddressSearchService
-import com.example.uade.rememberapp.data.remote.GroqApiService
+import com.example.uade.rememberapp.domain.repository.GroqApiService
 import com.example.uade.rememberapp.data.remote.GroqReminderServiceImpl
 import com.example.uade.rememberapp.domain.repository.AiReminderService
 import com.example.uade.rememberapp.domain.usecase.MergeProposedRemindersUseCase

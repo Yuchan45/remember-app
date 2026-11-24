@@ -98,7 +98,7 @@ fun RemindersListScreen(
         ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_PHOTOS),
     ) { uris -> viewModel.onPhotosPickedForCapture(uris.map { it.toString() }) }
     // "Ahora" fijo mientras la pantalla está abierta: decide qué es "hoy" y cuándo mostrar el "!".
-    // TODO: que lo provea el ViewModel y se actualice con el paso del tiempo.
+
     val now = remember { Instant.now() }
 
     BackHandler(enabled = uiState.isSearchActive) {

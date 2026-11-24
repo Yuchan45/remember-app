@@ -6,6 +6,7 @@ import com.example.uade.rememberapp.data.remote.dto.GroqChoice
 import com.example.uade.rememberapp.data.remote.dto.GroqMessage
 import com.example.uade.rememberapp.data.remote.dto.GroqTranscriptionResponse
 import com.example.uade.rememberapp.domain.model.AiProcessingError
+import com.example.uade.rememberapp.domain.repository.GroqApiService
 import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
 import okhttp3.MultipartBody
