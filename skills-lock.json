@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "android-intent-security": {
+      "source": "android/skills",
+      "sourceType": "github",
+      "skillPath": "security/android-intent-security/SKILL.md",
+      "computedHash": "03610900557109083941ad1868882f74521294055d8e4354f5487f6653616e55"
+    },
+    "android-permissions-security": {
+      "source": "android/skills",
+      "sourceType": "github",
+      "skillPath": "security/android-permissions-security/SKILL.md",
+      "computedHash": "1494a6fee121de3116cb70803ff7c4c3dd2e8052ffe9a01d2c579af5deb1d07b"
+    },
+    "compose-performance": {
+      "source": "chrisbanes/skills",
+      "sourceType": "github",
+      "skillPath": "skills/compose-performance/SKILL.md",
+      "computedHash": "f33148061af50ff2e9e11b1276bf6eb441d4c832412b7dbc07116fba0a4de03a"
+    },
+    "compose-state-and-effects": {
+      "source": "chrisbanes/skills",
+      "sourceType": "github",
+      "skillPath": "skills/compose-state-and-effects/SKILL.md",
+      "computedHash": "24eed598860a05e7dc338ac86e3d8487f48a1e03b295b34c17203e349e84ccc9"
+    },
+    "kotlin-concurrency-and-flow": {
+      "source": "chrisbanes/skills",
+      "sourceType": "github",
+      "skillPath": "skills/kotlin-concurrency-and-flow/SKILL.md",
+      "computedHash": "a185d1afe3f7ce6c2c29446798246140d778bbfe97d6d9d772ca8923505ad994"
+    }
+  }
+}

@@ -2,14 +2,71 @@ package com.example.uade.rememberapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Paleta oscura del diseño de Figma ("Hey! Remember App").
+// TODO: los valores están estimados de una captura; reemplazarlos por los hex exactos del Figma.
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Fondo de la app: degradé de arriba (BackgroundTop) hacia abajo (Background).
+val Background = Color(0xFF0B141B)
+val BackgroundTop = Color(0xFF13232E)
 
-// Fondo e ícono del recuadro de foto de un recordatorio.
-val PhotoBackground = Color(0xFFAE7D7D)
-val PhotoIcon = Color(0xFF6B5B4E)
+// Cards, chips y bordes.
+val CardSurface = Color(0xFF1E2C36)
+val SurfaceVariant = Color(0xFF2A3944)
+val Outline = Color(0xFF3B4B56)
+
+// Celeste de acento: títulos de sección, links ("Al llegar a Casa").
+val Primary = Color(0xFF9CD3F7)
+val OnPrimary = Color(0xFF0B141B)
+val PrimaryContainer = Color(0xFF1F5B80)
+val OnPrimaryContainer = Color(0xFFD6ECFB)
+
+val OnSurface = Color(0xFFE6EDF2)
+val OnSurfaceVariant = Color(0xFF9AA8B2)
+
+// Colores propios que no tienen lugar en el ColorScheme de Material.
+
+/** El "!" de un aviso cercano o vencido (oscuro / claro con contraste WCAG AA). */
+val DueSoonAmber = Color(0xFFF2C94C)
+val DueSoonAmberLight = Color(0xFF9A5B00)
+
+/**
+ * Chip de la hora del aviso en las cards: lila en tema oscuro, violeta profundo en tema claro,
+ * para distinguirse del color del lugar y leerse con buen contraste sobre la card.
+ */
+val TriggerTimeColor = Color(0xFFCDBBFF)
+val TriggerTimeColorLight = Color(0xFF5B3FA6)
+
+/** Barra de navegación inferior flotante y su destino seleccionado. */
+val NavBarContainer = Color(0xFFB9E3FF)
+val NavBarSelected = Color(0xFF0F1B23)
+val NavBarContent = Color(0xFF0F1B23)
+val NavBarOnSelected = Color(0xFFFFFFFF)
+
+/** Velo oscuro sobre la foto de fondo de una card, para que el texto se lea (85% negro). */
+val PhotoScrim = Color(0xD9000000)
+
+// Fondo de la foto de un recordatorio (placeholder hasta cargar la foto real).
+val PhotoBackground = Color(0xFF6B4A3A)
+
+// Menú "Crear": color de fondo del ícono de cada tipo de recordatorio, y el del ícono encima.
+// TODO: los valores están estimados de una captura; reemplazarlos por los del Figma.
+val CreateNoteColor = Color(0xFFA8D8F8)
+val CreateAudioColor = Color(0xFF6FD08C)
+val CreateScheduledMessageColor = Color(0xFF4DE0E0)
+val CreateIconContent = Color(0xFF0F1B23)
+
+// Acciones que aparecen al deslizar una card hacia la izquierda: fondo de cada botón.
+// TODO: los valores están estimados de una captura; reemplazarlos por los del Figma.
+val SwipeDoneColor = Color(0xFF1F5E2C)
+val SwipeArchiveColor = Color(0xFF4A4F54)
+val SwipeTrashColor = Color(0xFF6E1A1A)
+val SwipeRestoreColor = Color(0xFF1E4A6B)
+val SwipeActionContent = Color(0xFFFFFFFF)
+
+/** El ✓ de guardar cuando hay cambios sin guardar. */
+val UnsavedChangesGreen = Color(0xFF6FCF97)
+val UnsavedChangesGreenLight = Color(0xFF1B7F46)
+
+// Colores de marca de los canales de "Enviar mensaje" (acción de notificación).
+val WhatsAppGreen = Color(0xFF25D366)
+val InstagramPink = Color(0xFFE4405F)

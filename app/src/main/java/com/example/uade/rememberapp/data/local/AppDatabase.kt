@@ -1,0 +1,85 @@
+package com.example.uade.rememberapp.data.local
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.uade.rememberapp.data.local.dao.PlaceDao
+import com.example.uade.rememberapp.data.local.dao.ReminderDao
+import com.example.uade.rememberapp.data.local.dao.TagDao
+import com.example.uade.rememberapp.data.local.entity.ActionEntity
+import com.example.uade.rememberapp.data.local.entity.AlarmEntity
+import com.example.uade.rememberapp.data.local.entity.ChecklistItemEntity
+import com.example.uade.rememberapp.data.local.entity.PhotoEntity
+import com.example.uade.rememberapp.data.local.entity.PlaceAlertEntity
+import com.example.uade.rememberapp.data.local.entity.PlaceEntity
+import com.example.uade.rememberapp.data.local.entity.ReminderEntity
+import com.example.uade.rememberapp.data.local.entity.ReminderTagCrossRef
+import com.example.uade.rememberapp.data.local.entity.TagEntity
+
+/**
+ * La base de datos de la app (un archivo SQLite). Lista todas las tablas (`entities`) y expone
+ * un DAO por cada una. Room genera la clase concreta (`AppDatabase_Impl`).
+ *
+ * Al agregar una tabla o cambiar columnas hay que subir [VERSION] y escribir la migración. Sin
+ * migración la app se cierra con un error (no se borra nada); ver AppContainer y DatabaseBackup.
+ *
+ * Versiones:
+ * - 1: `reminders`.
+ * - 2: `tags` y `reminder_tags` (etiquetas y a qué recordatorios están asignadas).
+ * - 3: varios avisos por recordatorio: `reminder_alarms` (horas) y `reminder_places` (lugares),
+ *   en lugar de las columnas de un solo aviso en `reminders`.
+ * - 4: `importance` en `reminders` (con migración, ver MIGRATION_3_4: no se pierden datos).
+ * - 5: `reminder_actions`, la acción rápida de la notificación (con migración, ver MIGRATION_4_5).
+ * - 6: `reminder_photos`, las fotos elegidas (con migración, ver MIGRATION_5_6).
+ * - 7: `isSnooze` en `reminder_alarms`, para el aviso pospuesto (con migración, ver MIGRATION_6_7).
+ * - 8: `audioPath` y `aiStatus` en `reminders`, para grabaciones de voz y estado de IA (ver MIGRATION_7_8).
+ * - 9: `reminder_checklist_items`, ítems de una lista (con migración, ver MIGRATION_8_9).
+ * - 10: `places`, lugares guardados para geolocalización (con migración, ver MIGRATION_9_10).
+ * - 11: `statusChangedAtMillis` en `reminders`, para borrar solos los hechos y eliminados (ver
+ *   MIGRATION_10_11).
+ * - 12: `repeat` en `reminder_alarms`, la repetición de cada aviso (ver MIGRATION_11_12).
+ * - 13: `transcript` en `reminders`, el texto de la nota de voz (ver MIGRATION_12_13).
+ */
+@Database(
+    entities = [
+        ReminderEntity::class,
+        TagEntity::class,
+        ReminderTagCrossRef::class,
+        AlarmEntity::class,
+        PlaceAlertEntity::class,
+        ActionEntity::class,
+        PhotoEntity::class,
+        ChecklistItemEntity::class,
+        PlaceEntity::class,
+    ],
+    version = AppDatabase.VERSION,
+    exportSchema = false,
+)
+abstract class AppDatabase : RoomDatabase() {
+    companion object {
+        /** La versión del esquema. Subirla al cambiar tablas o columnas, con su migración. */
+        const val VERSION = 13
+    }
+
+    abstract fun reminderDao(): ReminderDao
+    abstract fun tagDao(): TagDao
+    abstract fun placeDao(): PlaceDao
+}
+
+/**
+ * Carga las etiquetas de ejemplo cuando la base se crea por primera vez. Las de ids 1 y 5 son
+ * las mismas que usan los datos de ejemplo de las previews.
+ *
+ * Solo en onCreate, no en onDestructiveMigration: Room llama a ese callback después de borrar las
+ * tablas pero ANTES de crearlas de nuevo, así que el INSERT fallaba ("no such table: tags") y la
+ * app se cerraba al abrir. Por eso, si la base se recrea por un cambio de versión, arranca sin
+ * etiquetas de ejemplo.
+ */
+internal class SeedTagsCallback : RoomDatabase.Callback() {
+    override fun onCreate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "INSERT OR IGNORE INTO tags (id, name, colorArgb) VALUES " +
+                "(1, 'Salud', ${0xFF6FCF97}), (5, 'Ideas', ${0xFFF2C94C})",
+        )
+    }
+}

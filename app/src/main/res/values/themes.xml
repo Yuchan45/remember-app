@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.RememberApp" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Tema oscuro de la ventana: evita el flash blanco antes de que Compose dibuje. -->
+    <style name="Theme.RememberApp" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/hey_background</item>
+    </style>
 </resources>

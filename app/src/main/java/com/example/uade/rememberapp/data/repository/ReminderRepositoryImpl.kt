@@ -1,0 +1,66 @@
+package com.example.uade.rememberapp.data.repository
+
+import com.example.uade.rememberapp.data.local.dao.ReminderDao
+import com.example.uade.rememberapp.data.local.mapper.toDomain
+import com.example.uade.rememberapp.data.local.mapper.toEntity
+import com.example.uade.rememberapp.domain.model.Reminder
+import com.example.uade.rememberapp.domain.model.ReminderBucket
+import com.example.uade.rememberapp.domain.model.ReminderStatus
+import com.example.uade.rememberapp.domain.repository.ReminderRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+/**
+ * [ReminderRepository] guardado con Room. Solo traduce entre el dominio y las filas (con el
+ * mapper); las reglas de negocio (ej. programar la alarma al guardar) van en los casos de uso.
+ *
+ * Las etiquetas y los avisos de cada recordatorio se leen y se guardan junto con él: el dominio
+ * ve un `Reminder` con sus listas y no sabe que en la base son varias tablas más.
+ */
+class ReminderRepositoryImpl(
+    private val dao: ReminderDao,
+) : ReminderRepository {
+
+    override fun observeAll(): Flow<List<Reminder>> =
+        dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeByBucket(bucket: ReminderBucket): Flow<List<Reminder>> {
+        val (status, isDone) = bucket.toState()
+        return dao.observeByState(status, isDone).map { rows -> rows.map { it.toDomain() } }
+    }
+
+    override suspend fun getByBucket(bucket: ReminderBucket): List<Reminder> {
+        val (status, isDone) = bucket.toState()
+        return dao.getByState(status, isDone).map { it.toDomain() }
+    }
+
+    override fun observePendingForPlace(placeId: Long): Flow<List<Reminder>> =
+        dao.observePendingForPlace(placeId).map { rows -> rows.map { it.toDomain() } }
+
+    override suspend fun getById(id: Long): Reminder? = dao.getById(id)?.toDomain()
+
+    override suspend fun save(reminder: Reminder): Long =
+        dao.saveWithDetails(
+            reminder = reminder.toEntity(),
+            tagIds = reminder.tags.map { it.id },
+            // Sin repetidos: dos avisos a la misma hora son uno solo.
+            alarms = reminder.alarms.distinctBy { it.at }.map { it.toEntity() },
+            places = reminder.places.map { it.toEntity() },
+            action = reminder.action?.toEntity(),
+            photos = reminder.photos.mapIndexed { i, photo -> photo.toEntity(position = i) },
+            items = reminder.items.mapIndexed { i, item -> item.toEntity(position = i) },
+        )
+
+    override suspend fun delete(id: Long) = dao.deleteById(id)
+}
+
+/**
+ * Cómo se guarda cada sección en la base: el `status` y, para los activos, si están hechos
+ * (null = no importa). Es lo inverso de `Reminder.bucket`.
+ */
+private fun ReminderBucket.toState(): Pair<String, Boolean?> = when (this) {
+    ReminderBucket.Active -> ReminderStatus.Active.name to false
+    ReminderBucket.Done -> ReminderStatus.Active.name to true
+    ReminderBucket.Archived -> ReminderStatus.Archived.name to null
+    ReminderBucket.Deleted -> ReminderStatus.Deleted.name to null
+}

@@ -7,4 +7,14 @@ data class Place(
     val latitude: Double,
     val longitude: Double,
     val radiusMeters: Int = 150,
+    val kind: PlaceKind = PlaceKind.Other,
 )
+
+/** Tipo de lugar que elige el usuario. Define el ícono con que se muestra. */
+enum class PlaceKind {
+    Home,
+    Work,
+    Study,
+    Parking,
+    Other,
+}

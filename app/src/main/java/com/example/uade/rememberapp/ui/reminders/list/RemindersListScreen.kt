@@ -1,32 +1,83 @@
 package com.example.uade.rememberapp.ui.reminders.list
 
-import androidx.compose.foundation.layout.Column
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uade.rememberapp.R
-import com.example.uade.rememberapp.domain.model.Reminder
-import com.example.uade.rememberapp.ui.components.SegmentedSelector
-import com.example.uade.rememberapp.ui.reminders.components.ReminderList
+import com.example.uade.rememberapp.domain.model.ReminderType
+import com.example.uade.rememberapp.domain.model.MAX_PHOTOS
+import com.example.uade.rememberapp.ui.reminders.capture.QuickCaptureSheet
+import com.example.uade.rememberapp.ui.reminders.components.ReminderCard
+import com.example.uade.rememberapp.ui.reminders.components.SwipeableReminderCard
+import com.example.uade.rememberapp.ui.reminders.components.closeSwipeOnTapOutside
+import com.example.uade.rememberapp.ui.reminders.components.rememberSwipeRevealGroupState
+import com.example.uade.rememberapp.ui.reminders.list.components.HomeHeader
+import com.example.uade.rememberapp.ui.reminders.list.components.QuickCaptureBar
+import com.example.uade.rememberapp.ui.reminders.list.components.ReminderFilterBar
+import com.example.uade.rememberapp.ui.reminders.list.components.ReminderSectionHeader
+import com.example.uade.rememberapp.ui.reminders.model.ReminderDetailSection
+import com.example.uade.rememberapp.ui.reminders.sample.SampleReminders
+import com.example.uade.rememberapp.ui.reminders.voice.VoiceCaptureSheet
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
+import com.example.uade.rememberapp.ui.theme.appBackground
 import java.time.Instant
 
+/** Margen lateral de la pantalla; los chips de filtro lo usan como padding para desplazarse hasta el borde. */
+private val ScreenPadding = 16.dp
+
 /**
- * Pantalla de inicio: la lista de recordatorios.
+ * Pantalla de inicio: la lista de recordatorios agrupada en secciones.
  *
  * Esta función es la "con estado": lo único que hace es conseguir el ViewModel y leer su
  * UiState. No dibuja nada por su cuenta, para que el diseño quede en [RemindersListContent],
@@ -34,85 +85,404 @@ import java.time.Instant
  */
 @Composable
 fun RemindersListScreen(
-    viewModel: RemindersListViewModel = viewModel(),
+    viewModel: RemindersListViewModel = viewModel(factory = RemindersListViewModel.Factory),
+    contentPadding: PaddingValues = PaddingValues(),
+    onReminderClick: (id: Long, type: ReminderType) -> Unit = { _, _ -> },
+    onReminderSectionClick: (id: Long, section: ReminderDetailSection) -> Unit = { _, _ -> },
+    /** El botón de lista de la nota rápida: abre el editor completo con lo ya escrito. */
+    onOpenListEditor: (title: String?) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // 🖼 de la barra plegada: elegir fotos y abrir la nota rápida con ellas.
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_PHOTOS),
+    ) { uris -> viewModel.onPhotosPickedForCapture(uris.map { it.toString() }) }
+    // "Ahora" fijo mientras la pantalla está abierta: decide qué es "hoy" y cuándo mostrar el "!".
 
-    RemindersListContent(
-        uiState = uiState,
-        onTabSelected = viewModel::onTabSelected,
-        onReminderCompleted = viewModel::onReminderCompleted,
-    )
-}
+    val now = remember { Instant.now() }
 
-/**
- * Recibe el estado ya resuelto y devuelve UI. Regla: no toca el ViewModel ni el dominio;
- * todo lo que necesite entra por parámetros, y lo que el usuario hace sale por lambdas
- * (ej. `onAddReminder: () -> Unit`), que se irán agregando a medida que haga falta.
- */
-@Composable
-private fun RemindersListContent(
-    uiState: RemindersListUiState,
-    onTabSelected: (ReminderTab) -> Unit,
-    onReminderCompleted: (id: Long, isDone: Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.reminders_list_title),
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.padding(top = 16.dp),
-            )
+    BackHandler(enabled = uiState.isSearchActive) {
+        viewModel.onSearchClose()
+    }
 
-            Spacer(Modifier.height(16.dp))
-
-            SegmentedSelector(
-                options = ReminderTab.entries,
-                selected = uiState.selectedTab,
-                onSelected = onTabSelected,
-                label = { tab ->
-                    stringResource(
-                        R.string.reminders_tab_with_count,
-                        stringResource(tab.labelRes),
-                        uiState.countFor(tab),
-                    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        RemindersListContent(
+            uiState = uiState,
+            now = now,
+            contentPadding = contentPadding,
+            actions = RemindersListActions(
+                onToggleLayout = viewModel::onToggleLayout,
+                onCollapseAll = viewModel::onCollapseAll,
+                onSearch = viewModel::onSearchClick,
+                onSearchQueryChange = viewModel::onSearchQueryChange,
+                onSearchClose = viewModel::onSearchClose,
+                onTypeFilterClick = viewModel::onTypeFilterClick,
+                onGroupingClick = viewModel::onGroupingClick,
+                onSortClick = viewModel::onSortClick,
+                onSectionToggle = viewModel::onSectionToggle,
+                onReminderClick = onReminderClick,
+                onReminderSectionClick = onReminderSectionClick,
+                onReminderDone = viewModel::onReminderDone,
+                onReminderArchive = viewModel::onReminderArchive,
+                onReminderTrash = viewModel::onReminderTrash,
+                onToggleChecklistItem = viewModel::onToggleChecklistItem,
+                onCheckAllItems = viewModel::onCheckAllItems,
+                onToggleExpanded = viewModel::onToggleExpanded,
+                onQuickCaptureClick = viewModel::onQuickCaptureClick,
+                onVoiceCapture = viewModel::onVoiceCaptureClick,
+                onPhotoCapture = {
+                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 },
+            ),
+        )
+
+        if (uiState.isQuickCaptureOpen) {
+            QuickCaptureSheet(
+                initialAudioPath = uiState.capturedAudioPath,
+                initialPhotoUris = uiState.capturedPhotoUris,
+                onDismiss = viewModel::onQuickCaptureDismiss,
+                onOpenListEditor = onOpenListEditor,
             )
+        }
 
-            Spacer(Modifier.height(16.dp))
+        if (uiState.isVoiceCaptureOpen) {
+            VoiceCaptureSheet(
+                onDismiss = viewModel::onVoiceCaptureDismiss,
+                onAudioRecordedForConfig = viewModel::onVoiceRecordedForConfig,
+                onAiAnalysisReady = viewModel::onAiAnalysisReady,
+                onOfflineSavedPending = viewModel::onOfflineVoiceSavedPending,
+            )
+        }
 
-            // TODO: botón para agregar y estado uiState.isLoading.
-            ReminderList(
-                reminders = uiState.visibleReminders,
-                onReminderCheckedChange = onReminderCompleted,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+        val aiResult = uiState.aiAnalysisResult
+        if (aiResult != null) {
+            com.example.uade.rememberapp.ui.reminders.review.ReviewProposedRemindersScreen(
+                analysisResult = aiResult,
+                onDismiss = viewModel::onAiReviewDismiss,
+                onSuccessSaved = viewModel::onAiReviewSuccess,
             )
         }
     }
 }
 
-@Preview(showBackground = true)
+/**
+ * Todo lo que el usuario puede hacer en la Home. Se agrupan en una clase porque son muchas y,
+ * pasadas una por una, la firma de [RemindersListContent] se vuelve difícil de leer.
+ */
+data class RemindersListActions(
+    val onToggleLayout: () -> Unit = {},
+    val onCollapseAll: () -> Unit = {},
+    val onSearch: () -> Unit = {},
+    val onSearchQueryChange: (String) -> Unit = {},
+    val onSearchClose: () -> Unit = {},
+    val onTypeFilterClick: () -> Unit = {},
+    val onGroupingClick: () -> Unit = {},
+    val onSortClick: () -> Unit = {},
+    val onSectionToggle: (ReminderSectionKey) -> Unit = {},
+    val onReminderClick: (id: Long, type: ReminderType) -> Unit = { _, _ -> },
+    /** Tocar un chip de la card (hora, lugar, etiquetas): abre el detalle con ese modal. */
+    val onReminderSectionClick: (id: Long, section: ReminderDetailSection) -> Unit = { _, _ -> },
+    val onReminderDone: (id: Long) -> Unit = {},
+    val onReminderArchive: (id: Long) -> Unit = {},
+    val onReminderTrash: (id: Long) -> Unit = {},
+    val onToggleChecklistItem: (reminderId: Long, itemId: Long, index: Int) -> Unit = { _, _, _ -> },
+    val onCheckAllItems: (reminderId: Long) -> Unit = {},
+    val onToggleExpanded: (reminderId: Long) -> Unit = {},
+    val onQuickCaptureClick: () -> Unit = {},
+    val onVoiceCapture: () -> Unit = {},
+    val onPhotoCapture: () -> Unit = {},
+)
+
+/**
+ * Recibe el estado ya resuelto y devuelve UI. Regla: no toca el ViewModel ni el dominio;
+ * todo lo que necesite entra por parámetros, y lo que el usuario hace sale por [actions].
+ *
+ * [contentPadding] es el espacio que ocupan la barra de estado y la barra de navegación de la
+ * app (ver AppNavHost). La barra de captura se apoya justo encima de la de navegación.
+ */
+@Composable
+private fun RemindersListContent(
+    uiState: RemindersListUiState,
+    now: Instant,
+    actions: RemindersListActions,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
+) {
+    // Qué card está deslizada mostrando sus acciones (una a la vez). Es estado visual: vive acá.
+    val revealGroup = rememberSwipeRevealGroupState()
+
+    Scaffold(
+        modifier = modifier
+            .fillMaxSize()
+            // Tocar en cualquier lado que no sea la card abierta la cierra.
+            .closeSwipeOnTapOutside(revealGroup)
+            .appBackground(),
+        // Transparente para que se vea el degradé de fondo.
+        containerColor = Color.Transparent,
+        // Los insets del sistema ya vienen en contentPadding; si no, se sumarían dos veces.
+        contentWindowInsets = WindowInsets(0),
+        bottomBar = {
+            QuickCaptureBar(
+                onClick = actions.onQuickCaptureClick,
+                onVoice = actions.onVoiceCapture,
+                onAddPhoto = actions.onPhotoCapture,
+                modifier = Modifier.padding(
+                    start = ScreenPadding,
+                    end = ScreenPadding,
+                    // contentPadding ya incluye los 20dp de aire que la barra de navegación tiene arriba
+                    // (su degradé, ver MainTabs): se le restan 12 para que quede a 8dp de la barra.
+                    bottom = (contentPadding.calculateBottomPadding() - 12.dp).coerceAtLeast(0.dp),
+                ),
+            )
+        },
+    ) { innerPadding ->
+        val layoutDirection = LocalLayoutDirection.current
+        // innerPadding.bottom = alto de la barra de captura (que ya incluye la de navegación).
+        // Se usa como contentPadding y no como padding, así la lista pasa por detrás de las
+        // barras y el último ítem igual queda visible al final del scroll.
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top = contentPadding.calculateTopPadding() + 8.dp,
+                bottom = innerPadding.calculateBottomPadding() + 16.dp,
+                start = innerPadding.calculateStartPadding(layoutDirection),
+                end = innerPadding.calculateEndPadding(layoutDirection),
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(key = "header") {
+                HomeHeader(
+                    onToggleLayout = actions.onToggleLayout,
+                    onCollapseAll = actions.onCollapseAll,
+                    onSearch = actions.onSearch,
+                    isGridLayout = uiState.isGridLayout,
+                    areAllCollapsed = uiState.areAllSectionsCollapsed,
+                    isSearchActive = uiState.isSearchActive,
+                    modifier = Modifier.padding(horizontal = ScreenPadding),
+                )
+            }
+
+            item(key = "search-bar") {
+                AnimatedVisibility(
+                    visible = uiState.isSearchActive,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    HomeSearchBar(
+                        query = uiState.searchQuery,
+                        onQueryChange = actions.onSearchQueryChange,
+                        onClose = actions.onSearchClose,
+                        modifier = Modifier.padding(horizontal = ScreenPadding),
+                    )
+                }
+            }
+
+            item(key = "filters") {
+                ReminderFilterBar(
+                    typeFilter = uiState.typeFilter,
+                    grouping = uiState.grouping,
+                    sort = uiState.sort,
+                    onTypeFilterClick = actions.onTypeFilterClick,
+                    onGroupingClick = actions.onGroupingClick,
+                    onSortClick = actions.onSortClick,
+                    contentPadding = PaddingValues(horizontal = ScreenPadding),
+                )
+            }
+
+            if (uiState.isEmpty) {
+                item(key = "empty") {
+                    val emptyText = if (uiState.isSearchActive && uiState.searchQuery.isNotBlank()) {
+                        stringResource(R.string.reminders_search_empty, uiState.searchQuery.trim())
+                    } else {
+                        stringResource(R.string.reminders_empty)
+                    }
+                    Text(
+                        text = emptyText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(ScreenPadding),
+                    )
+                }
+            }
+
+            uiState.sections.forEach { section ->
+                item(key = "section-${section.key}") {
+                    ReminderSectionHeader(
+                        title = stringResource(section.key.title),
+                        count = section.reminders.size,
+                        isExpanded = section.isExpanded,
+                        onToggle = { actions.onSectionToggle(section.key) },
+                        modifier = Modifier.padding(horizontal = ScreenPadding),
+                    )
+                }
+                if (section.isExpanded) {
+                    if (uiState.isGridLayout) {
+                        val rows = section.reminders.chunked(2)
+                        items(
+                            items = rows,
+                            key = { pair -> "${section.key}-grid-${pair.first().id}" },
+                        ) { pair ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = ScreenPadding)
+                                    .height(IntrinsicSize.Max)
+                                    .animateItem(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                pair.forEach { reminder ->
+                                    ReminderCard(
+                                        reminder = reminder,
+                                        placeName = reminder.places.firstOrNull()
+                                            ?.let { uiState.placeNames[it.placeId] },
+                                        now = now,
+                                        onClick = { actions.onReminderClick(reminder.id, reminder.type) },
+                                        onToggleChecklistItem = { itemId, index ->
+                                            actions.onToggleChecklistItem(reminder.id, itemId, index)
+                                        },
+                                        isExpanded = uiState.expandedReminderId == reminder.id,
+                                        onToggleExpanded = { actions.onToggleExpanded(reminder.id) },
+                                        onSectionClick = { sec -> actions.onReminderSectionClick(reminder.id, sec) },
+                                        isGridCard = true,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .heightIn(min = 132.dp),
+                                    )
+                                }
+                                if (pair.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    } else {
+                        items(
+                            items = section.reminders,
+                            // Con la sección en la key, un recordatorio puede estar en dos secciones (ej. agrupado
+                            // por etiqueta) sin repetir keys, que en un LazyColumn es un crash.
+                            key = { "${section.key}-${it.id}" },
+                        ) { reminder ->
+                            SwipeableReminderCard(
+                                reminder = reminder,
+                                placeName = reminder.places.firstOrNull()
+                                    ?.let { uiState.placeNames[it.placeId] },
+                                now = now,
+                                onClick = { actions.onReminderClick(reminder.id, reminder.type) },
+                                onSectionClick = { sec -> actions.onReminderSectionClick(reminder.id, sec) },
+                                onDone = { actions.onReminderDone(reminder.id) },
+                                onArchive = { actions.onReminderArchive(reminder.id) },
+                                onTrash = { actions.onReminderTrash(reminder.id) },
+                                onToggleChecklistItem = { itemId, index ->
+                                    actions.onToggleChecklistItem(reminder.id, itemId, index)
+                                },
+                                onCheckAllItems = { actions.onCheckAllItems(reminder.id) },
+                                isExpanded = uiState.expandedReminderId == reminder.id,
+                                onToggleExpanded = { actions.onToggleExpanded(reminder.id) },
+                                // animateItem: al expandir o achicar una card, las de abajo se corren animadas.
+                                modifier = Modifier
+                                    .padding(horizontal = ScreenPadding)
+                                    .animateItem(),
+                                revealGroup = revealGroup,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester),
+        singleLine = true,
+        shape = RoundedCornerShape(16.dp),
+        placeholder = {
+            Text(
+                text = stringResource(R.string.reminders_search_placeholder),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        trailingIcon = {
+            IconButton(
+                onClick = {
+                    if (query.isNotEmpty()) {
+                        onQueryChange("")
+                    } else {
+                        focusManager.clearFocus()
+                        onClose()
+                    }
+                },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(
+                        if (query.isNotEmpty()) R.string.reminders_search_clear else R.string.reminders_search_close,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+        ),
+    )
+}
+
+@Preview(showBackground = true, heightDp = 860)
 @Composable
 private fun RemindersListContentPreview() {
+    val now = Instant.now()
     RememberAppTheme {
         RemindersListContent(
-            uiState = RemindersListUiState(
-                reminders = listOf(
-                    Reminder(id = 1, text = "Comprar el cargador", createdAt = Instant.now()),
-                    Reminder(id = 2, text = "Pagar la cuota de la facu", createdAt = Instant.now()),
-                ),
-            ),
-            onTabSelected = {},
-            onReminderCompleted = { _, _ -> },
+            uiState = SampleReminders.uiState(now),
+            now = now,
+            actions = RemindersListActions(),
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 500)
+@Composable
+private fun RemindersListContentEmptyPreview() {
+    RememberAppTheme {
+        RemindersListContent(
+            uiState = RemindersListUiState(),
+            now = Instant.now(),
+            actions = RemindersListActions(),
         )
     }
 }

@@ -1,58 +1,67 @@
 package com.example.uade.rememberapp.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import com.example.uade.rememberapp.domain.model.AppSettings
+import com.example.uade.rememberapp.domain.model.ThemeMode
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-)
-
+/**
+ * Tema principal de Hey!.
+ *
+ * Aplica de forma reactiva el esquema de color (paleta elegida, modo claro/oscuro/sistema,
+ * negro puro AMOLED), la tipografía accesible con escala de texto, el fondo degradado adaptado
+ * y los colores accesibles de la barra inferior.
+ */
 @Composable
 fun RememberAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+    settings: AppSettings = AppSettings(),
+    content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val context = LocalContext.current
+    val isDarkTheme = when (settings.themeMode) {
+        ThemeMode.System -> isSystemInDarkTheme()
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
+    val colorScheme = buildColorScheme(
+        context = context,
+        palette = settings.palette,
+        isDarkTheme = isDarkTheme,
+        usePureBlack = settings.usePureBlack,
     )
+
+    val backgroundColors = buildBackgroundColors(
+        palette = settings.palette,
+        isDarkTheme = isDarkTheme,
+        usePureBlack = settings.usePureBlack,
+        colorScheme = colorScheme,
+    )
+
+    val navBarColors = buildNavBarColors(
+        palette = settings.palette,
+        isDarkTheme = isDarkTheme,
+        colorScheme = colorScheme,
+    )
+
+    val typography = createAppTypography(
+        fontFamily = settings.fontFamily,
+        fontScale = settings.fontScale,
+    )
+
+    CompositionLocalProvider(
+        LocalUseGradientBackground provides settings.useGradientBackground,
+        LocalAppBackgroundColors provides backgroundColors,
+        LocalAppNavBarColors provides navBarColors,
+        LocalIsDarkTheme provides isDarkTheme,
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            content = content,
+        )
+    }
 }

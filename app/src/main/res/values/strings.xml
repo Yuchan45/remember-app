@@ -1,14 +1,757 @@
 <resources>
     <string name="app_name">Hey!</string>
 
-    <!-- Lista de recordatorios -->
-    <string name="reminders_list_title">Remember</string>
-    <string name="reminders_tab_pending">Pendientes</string>
-    <string name="reminders_tab_done">Hechos</string>
-    <!-- Pestaña con su contador, ej. "Pendientes · 3". %1$s = nombre de la pestaña, %2$d = cantidad. -->
-    <string name="reminders_tab_with_count">%1$s · %2$d</string>
+    <!-- Home / lista de recordatorios: header -->
+    <!-- %1$s = nombre del usuario. -->
+    <string name="reminders_list_title">Recordatorios</string>
+    <string name="reminders_home_action_toggle_layout">Cambiar vista</string>
+    <string name="reminders_home_action_grid_layout">Vista en cuadrados</string>
+    <string name="reminders_home_action_list_layout">Vista en lista</string>
+    <string name="reminders_home_action_collapse_all">Colapsar todo</string>
+    <string name="reminders_home_action_expand_all">Expandir todo</string>
+    <string name="reminders_home_action_search">Buscar</string>
+    <string name="reminders_search_placeholder">Buscar recordatorios…</string>
+    <string name="reminders_search_clear">Limpiar búsqueda</string>
+    <string name="reminders_search_close">Cerrar búsqueda</string>
+    <string name="reminders_search_empty">No se encontraron recordatorios para «%1$s»</string>
+
+    <!-- Home: filtros. %1$s = valor elegido, ej. "Tipo: Todo". -->
+    <string name="reminders_filter_type_label">Tipo: %1$s</string>
+    <string name="reminders_filter_group_label">Grupo: %1$s</string>
+    <string name="reminders_filter_sort_label">Ordenar: %1$s</string>
+    <string name="reminders_filter_type_all">Todo</string>
+    <string name="reminders_filter_type_notes">Notas</string>
+    <string name="reminders_filter_type_lists">Listas</string>
+    <string name="reminders_filter_group_date">Fecha</string>
+    <string name="reminders_filter_group_tag">Etiqueta</string>
+    <string name="reminders_filter_group_place">Lugar</string>
+    <string name="reminders_filter_sort_upcoming">Próximos</string>
+    <string name="reminders_filter_sort_recent">Recientes</string>
+    <string name="reminders_filter_sort_title">Título</string>
+
+    <!-- Home: secciones -->
+    <string name="reminders_section_today">Hoy</string>
+    <string name="reminders_section_tomorrow">Mañana</string>
+    <string name="reminders_section_upcoming">Próximos</string>
+    <string name="reminders_section_no_date">Sin fecha</string>
+    <string name="reminders_section_toggle">Mostrar u ocultar sección</string>
+    <string name="reminders_section_expanded">Expandida</string>
+    <string name="reminders_section_collapsed">Colapsada</string>
     <string name="reminders_empty">No hay recordatorios acá</string>
 
-    <!-- Fila de recordatorio -->
-    <string name="reminder_photo_description">Foto del recordatorio</string>
+    <!-- Home: captura rápida -->
+    <string name="reminders_quick_capture_hint">Nota rápida…</string>
+    <string name="reminders_quick_capture_new">Nuevo recordatorio</string>
+    <string name="reminders_quick_capture_voice">Dictar recordatorio</string>
+    <string name="reminders_quick_capture_photo">Agregar foto</string>
+    <string name="reminders_capture_remove_photo">Quitar foto</string>
+
+    <!-- Captura rápida: modal para crear una nota -->
+    <string name="reminders_capture_title_hint">Crea un recordatorio rápido</string>
+    <string name="reminders_capture_section_when">Cuándo</string>
+    <string name="reminders_capture_section_repeat">Repetir</string>
+    <string name="reminders_capture_section_favorite_places">Lugares favoritos</string>
+    <string name="reminders_capture_section_notify">Avisar</string>
+    <!-- Atajos de hora. TODO: calcular los textos con fecha según la hora actual. -->
+    <string name="reminders_capture_time_in_one_hour">En 1 hora</string>
+    <string name="reminders_capture_time_tonight">Hoy 21:00</string>
+    <string name="reminders_capture_time_tomorrow_morning">Mañana 9:00</string>
+    <string name="reminders_capture_time_weekend">Sáb 10:00</string>
+    <string name="reminders_capture_time_pick_date">Elegir fecha…</string>
+    <string name="reminders_capture_repeat_none">No</string>
+    <string name="reminders_capture_repeat_daily">Diario</string>
+    <string name="reminders_capture_repeat_weekdays">Lun a Vie</string>
+    <string name="reminders_capture_repeat_weekly">Semanal</string>
+    <string name="reminders_capture_place_arrive">Al llegar</string>
+    <string name="reminders_capture_place_leave">Al salir</string>
+    <string name="reminders_capture_place_search">Buscar dirección…</string>
+    <!-- Chips de aviso. %1$s = nombre del lugar, ej. "Al llegar a Facultad". -->
+    <string name="reminders_capture_trigger_time">Fecha y hora</string>
+    <string name="reminders_capture_trigger_place">Ubicación</string>
+    <string name="reminders_capture_trigger_arrive_at">Al llegar a %1$s</string>
+    <string name="reminders_capture_trigger_leave_from">Al salir de %1$s</string>
+    <string name="reminders_capture_trigger_tag">Etiqueta</string>
+    <string name="reminders_capture_trigger_importance">Importancia</string>
+    <string name="reminders_capture_section_importance">Cómo avisar</string>
+    <string name="reminders_capture_importance_low">Baja</string>
+    <string name="reminders_capture_importance_low_desc">Silenciosa: sin sonido, vibración ni ícono en la barra de estado</string>
+    <string name="reminders_capture_importance_default">Predeterminada</string>
+    <string name="reminders_capture_importance_default_desc">Con sonido y vibración</string>
+    <string name="reminders_capture_importance_high">Alta</string>
+    <string name="reminders_capture_importance_high_desc">Aparece en pantalla como alerta emergente</string>
+    <string name="reminders_capture_importance_critical">Crítica</string>
+    <string name="reminders_capture_importance_critical_desc">Suena como alarma aunque el teléfono esté en silencio, y repite cada 15 min hasta marcarla hecha</string>
+    <string name="reminders_capture_tool_checklist">Convertir en lista</string>
+    <string name="reminders_capture_tool_expand">Abrir en pantalla completa</string>
+    <string name="reminders_capture_tool_collapse">Salir de pantalla completa</string>
+    <string name="reminders_capture_save">Guardar</string>
+
+    <!-- Captura rápida: diálogo "Elegir fecha…" -->
+    <string name="reminders_capture_date_set_time">Establecer hora</string>
+
+    <!-- Card de recordatorio -->
+    <!-- %1$d = cantidad de ítems de la lista que no se muestran. -->
+    <string name="reminders_checklist_more_items">+ %1$d más</string>
+    <string name="reminders_card_show_more">Ver más</string>
+    <string name="reminders_card_show_less">Ver menos</string>
+    <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
+    <string name="reminders_trigger_on_arrival">Al llegar a %1$s</string>
+    <string name="reminders_trigger_on_departure">Al salir de %1$s</string>
+    <string name="reminders_trigger_due_soon">Aviso próximo o vencido</string>
+    <!-- Hora del próximo aviso y cuántos más tiene, ej. "18:00 +2". %1$s = hora, %2$d = cantidad. -->
+    <string name="reminders_trigger_more_alarms">%1$s +%2$d</string>
+    <string name="reminders_photo_description">Foto del recordatorio</string>
+    <!-- Acciones al deslizar una card hacia la izquierda -->
+    <string name="reminders_action_done">Hecho</string>
+    <string name="reminders_action_archive">Archivar</string>
+    <string name="reminders_action_trash">Papelera</string>
+    <string name="reminders_undo">Deshacer</string>
+
+    <!-- Menú "Crear" (botón +) -->
+    <string name="reminders_create_title">Crear</string>
+    <string name="reminders_create_note">Nota</string>
+    <string name="reminders_create_note_description">Texto, listas e imágenes</string>
+    <string name="reminders_create_audio">Audio</string>
+    <string name="reminders_create_audio_description">Transcripción con Groq</string>
+    <string name="reminders_create_scheduled_message">Mensaje programado</string>
+    <string name="reminders_create_scheduled_message_description">WhatsApp, SMS o mail</string>
+
+    <!-- Etiquetas: diálogo para crear, editar, borrar y asignar -->
+    <string name="tags_show_creator">Mostrar creación de etiquetas</string>
+    <string name="tags_hide_creator">Ocultar creación de etiquetas</string>
+    <string name="tags_section_assigned">Asignadas</string>
+    <string name="tags_section_available">Disponibles</string>
+    <string name="tags_empty_assigned">Todavía no asignaste etiquetas</string>
+    <string name="tags_empty_available">No hay otras etiquetas</string>
+    <string name="tags_name_hint">Nueva etiqueta</string>
+    <!-- %1$d = caracteres escritos, %2$d = máximo. Ej. "8/20". -->
+    <string name="tags_name_counter">%1$d/%2$d</string>
+    <string name="tags_add">Crear etiqueta</string>
+    <!-- %1$s = nombre de la etiqueta que se está editando. -->
+    <string name="tags_editing">Editando «%1$s»</string>
+    <string name="tags_save">Guardar</string>
+    <string name="tags_delete">Eliminar</string>
+    <string name="tags_cancel_edit">Cancelar edición</string>
+    <string name="tags_deleted">Etiqueta eliminada</string>
+    <string name="tags_undo">Deshacer</string>
+    <string name="tags_done">Hecho</string>
+    <string name="tags_color">Color de la etiqueta</string>
+    <string name="tags_error_empty">Escribí un nombre</string>
+    <string name="tags_error_too_long">Puede tener hasta 20 caracteres</string>
+    <string name="tags_error_duplicate">Ya existe una etiqueta con ese nombre</string>
+    <!-- Chip "Etiqueta" del modal de nota rápida cuando ya hay etiquetas elegidas. -->
+    <plurals name="reminders_capture_trigger_tags">
+        <item quantity="one">%d Etiqueta</item>
+        <item quantity="other">%d Etiquetas</item>
+    </plurals>
+    <!-- Aviso al mandar recordatorios a la papelera. %d = cuántos. -->
+    <plurals name="reminders_trashed">
+        <item quantity="one">%d movido a la papelera</item>
+        <item quantity="other">%d movidos a la papelera</item>
+    </plurals>
+    <string name="reminder_completed">Recordatorio completado</string>
+    <string name="reminders_archived">Archivado</string>
+    <string name="checklist_incomplete_for_done">Para finalizar el recordatorio se debe marcar toda la checklist.</string>
+    <string name="checklist_incomplete_title">La lista no está completa</string>
+    <string name="checklist_incomplete_complete_and_done">Marcar todo y mover a Hecho</string>
+    <string name="checklist_all_completed_banner">¡Toda la checklist completada! Toca para finalizar</string>
+
+    <!-- Detalle de un recordatorio: lista dentro de la nota -->
+    <string name="reminders_checklist_add_list">Agregar lista</string>
+    <string name="reminders_checklist_add_item">Añadir elemento</string>
+    <string name="reminders_checklist_dictate">Dictar ítems</string>
+    <string name="reminders_checklist_paste">Pegar texto</string>
+    <string name="reminders_checklist_generating">Generando ítems con IA…</string>
+    <string name="reminders_checklist_completed_header">COMPLETADOS (%1$d)</string>
+    <string name="reminders_checklist_mark_done">Marcar como terminado</string>
+    <string name="reminders_checklist_unmark">Desmarcar ítem</string>
+    <string name="reminders_checklist_item_hint">Elemento</string>
+    <string name="reminders_checklist_note_hint">Nota (opcional)</string>
+    <string name="reminders_checklist_hide_note">Ocultar nota</string>
+    <string name="reminders_checklist_add_note">Agregar nota</string>
+    <string name="reminders_checklist_delete_item">Eliminar</string>
+    <string name="reminders_checklist_paste_example">Ej:\nVacío 5kg (en el Coto)\nAsado 3kg (en Res)\nChorizo y morcilla</string>
+    <string name="reminders_checklist_generate">Generar ítems</string>
+    <string name="reminders_checklist_paste_description">Pega un mensaje, lista de compras o ingredientes. La IA detectará los ítems automáticamente.</string>
+    <string name="reminders_checklist_check_all">Marcar todo</string>
+    <string name="reminders_checklist_check_all_confirm_title">¿Marcar toda la lista?</string>
+    <string name="reminders_checklist_check_all_confirm_message">Se van a tildar todos los ítems de este recordatorio.</string>
+    <string name="reminders_checklist_reorder">Mantener apretado y arrastrar para reordenar</string>
+    <string name="reminders_checklist_all_checked">Lista completa</string>
+
+    <!-- Detalle de un recordatorio: banner (portada) -->
+    <string name="reminder_detail_add_banner">Agregar banner</string>
+
+    <!-- Detalle de un recordatorio: la nota de voz de la que salió -->
+    <string name="reminder_detail_voice_note">Nota de voz</string>
+    <string name="reminder_detail_show_transcript">Ver transcripción</string>
+    <string name="reminder_detail_hide_transcript">Ocultar transcripción</string>
+    <string name="reminder_detail_play_audio">Reproducir la nota de voz</string>
+    <string name="reminder_detail_pause_audio">Pausar la nota de voz</string>
+    <string name="reminder_detail_options_hide">Ocultar opciones</string>
+    <string name="reminder_detail_options_show">Mostrar opciones</string>
+
+    <!-- Detalle de un recordatorio: salir con cambios sin guardar -->
+    <string name="reminder_detail_unsaved_title">¿Guardar los cambios?</string>
+    <string name="reminder_detail_unsaved_message">Tenés cambios sin guardar. Si salís sin guardar, se pierden.</string>
+    <string name="reminder_detail_unsaved_save">Guardar</string>
+    <string name="reminder_detail_unsaved_discard">Descartar</string>
+
+    <!-- Detalle de un recordatorio: barra superior y estados -->
+    <string name="reminder_detail_back">Volver</string>
+    <string name="reminder_detail_share">Compartir</string>
+    <string name="reminder_detail_done">Listo</string>
+    <string name="reminder_detail_title_hint">Título</string>
+    <string name="reminder_detail_not_found">No se encontró el recordatorio</string>
+    <!-- Campo de la descripción cuando todavía está vacío -->
+    <string name="reminder_detail_empty_title">Nota vacía</string>
+    <string name="reminder_detail_empty_hint">Toca aquí para empezar a escribir…</string>
+    <!-- Detalle: opciones del recordatorio (título y valor actual) -->
+    <string name="reminder_detail_tags">Etiquetas</string>
+    <string name="reminder_detail_tags_none">Sin etiquetas</string>
+    <string name="reminder_detail_time">Recordatorio</string>
+    <string name="reminder_detail_time_none">Sin fecha</string>
+    <!-- %1$s = hora, ej. "18:00". -->
+    <string name="reminder_detail_time_today">Hoy %1$s</string>
+    <!-- %1$s = cuándo suena, ej. "Hoy 18:00" o "Sáb 10:00". -->
+    <string name="reminder_detail_time_value">%1$s · No se repite</string>
+    <!-- %1$s = cuándo (ej. "Hoy 08:00"), %2$s = cada cuánto (ej. "Diario"). -->
+    <string name="reminder_detail_time_repeat">%1$s · %2$s</string>
+    <string name="reminder_detail_place">Ubicación</string>
+    <string name="reminder_detail_place_none">Sin ubicación</string>
+    <!-- %1$s = nombre del lugar, ej. "Al llegar a Casa". -->
+    <string name="reminder_detail_place_arrive">Al llegar a %1$s</string>
+    <string name="reminder_detail_place_leave">Al salir de %1$s</string>
+    <string name="reminder_detail_place_unknown">Al llegar a un lugar</string>
+    <string name="reminder_detail_place_leave_unknown">Al salir de un lugar</string>
+    <string name="reminder_detail_behavior">Comportamiento</string>
+    <string name="reminder_detail_notification_action">Acción de notificación</string>
+    <string name="reminder_detail_notification_action_none">Sin acción</string>
+    <!-- Detalle: modal "Acción de notificación". Resumen en la fila: %1$s = número, usuario o correo. -->
+    <string name="reminder_action_title">Acción de notificación</string>
+    <string name="reminder_action_subtitle">Añadir una acción rápida a la notificación</string>
+    <string name="reminder_action_call">Llamar al número</string>
+    <string name="reminder_action_message">Enviar mensaje</string>
+    <string name="reminder_action_email">Enviar correo electrónico</string>
+    <string name="reminder_action_remove">Quitar acción</string>
+    <string name="reminder_action_back">Volver a la lista de acciones</string>
+    <string name="reminder_action_send_via">Enviar por</string>
+    <string name="reminder_action_channel_sms">SMS</string>
+    <string name="reminder_action_channel_whatsapp">WhatsApp</string>
+    <string name="reminder_action_channel_instagram">Instagram</string>
+    <string name="reminder_action_field_phone">Número de teléfono</string>
+    <string name="reminder_action_field_instagram">Usuario de Instagram</string>
+    <string name="reminder_action_field_message">Mensaje (opcional)</string>
+    <string name="reminder_action_field_email">Correo electrónico</string>
+    <string name="reminder_action_field_subject">Asunto (opcional)</string>
+    <string name="reminder_action_summary_call">Llamar: %1$s</string>
+    <string name="reminder_action_summary_sms">SMS: %1$s</string>
+    <string name="reminder_action_summary_whatsapp">WhatsApp: %1$s</string>
+    <string name="reminder_action_summary_instagram">Instagram: @%1$s</string>
+    <string name="reminder_action_summary_email">Correo: %1$s</string>
+    <string name="reminder_detail_image">Imagen</string>
+    <string name="reminder_detail_image_cover">Portada</string>
+    <string name="reminder_detail_image_none">Sin imagen</string>
+    <string name="reminder_detail_attachments">Adjuntos</string>
+    <string name="reminder_detail_attachments_none">Sin adjuntos</string>
+    <string name="reminder_detail_share_option">Compartir</string>
+    <string name="reminder_detail_share_value">Crear link</string>
+    <!-- Detalle: modal "Establecer recordatorio" (varios avisos por hora). %1$d = número del aviso. -->
+    <string name="reminder_alarms_title">Establecer recordatorio</string>
+    <string name="reminder_alarms_item">Recordatorio %1$d</string>
+    <string name="reminder_alarms_item_empty">Sin elegir</string>
+    <string name="reminder_alarms_add">Añadir recordatorio</string>
+    <string name="reminder_alarms_clear">Borrar todo</string>
+    <string name="reminder_alarms_save">Guardar</string>
+    <string name="reminder_alarms_expand">Mostrar opciones</string>
+    <string name="reminder_alarms_collapse">Ocultar opciones</string>
+    <!-- Fila "Recordatorio" con varios avisos: el próximo y cuántos más, ej. "Hoy 18:00 +1". -->
+    <string name="reminder_detail_time_more">%1$s +%2$d</string>
+    <string name="reminder_detail_place_more">%1$s +%2$d</string>
+    <!-- Fila "Imagen" con fotos: %1$d = cuántas. -->
+    <plurals name="reminder_detail_image_count">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="other">%1$d fotos</item>
+    </plurals>
+    <!-- %1$d = cuántas fotos tiene. -->
+    <plurals name="reminder_detail_image_cover_count">
+        <item quantity="one">Portada · %1$d foto</item>
+        <item quantity="other">Portada · %1$d fotos</item>
+    </plurals>
+    <!-- Detalle: fotos apiladas arriba de la descripción. %1$d = cuántas no se ven, ej. "+7". -->
+    <string name="reminder_detail_photos_more">+%1$d</string>
+    <!-- Detalle: modal "Imágenes" (hasta 15 fotos y cuál es la portada). %1$d = máximo de fotos. -->
+    <string name="reminder_photos_title">Imágenes</string>
+    <plurals name="reminder_photos_subtitle">
+        <item quantity="one">Elegí %1$d foto y tocala para usarla de portada.</item>
+        <item quantity="other">Elegí hasta %1$d fotos y tocá una para usarla de portada.</item>
+    </plurals>
+    <string name="reminder_photos_add">Agregar fotos</string>
+    <string name="reminder_photos_remove">Quitar foto</string>
+    <string name="reminder_photos_cover">Portada</string>
+    <string name="reminder_photos_loading">Cargando fotos…</string>
+    <!-- %1$d = número de la foto, ej. "Foto 2". -->
+    <string name="reminder_photos_item">Foto %1$d</string>
+
+    <!-- Historial: recordatorios hechos, archivados y eliminados -->
+    <string name="history_title">Historial</string>
+    <string name="history_tab_done">Hechos</string>
+    <string name="history_tab_archived">Archivados</string>
+    <string name="history_tab_deleted">Papelera</string>
+    <string name="history_empty_done">Acá van a aparecer los recordatorios que completes.</string>
+    <string name="history_empty_archived">Acá van a aparecer los recordatorios que archives.</string>
+    <string name="history_empty_deleted">La papelera está vacía. Lo que elimines queda acá unos días por si querés recuperarlo.</string>
+    <string name="history_retention_done">Se borran solos 7 días después de completarse.</string>
+    <string name="history_retention_archived">Los archivados se guardan hasta que los restaures o los borres.</string>
+    <string name="history_retention_deleted">Lo que está en la papelera se borra solo a los 15 días.</string>
+    <plurals name="history_expires_in">
+        <item quantity="one">Se borra en %d día</item>
+        <item quantity="other">Se borra en %d días</item>
+    </plurals>
+    <string name="history_expires_today">Se borra hoy</string>
+    <string name="history_action_restore">Restaurar</string>
+    <string name="history_action_delete_forever">Borrar</string>
+    <string name="history_action_empty">Vaciar</string>
+    <string name="history_restored">Restaurado</string>
+    <!-- Historial: confirmaciones -->
+    <string name="history_empty_confirm_title">¿Vaciar %1$s?</string>
+    <plurals name="history_empty_confirm_message">
+        <item quantity="one">Se va a borrar %d recordatorio para siempre, con sus fotos y audios.</item>
+        <item quantity="other">Se van a borrar %d recordatorios para siempre, con sus fotos y audios.</item>
+    </plurals>
+    <string name="history_empty_confirm_continue">Continuar</string>
+    <string name="history_empty_final_title">¿Seguro?</string>
+    <string name="history_empty_final_message">Esta acción no se puede deshacer.</string>
+    <plurals name="history_empty_final_confirm">
+        <item quantity="one">Borrar %d</item>
+        <item quantity="other">Borrar %d</item>
+    </plurals>
+    <string name="history_delete_one_title">¿Borrar para siempre?</string>
+    <string name="history_delete_one_message">Se borra con sus fotos y audios, y no se puede deshacer.</string>
+    <string name="history_cancel">Cancelar</string>
+
+    <!-- Lugares: lista y edición -->
+    <string name="places_list_title">Lugares</string>
+    <string name="places_list_placeholder">Acá vas a ver y administrar tus lugares guardados.</string>
+    <string name="places_list_subtitle">Tus lugares guardados para recordatorios al llegar o salir</string>
+    <string name="places_list_empty_title">Sin lugares guardados</string>
+    <string name="places_list_empty_message">Agregá lugares como tu casa, trabajo o facultad para recordatorios por ubicación.</string>
+    <string name="places_list_add">Agregar lugar</string>
+    <string name="places_list_radius_format">Radio: %1$d m</string>
+    <string name="places_list_delete_confirm_title">¿Eliminar lugar?</string>
+    <string name="places_list_delete_confirm_message">Se eliminará "%1$s" y se desvincularán los avisos de este lugar en tus recordatorios.</string>
+    <string name="places_list_delete_confirm_action">Eliminar</string>
+
+    <string name="places_edit_title_new">Nuevo lugar</string>
+    <string name="places_edit_title_edit">Editar lugar</string>
+    <string name="places_edit_name_label">Nombre del lugar</string>
+    <string name="places_edit_name_placeholder">Ej. Casa, Trabajo, Gimnasio…</string>
+    <string name="places_edit_kind_label">Tipo de lugar</string>
+    <string name="places_edit_address_label">Dirección o ubicación</string>
+    <string name="places_edit_address_placeholder">Ingresá calle, altura o zona…</string>
+    <string name="places_edit_use_current_location">Usar mi ubicación actual</string>
+    <string name="places_edit_searching">Buscando dirección…</string>
+    <string name="places_edit_no_results">No se encontraron resultados para esa dirección</string>
+    <string name="places_edit_radius_label">Radio de aviso</string>
+    <string name="places_edit_radius_chip">%1$d m</string>
+    <string name="places_edit_radius_recommended">%1$d m (Recomendado)</string>
+    <string name="places_edit_selected_location">Ubicación seleccionada</string>
+    <string name="places_edit_save">Guardar lugar</string>
+    <string name="places_edit_cancel">Cancelar</string>
+    <string name="places_edit_error_no_name">Ingresá un nombre para el lugar</string>
+    <string name="places_edit_error_no_location">Buscá una dirección o usá tu ubicación actual</string>
+
+    <string name="places_kind_home">Casa</string>
+    <string name="places_kind_work">Trabajo</string>
+    <string name="places_kind_study">Facultad</string>
+    <string name="places_kind_parking">Estacionamiento</string>
+    <string name="places_kind_other">Otro</string>
+
+    <!-- Permisos de ubicación para avisos por lugar -->
+    <string name="location_permission_dialog_title">Permiso de ubicación todo el tiempo</string>
+    <string name="location_permission_dialog_desc">Para avisarte al llegar o salir de un lugar incluso cuando la app esté en segundo plano o cerrada, elegí \"Permitir todo el tiempo\" en la configuración de ubicación de Android.</string>
+    <string name="location_permission_dialog_action_settings">Permitir</string>
+    <string name="location_permission_dialog_action_dismiss">Rechazar</string>
+    <string name="location_permission_banner_warning">Sin ubicación \"Permitir todo el tiempo\", los avisos al llegar o salir no se activarán con la app cerrada. Habilitalo en Ajustes → Aplicaciones → Hey! → Permisos → Ubicación.</string>
+    <string name="location_permission_banner_action">Activar</string>
+    <string name="location_permission_gps_disabled_warning">El servicio de ubicación (GPS) está desactivado en tu teléfono. Activalo en Ajustes → Ubicación para que funcionen los avisos por lugar.</string>
+    <string name="location_permission_gps_action">Ajustes</string>
+
+    <!-- Permisos contextuales y degradación (RNF07 / RNF04) -->
+    <string name="permission_dialog_allow">Permitir</string>
+    <string name="permission_dialog_reject">Rechazar</string>
+    <string name="notifications_permission_dialog_title">Permitir notificaciones</string>
+    <string name="notifications_permission_dialog_desc">Para avisarte cuando llegue la hora de un recordatorio o al entrar o salir de un lugar guardado, habilitá las notificaciones en la configuración de Android.</string>
+    <string name="foreground_location_permission_dialog_title">Permitir acceso a la ubicación</string>
+    <string name="foreground_location_permission_dialog_desc">Para detectar tu ubicación al buscar direcciones y habilitar los avisos por lugar, permití el acceso a la ubicación en la configuración de Android.</string>
+    <string name="microphone_permission_dialog_title">Permitir acceso al micrófono</string>
+    <string name="microphone_permission_dialog_desc">Para grabar notas de voz y transcribir tus recordatorios automáticamente con IA, permití el uso del micrófono en la configuración de Android.</string>
+    <string name="contacts_permission_dialog_title">Permitir acceso a contactos</string>
+    <string name="contacts_permission_dialog_desc">Para elegir un destinatario desde tu agenda al programar mensajes, permití el acceso a tus contactos en la configuración de Android.</string>
+    <string name="exact_alarm_permission_dialog_title">Permitir alarmas exactas</string>
+    <string name="exact_alarm_permission_dialog_desc">Para que tus recordatorios por hora suenen en el minuto exacto incluso con la app cerrada, activá \"Alarmas y recordatorios\" en la configuración de Android.</string>
+    <string name="exact_alarm_permission_dialog_confirm">Permitir</string>
+    <string name="exact_alarm_permission_dialog_dismiss">Rechazar</string>
+
+    <string name="permission_limitation_dialog_title_reminder">Recordatorio guardado con aviso limitado</string>
+    <string name="permission_limitation_dialog_title_place">Lugar guardado con aviso limitado</string>
+    <string name="permission_limitation_dialog_title_draft">Aviso guardado con funcionalidad limitada</string>
+    <string name="permission_limitation_notifications_title">Notificaciones desactivadas</string>
+    <string name="permission_limitation_notifications_desc">El recordatorio se guardó, pero no recibirás notificaciones cuando corresponda. Habilitalo en Ajustes → Aplicaciones → Hey! → Notificaciones.</string>
+    <string name="permission_limitation_exact_alarms_title">Alarmas exactas desactivadas</string>
+    <string name="permission_limitation_exact_alarms_desc">El recordatorio se guardó con una alarma aproximada y el aviso puede demorarse algunos minutos. Habilitalo en Ajustes → Aplicaciones → Hey! → Alarmas y recordatorios.</string>
+    <string name="permission_limitation_location_title">Ubicación en segundo plano desactivada</string>
+    <string name="permission_limitation_location_desc">Se guardó igualmente, pero no avisará al llegar o salir cuando la app esté cerrada. Habilitalo en Ajustes → Aplicaciones → Hey! → Permisos → Ubicación → Permitir todo el tiempo.</string>
+    <string name="permission_limitation_btn_settings">Abrir Ajustes</string>
+    <string name="permission_limitation_btn_ok">Entendido</string>
+    <string name="permission_limitation_snackbar_notifications">Guardado. Activá notificaciones en Ajustes para recibir avisos.</string>
+    <string name="permission_limitation_snackbar_exact_alarms">Guardado. Sin alarmas exactas, el aviso puede demorarse.</string>
+    <string name="permission_limitation_snackbar_location">Guardado. Activá ubicación \"Permitir todo el tiempo\" para avisos cerrada.</string>
+    <string name="permission_limitation_snackbar_multiple">Guardado con avisos limitados. Revisá los permisos en Ajustes.</string>
+    <string name="permission_limitation_snackbar_action">Ajustes</string>
+
+    <string name="voice_capture_permission_denied_title">Micrófono desactivado</string>
+    <string name="voice_capture_permission_denied_desc">Sin acceso al micrófono no podés grabar notas de voz ni dictar recordatorios, pero podés seguir creando recordatorios por texto, checklist o foto.\n\nHabilitalo en: Ajustes → Aplicaciones → Hey! → Permisos → Micrófono.</string>
+    <string name="voice_capture_open_settings">Abrir Ajustes</string>
+    <string name="voice_capture_retry_permission">Permitir micrófono</string>
+
+    <string name="place_edit_location_denied_desc">Sin permiso de ubicación no podemos detectar tu posición actual, pero podés buscar la dirección arriba. Para activarlo: Ajustes → Aplicaciones → Hey! → Permisos → Ubicación.</string>
+    <string name="scheduled_message_contacts_denied_title">Permiso de contactos desactivado</string>
+    <string name="scheduled_message_contacts_denied_desc">Sin acceso a tus contactos no podés elegir un destinatario desde la agenda, pero podés escribir el número o correo manualmente.\n\nHabilitalo en: Ajustes → Aplicaciones → Hey! → Permisos → Contactos.</string>
+
+    <!-- Ajustes: General y secciones -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_action_collapse_all">Colapsar todas las secciones</string>
+    <string name="settings_action_expand_all">Expandir todas las secciones</string>
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="settings_section_appearance_desc">Tema, colores, tipografía y accesibilidad visual</string>
+    <string name="settings_section_notifications">Notificaciones</string>
+    <string name="settings_section_notifications_desc">Canales de aviso, vibración y recordatorios silenciosos</string>
+    <string name="settings_section_security">Seguridad y privacidad</string>
+    <string name="settings_section_security_desc">Bloqueo de la app con contraseña, PIN o biometría</string>
+    <string name="settings_section_data">Datos y almacenamiento</string>
+    <string name="settings_section_data_desc">Copia de seguridad, exportación y limpieza de caché</string>
+    <string name="settings_section_about">Acerca de Hey!</string>
+    <string name="settings_section_about_desc">Versión 1.0 · TP Desarrollo de Aplicaciones I (UADE)</string>
+    <string name="settings_section_coming_soon">Próximamente disponible</string>
+
+    <!-- Ajustes: Apariencia - Modo de tema -->
+    <string name="settings_theme_mode_system">Sistema</string>
+    <string name="settings_theme_mode_light">Claro</string>
+    <string name="settings_theme_mode_dark">Oscuro</string>
+    <string name="settings_theme_pure_black">Usar tema oscuro negro puro</string>
+    <string name="settings_theme_pure_black_desc">Negro absoluto para pantallas AMOLED</string>
+
+    <!-- Ajustes: Apariencia - Paleta -->
+    <string name="settings_palette_title">Paleta</string>
+    <string name="settings_palette_dynamic">Material You</string>
+    <string name="settings_palette_hey_blue">Azul Hey!</string>
+    <string name="settings_palette_emerald_green">Verde Esmeralda</string>
+    <string name="settings_palette_coral_orange">Naranja Coral</string>
+    <string name="settings_palette_olive_earth">Oliva &amp; Naturaleza</string>
+    <string name="settings_palette_amber_gold">Ámbar &amp; Miel</string>
+    <string name="settings_palette_purple_lavender">Violeta &amp; Lavanda</string>
+    <string name="settings_palette_rose_pink">Rosa &amp; Frambuesa</string>
+
+    <!-- Ajustes: Apariencia - Vista previa de colores -->
+    <string name="settings_palette_preview_title">Vista previa · %1$s</string>
+    <string name="settings_palette_primary">primario</string>
+    <string name="settings_palette_secondary">secundario</string>
+    <string name="settings_palette_tertiary">terciario</string>
+    <string name="settings_palette_tone_lowest">más bajo</string>
+    <string name="settings_palette_tone_surface">superficie</string>
+    <string name="settings_palette_tone_low">bajo</string>
+    <string name="settings_palette_tone_base">base</string>
+    <string name="settings_palette_tone_high">alto</string>
+    <string name="settings_palette_tone_highest">más alto</string>
+
+    <!-- Ajustes: Apariencia - Tamaño de texto / Escala -->
+    <string name="settings_font_scale_title">Escala de la interfaz</string>
+    <string name="settings_font_scale_desc">Ajusta el tamaño del texto para mejorar la lectura</string>
+    <string name="settings_font_scale_small">Pequeña</string>
+    <string name="settings_font_scale_default">Predeterminada</string>
+    <string name="settings_font_scale_medium">Mediana</string>
+    <string name="settings_font_scale_large">Grande</string>
+    <string name="settings_font_scale_preview_sample">El veloz murciélago hindú comía feliz cardillo y kiwi.</string>
+
+    <!-- Ajustes: Apariencia - Tipo de fuente (Accesibilidad) -->
+    <string name="settings_font_family_title">Tipo de fuente (Accesibilidad)</string>
+    <string name="settings_font_family_desc">Elige una tipografía legible y cómoda para tus ojos</string>
+    <string name="settings_font_family_system">Sistema</string>
+    <string name="settings_font_family_system_desc">Tipografía estándar de Android</string>
+    <string name="settings_font_family_atkinson">Atkinson Hiperlegible</string>
+    <string name="settings_font_family_atkinson_desc">Diseñada por Braille Institute para máxima legibilidad</string>
+    <string name="settings_font_family_sans_serif">Sans Serif</string>
+    <string name="settings_font_family_sans_serif_desc">Moderna, limpia y con formas geométricas abiertas</string>
+    <string name="settings_font_family_serif">Serif</string>
+    <string name="settings_font_family_serif_desc">Con remates tradicionales que guían la lectura fluida</string>
+    <string name="settings_font_family_monospace">Monoespacio</string>
+    <string name="settings_font_family_monospace_desc">Ancho uniforme entre letras, evita confusiones entre 0/O y 1/l</string>
+
+    <!-- Ajustes: Apariencia - Efectos visuales -->
+    <string name="settings_gradient_bg_title">Fondo degradado</string>
+    <string name="settings_gradient_bg_desc">Mostrar un degradado de acento sutil detrás de la aplicación</string>
+
+    <!-- Ajustes: Notificaciones -->
+    <string name="settings_notif_system_alerts_title">Alertas del sistema</string>
+    <string name="settings_notif_system_alerts_desc">Elige qué avisos generarán alertas visibles del sistema</string>
+    <string name="settings_notif_time_alerts">Avisos por fecha y hora</string>
+    <string name="settings_notif_time_alerts_desc">Notificar recordatorios a la hora programada</string>
+    <string name="settings_notif_place_alerts">Avisos por lugar</string>
+    <string name="settings_notif_place_alerts_desc">Notificar al llegar o salir de un lugar geolocalizado</string>
+    <string name="settings_notif_high_priority_only">Solo alta importancia o crítica</string>
+    <string name="settings_notif_high_priority_only_desc">Silenciar recordatorios de baja prioridad y mostrar solo los urgentes</string>
+
+    <string name="settings_notif_reliable_title">Recordatorios fiables</string>
+    <string name="settings_notif_reliable_desc">Saltea las optimizaciones de batería de Android para que los avisos suenen al segundo exacto aun con el teléfono en reposo prolongado (Doze mode)</string>
+    <string name="settings_notif_reliable_battery_action">Configurar optimización de batería</string>
+    <string name="settings_notif_reliable_active">Optimización desactivada (Fiable)</string>
+    <string name="settings_notif_reliable_inactive">Batería optimizada (Puede demorarse)</string>
+
+    <string name="settings_notif_overdue_title">Recordatorios vencidos</string>
+    <string name="settings_notif_overdue_desc">Enviar un recordatorio adicional si la hora programada ya pasó y la tarea continúa pendiente</string>
+
+    <string name="settings_notif_sound_title">Tipo de alarma y vibración</string>
+    <string name="settings_notif_sound_desc">Configura la persistencia del sonido y la respuesta háptica</string>
+    <string name="settings_notif_sound_short">Timbre corto</string>
+    <string name="settings_notif_sound_short_desc">Un único tono breve de notificación</string>
+    <string name="settings_notif_sound_one_minute">Alarma de 1 minuto</string>
+    <string name="settings_notif_sound_one_minute_desc">Sonido insistente y continuo durante un minuto entero</string>
+    <string name="settings_notif_vibration">Vibración</string>
+    <string name="settings_notif_vibration_desc">Vibrar el teléfono cuando suene un aviso</string>
+
+    <!-- Comunes: diálogos, calendario y reloj (ui/components) -->
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_accept">Aceptar</string>
+    <string name="common_done">Listo</string>
+    <string name="calendar_previous_month">Mes anterior</string>
+    <string name="calendar_next_month">Mes siguiente</string>
+    <!-- Formato del título del calendario (DateTimeFormatter), ej. "septiembre de 2026". -->
+    <string name="calendar_month_year_pattern">LLLL \'de\' yyyy</string>
+    <string name="time_picker_title">Selecciona una hora</string>
+    <!-- Recorte de imagen (ImageCropDialog) -->
+    <string name="image_crop_close">Cerrar</string>
+    <string name="image_crop_zoom_in">Acercar</string>
+    <string name="image_crop_zoom_out">Alejar</string>
+    <string name="image_crop_save">Guardar</string>
+
+    <!-- Barra de navegación inferior -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_history">Historial</string>
+    <string name="nav_places">Lugares</string>
+    <string name="nav_settings">Ajustes</string>
+
+    <!-- Captura por voz e IA Groq -->
+    <string name="voice_capture_recording">Grabando</string>
+    <string name="voice_capture_paused">Pausado</string>
+    <string name="voice_capture_transcription_header">Transcripción en vivo · Groq Whisper</string>
+    <string name="voice_capture_switch_ai">Transcribir con IA (Groq)</string>
+    <string name="voice_capture_switch_audio_only">Solo guardar audio</string>
+    <string name="voice_capture_listening">Escuchando…</string>
+    <string name="voice_capture_processing">Procesando con IA…</string>
+    <string name="voice_capture_footer_ai">Al detener, la IA revisa si dijiste más de un recordatorio.</string>
+    <string name="voice_capture_footer_audio_only">Al detener, el audio se guardará directamente como recordatorio.</string>
+    <string name="voice_capture_permission_required">Se necesita permiso de micrófono para grabar.</string>
+    <string name="voice_capture_grant_permission">Permitir</string>
+    <string name="voice_capture_discard">Descartar grabación</string>
+    <string name="voice_capture_stop">Detener y procesar</string>
+    <string name="voice_capture_pause">Pausar</string>
+    <string name="voice_capture_resume">Reanudar</string>
+    <string name="voice_capture_default_title">Nota de voz</string>
+    <string name="voice_capture_attached_note">Nota de voz adjunta</string>
+    <string name="voice_capture_error_empty_or_unintelligible">No se pudo procesar el audio (vacío o ininteligible). Por favor, volvé a grabar.</string>
+
+    <!-- Revisión de los recordatorios que armó la IA: confirmar antes de cerrar -->
+    <string name="review_discard_title">¿Descartar los recordatorios?</string>
+    <plurals name="review_discard_message">
+        <item quantity="one">Se va a perder el recordatorio que armó la IA con tu audio.</item>
+        <item quantity="other">Se van a perder los %d recordatorios que armó la IA con tu audio.</item>
+    </plurals>
+    <string name="review_discard_keep">Seguir revisando</string>
+    <string name="review_discard_confirm">Descartar</string>
+    <!-- Botón principal de la revisión: cuántos recordatorios se van a crear. -->
+    <plurals name="review_create_button">
+        <item quantity="one">✓ Crear %d recordatorio</item>
+        <item quantity="other">✓ Crear %d recordatorios</item>
+    </plurals>
+    <string name="voice_capture_error_missing_key">No se pudo transcribir: falta configurar la clave de Groq. Se guardó como nota de voz.</string>
+    <string name="voice_capture_error_invalid_key">No se pudo transcribir: la clave de Groq es inválida. Se guardó como nota de voz.</string>
+    <string name="voice_capture_action_retry">Reintentar</string>
+    <string name="voice_capture_ready_to_record">Listo para grabar</string>
+    <string name="voice_capture_start_recording">Grabar</string>
+
+    <!-- Notificaciones del sistema -->
+    <!-- Un canal por importancia: el usuario puede ajustar cada uno en los Ajustes de Android. -->
+    <string name="notification_channel_low_name">Recordatorios silenciosos</string>
+    <string name="notification_channel_low_desc">Importancia baja: sin sonido ni vibración</string>
+    <string name="notification_channel_default_name">Recordatorios</string>
+    <string name="notification_channel_default_desc">Importancia predeterminada: con sonido y vibración</string>
+    <string name="notification_channel_high_name">Recordatorios importantes</string>
+    <string name="notification_channel_high_desc">Importancia alta: aparecen arriba de la pantalla</string>
+    <string name="notification_channel_critical_name">Recordatorios críticos</string>
+    <string name="notification_channel_critical_desc">Importancia crítica: suenan como alarma y se repiten hasta marcarlos hechos</string>
+    <string name="notification_action_done">Hecho</string>
+    <string name="notification_action_complete_all">Marcar todo y finalizar</string>
+    <string name="notification_action_snooze">Posponer (15 min)</string>
+    <string name="notification_default_title">Recordatorio</string>
+    <!-- Ajustes: Seguridad -->
+    <string name="settings_security_lock_title">Bloqueo de la aplicación</string>
+    <string name="settings_security_lock_desc">Exige autenticación cada vez que ingreses o vuelvas a la aplicación</string>
+    <string name="settings_security_lock_type_title">Método de desbloqueo</string>
+    <string name="settings_security_lock_type_pin">Código PIN</string>
+    <string name="settings_security_lock_type_pin_desc">4 a 6 dígitos numéricos</string>
+    <string name="settings_security_lock_type_password">Contraseña</string>
+    <string name="settings_security_lock_type_password_desc">Alfanumérica (mínimo 4 caracteres)</string>
+    <string name="settings_security_status_configured">Configurado y protegido</string>
+    <string name="settings_security_status_not_configured">Pendiente de configurar</string>
+    <string name="settings_security_action_change_pin">Cambiar PIN</string>
+    <string name="settings_security_action_change_password">Cambiar contraseña</string>
+    <string name="settings_security_action_setup_pin">Configurar PIN</string>
+    <string name="settings_security_action_setup_password">Configurar contraseña</string>
+
+    <string name="settings_security_biometric_title">Desbloqueo biométrico</string>
+    <string name="settings_security_biometric_desc">Permite ingresar rápidamente con tu huella dactilar o reconocimiento facial</string>
+    <string name="settings_security_biometric_no_hardware">Tu dispositivo no cuenta con sensor biométrico compatible</string>
+    <string name="settings_security_biometric_not_enrolled">No hay huellas o datos biométricos configurados en Android</string>
+    <string name="settings_security_biometric_setup_action">Configurar en Android</string>
+
+    <string name="settings_security_timeout_title">Bloquear automáticamente</string>
+    <string name="settings_security_timeout_desc">Tiempo de espera tras salir o minimizar la aplicación</string>
+    <string name="settings_security_timeout_immediate">Inmediatamente</string>
+    <string name="settings_security_timeout_1min">Tras 1 minuto</string>
+    <string name="settings_security_timeout_5min">Tras 5 minutos</string>
+
+    <!-- Diálogo de configuración de PIN / Contraseña -->
+    <string name="security_dialog_setup_pin_title">Configurar PIN de acceso</string>
+    <string name="security_dialog_change_pin_title">Cambiar PIN de acceso</string>
+    <string name="security_dialog_setup_password_title">Configurar contraseña</string>
+    <string name="security_dialog_change_password_title">Cambiar contraseña</string>
+    <string name="security_dialog_current_pin">PIN actual</string>
+    <string name="security_dialog_current_password">Contraseña actual</string>
+    <string name="security_dialog_new_pin">Nuevo PIN (4 a 6 números)</string>
+    <string name="security_dialog_new_password">Nueva contraseña</string>
+    <string name="security_dialog_confirm_pin">Confirmar nuevo PIN</string>
+    <string name="security_dialog_confirm_password">Confirmar nueva contraseña</string>
+    <string name="security_dialog_error_mismatch">Los códigos ingresados no coinciden</string>
+    <string name="security_dialog_error_invalid_current">El código actual es incorrecto</string>
+    <string name="security_dialog_error_too_short_pin">El PIN debe contener entre 4 y 6 números</string>
+    <string name="security_dialog_error_too_short_pwd">La contraseña debe tener al menos 4 caracteres</string>
+    <string name="security_dialog_btn_save">Guardar</string>
+    <string name="security_dialog_btn_cancel">Cancelar</string>
+
+    <!-- Pantalla de bloqueo (Lock Screen) -->
+    <string name="lock_screen_title">Hey! está bloqueado</string>
+    <string name="lock_screen_subtitle_pin">Ingresa tu código PIN para continuar</string>
+    <string name="lock_screen_subtitle_password">Ingresa tu contraseña para continuar</string>
+    <string name="lock_screen_pin_placeholder">••••</string>
+    <string name="lock_screen_password_placeholder">Ingresa tu contraseña</string>
+    <string name="lock_screen_btn_unlock">Desbloquear</string>
+    <string name="lock_screen_btn_biometric">Usar biometría</string>
+    <string name="lock_screen_biometric_prompt_title">Desbloquear Hey!</string>
+    <string name="lock_screen_biometric_prompt_subtitle">Confirma tu huella o rostro para ingresar</string>
+    <string name="lock_screen_biometric_prompt_cancel">Usar PIN o contraseña</string>
+    <string name="lock_screen_error_wrong_code">Código incorrecto. Vuelve a intentarlo.</string>
+    <!-- Ajustes: Datos y almacenamiento -->
+    <string name="settings_data_backup_title">Copia de seguridad local</string>
+    <string name="settings_data_backup_desc">Guarda una copia completa de tus notas, tareas y lugares en el almacenamiento del dispositivo</string>
+    <string name="settings_data_backup_create_btn">Crear copia ahora</string>
+    <string name="settings_data_backup_restore_btn">Restaurar copia</string>
+    <string name="settings_data_backup_latest_title">Última copia local</string>
+    <string name="settings_data_backup_none">No hay copias de seguridad locales disponibles</string>
+    <string name="settings_data_backup_success">Copia de seguridad creada correctamente</string>
+    <string name="settings_data_restore_success">Copia restaurada: %1$d recordatorios recuperados</string>
+
+    <string name="settings_data_transfer_title">Exportación e importación</string>
+    <string name="settings_data_transfer_desc">Comparte o transfiere tus datos en formato de archivo JSON</string>
+    <string name="settings_data_export_btn">Exportar datos</string>
+    <string name="settings_data_import_btn">Importar archivo</string>
+    <string name="settings_data_export_chooser_title">Compartir o guardar copia de Hey!</string>
+    <string name="settings_data_import_success">Importación finalizada: %1$d recordatorios, %2$d lugares y %3$d etiquetas</string>
+    <string name="settings_data_import_error">No se pudo importar el archivo. Verifica que sea un respaldo válido de Hey!.</string>
+
+    <string name="settings_data_cache_title">Limpieza de caché</string>
+    <string name="settings_data_cache_desc">Mapas sin conexión, fotos temporales y archivos en caché</string>
+    <string name="settings_data_cache_size_label">Tamaño actual</string>
+    <string name="settings_data_cache_clean_btn">Liberar caché</string>
+    <string name="settings_data_cache_cleared_msg">Caché liberada correctamente (%1$s)</string>
+
+    <string name="settings_data_reset_title">Restablecer la aplicación</string>
+    <string name="settings_data_reset_desc">Elimina de forma irreversible todos los recordatorios, notas, fotos y preferencias</string>
+    <string name="settings_data_reset_btn">Borrar todos los datos</string>
+
+    <!-- Diálogo de confirmación para borrar datos -->
+    <string name="settings_dialog_reset_title">¿Eliminar todos los datos?</string>
+    <string name="settings_dialog_reset_message">Esta acción borrará de manera definitiva todos tus recordatorios, grabaciones de voz, fotos adjuntas, lugares guardados, etiquetas y ajustes.\n\nEsta operación es irreversible y no se podrá recuperar.</string>
+    <string name="settings_dialog_reset_confirm">Eliminar definitivamente</string>
+    <string name="settings_dialog_reset_cancel">Cancelar</string>
+    <string name="settings_data_reset_success">Todos los datos de la app han sido eliminados</string>
+
+    <!-- Ajustes: Acerca de Hey! -->
+    <string name="settings_about_app_name">Hey! Recordatorios y Notas</string>
+    <string name="settings_about_app_tagline">Recordá todo, estés donde estés y a tiempo.</string>
+    <string name="settings_about_version_label">Versión %1$s (Build %2$d)</string>
+
+    <string name="settings_about_updates_title">Actualizaciones de la aplicación</string>
+    <string name="settings_about_updates_desc">Comprueba si cuentas con la versión más reciente disponible</string>
+    <string name="settings_about_updates_btn_check">Buscar actualización</string>
+    <string name="settings_about_updates_checking">Buscando actualizaciones…</string>
+    <string name="settings_about_updates_up_to_date">¡Estás al día! Hey! v%1$s es la última versión disponible.</string>
+
+    <string name="settings_about_project_title">Proyecto Académico UADE</string>
+    <string name="settings_about_project_university">Universidad Argentina de la Empresa (UADE)</string>
+    <string name="settings_about_project_course">Desarrollo de Aplicaciones I</string>
+    <string name="settings_about_project_desc">Aplicación nativa moderna desarrollada con Jetpack Compose, Material 3, Room SQLite, geocercas en segundo plano, biometría y procesamiento por voz con IA.</string>
+
+    <string name="settings_about_privacy_title">Privacidad y código abierto</string>
+    <string name="settings_about_privacy_desc">Tus notas, recordatorios, fotos y lugares permanecen almacenados de forma local y privada en tu dispositivo. Desarrollado con las directrices de accesibilidad y tipografía Atkinson Hyperlegible.</string>
+
+    <!-- Mensajes programados -->
+    <string name="scheduled_message_title_new">Mensaje programado</string>
+    <string name="scheduled_message_title_edit">Editar mensaje programado</string>
+    <string name="scheduled_message_section_channel">Enviar por</string>
+    <string name="scheduled_message_channel_whatsapp">WhatsApp</string>
+    <string name="scheduled_message_channel_sms">SMS</string>
+    <string name="scheduled_message_channel_email">Correo</string>
+    <string name="scheduled_message_section_recipient">Destinatario</string>
+    <string name="scheduled_message_field_phone">Número de teléfono</string>
+    <string name="scheduled_message_field_phone_placeholder">+54 9 11 1234-5678</string>
+    <string name="scheduled_message_field_email">Correo electrónico</string>
+    <string name="scheduled_message_field_email_placeholder">persona@ejemplo.com</string>
+    <string name="scheduled_message_section_message">Contenido del mensaje</string>
+    <string name="scheduled_message_field_subject">Asunto (opcional)</string>
+    <string name="scheduled_message_field_subject_placeholder">Ej: Aviso importante</string>
+    <string name="scheduled_message_field_text">Mensaje</string>
+    <string name="scheduled_message_field_text_placeholder">Escribe el mensaje a enviar…</string>
+    <string name="scheduled_message_section_when">¿Cuándo enviar?</string>
+    <string name="scheduled_message_trigger_time">Por fecha y hora</string>
+    <string name="scheduled_message_trigger_location">Por ubicación</string>
+    <string name="scheduled_message_time_in_15_min">En 15 min</string>
+    <string name="scheduled_message_time_in_1_hour">En 1 hora</string>
+    <string name="scheduled_message_time_tonight">Esta noche (21:00)</string>
+    <string name="scheduled_message_time_tomorrow">Mañana (09:00)</string>
+    <string name="scheduled_message_date_picker_label">Fecha de envío</string>
+    <string name="scheduled_message_time_picker_label">Hora de envío</string>
+    <string name="scheduled_message_location_no_places">No tienes lugares guardados. Ve a la pestaña Lugares para agregar uno.</string>
+    <string name="scheduled_message_btn_send_now">Enviar ahora</string>
+    <string name="scheduled_message_btn_schedule">Programar mensaje</string>
+    <string name="scheduled_message_btn_save_changes">Guardar cambios</string>
+    <string name="scheduled_message_app_not_installed">La aplicación correspondiente no está disponible en este dispositivo</string>
+    <string name="scheduled_message_summary_time">Se avisará el %1$s a las %2$s</string>
+    <string name="scheduled_message_summary_location_arrive">Se avisará al llegar a %1$s</string>
+    <string name="scheduled_message_summary_location_leave">Se avisará al salir de %1$s</string>
+    <string name="scheduled_message_default_title_whatsapp">WhatsApp a %1$s</string>
+    <string name="scheduled_message_default_title_sms">SMS a %1$s</string>
+    <string name="scheduled_message_default_title_email">Correo a %1$s</string>
+    <string name="scheduled_message_badge">Mensaje programado</string>
+    <string name="notification_action_send_whatsapp">Enviar WhatsApp</string>
+    <string name="notification_action_send_sms">Enviar SMS</string>
+    <string name="notification_action_send_email">Enviar correo</string>
+    <string name="notification_action_call">Llamar</string>
+    <string name="scheduled_message_field_title">Título del recordatorio</string>
+    <string name="scheduled_message_field_title_placeholder">Ej: Saludar por cumpleaños…</string>
+    <string name="scheduled_message_pick_contact">Elegir contacto</string>
+    <string name="scheduled_message_contacts_permission_denied">Se necesita permiso para acceder a tus contactos</string>
+    <string name="scheduled_message_no_phone_found">El contacto seleccionado no tiene un número de teléfono</string>
+    <string name="scheduled_message_no_email_found">El contacto seleccionado no tiene una dirección de correo</string>
+    <string name="scheduled_message_notifications_permission_needed">Se necesitan permisos de notificaciones para avisarte a la hora programada.</string>
 </resources>

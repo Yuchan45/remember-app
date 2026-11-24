@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono "visibility_off" de Material Symbols (outlined). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="m644-428-58-58q9-47-27-88t-87-32l-58-58q17-5 34-7.5t36-2.5q75 0 127.5 52.5T664-500q0 18-2.5 36t-7.5 36Zm146 146-72-72q24-35 41-73.5T784-500q-54-137-174-218.5T480-800q-41 0-80 6.5T324-774l-64-64q48-21 106-31.5T480-880q146 0 266 81.5T920-500q-32 80-85 146t-105 72Zm-610 82 78-78q-44-32-80.5-73.5T128-500q54-137 174-218.5T480-800q40 0 79 7.5t75 22.5l-62 62q-23-6-46-9t-46-3q-113 0-207.5 59.5T148-500q36 67 91.5 119.5T360-312l-72 72-108-108-56 56 108 108-52 52 56 56 788-788-56-56-144 144-88 88-144 144-88 88-144 144ZM480-320q-75 0-127.5-52.5T300-500q0-18 2.5-36t7.5-36l218 218q-18 5-36 7.5t-36 2.5Zm176 176-74-74q-24 9-50 13.5t-52 4.5q-113 0-207.5-59.5T148-500q18-36 43-68.5t55-61.5l-62-62q-39 37-69.5 82.5T70-500q54 137 174 218.5T480-200q44 0 86-8.5t82-24.5l-72-71Z" />
+    </group>
+</vector>

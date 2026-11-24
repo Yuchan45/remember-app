@@ -1,7 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
+
+val localProperties = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        load(localFile.inputStream())
+    }
+}
+val groqApiKey: String = (localProperties.getProperty("groq.api.key")
+    ?: System.getenv("GROQ_API_KEY")
+    ?: "").replace("\"", "\\\"")
 
 android {
     namespace = "com.example.uade.rememberapp"
@@ -17,6 +30,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GROQ_API_KEY", "\"$groqApiKey\"")
     }
 
     buildTypes {
@@ -32,6 +47,10 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -48,6 +67,28 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room3.common)
+    implementation(libs.coil.compose)
+    ksp(libs.androidx.room.compiler)
+
+    // Retrofit + OkHttp + Gson (para API Groq)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.gson)
+
+    // WorkManager (para procesamiento offline/background)
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // Google Play Services Location & Geofencing
+    implementation(libs.play.services.location)
+
+    // OpenStreetMap (OSMDroid)
+    implementation(libs.osmdroid.android)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

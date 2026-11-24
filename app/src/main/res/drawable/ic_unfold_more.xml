@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono "unfold_more" de Material Symbols (outlined). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M480-160 300-340l56-56 124 124 124-124 56 56-180 180Zm-124-404-56-56 180-180 180 180-56 56-124-124-124 124Z" />
+    </group>
+</vector>
