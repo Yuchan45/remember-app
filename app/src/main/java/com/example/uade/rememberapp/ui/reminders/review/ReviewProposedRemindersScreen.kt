@@ -72,16 +72,9 @@ import com.example.uade.rememberapp.domain.model.ReminderType
 import com.example.uade.rememberapp.ui.components.AppDialogDefaults
 import com.example.uade.rememberapp.ui.components.DialogDismissButton
 import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
+import com.example.uade.rememberapp.ui.permissions.rememberTriggerPermissionsCoordinator
 import com.example.uade.rememberapp.ui.reminders.detail.ReminderDetailScreen
-import com.example.uade.rememberapp.ui.theme.CardSurface
-import com.example.uade.rememberapp.ui.theme.Outline
-import com.example.uade.rememberapp.ui.theme.Primary
-import com.example.uade.rememberapp.ui.theme.SurfaceVariant
-
-private val DarkButtonBg = Color(0xFF243642)
-private val BadgeGoldBg = Color(0xFF2C2415)
-private val BadgeGoldBorder = Color(0xFF6B5120)
-private val BadgeGoldText = Color(0xFFFFD54F)
+import com.example.uade.rememberapp.ui.theme.LocalIsDarkTheme
 
 /**
  * Pantalla completa de revisión de recordatorios propuestos por la IA.
@@ -98,6 +91,7 @@ fun ReviewProposedRemindersScreen(
     viewModel: ReviewProposedRemindersViewModel = viewModel(factory = ReviewProposedRemindersViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val permissionsCoordinator = rememberTriggerPermissionsCoordinator()
 
     LaunchedEffect(analysisResult) {
         viewModel.initialize(analysisResult)
@@ -137,7 +131,23 @@ fun ReviewProposedRemindersScreen(
             onMergeAllIntoOne = viewModel::onMergeAllIntoOne,
             onUnmergeSelected = viewModel::onUnmergeSelected,
             onUnmergeProposal = viewModel::onUnmergeProposal,
-            onCreateClick = viewModel::onCreateClick,
+            onCreateClick = {
+                val selected = uiState.proposals.filter { it.isSelected }
+                val needsTime = selected.any { proposal ->
+                    val hasDraftAlarms = proposal.draft?.alarms?.isNotEmpty() == true
+                    val hasProposedAlarms = proposal.alarms.isNotEmpty() ||
+                        (!proposal.triggerDisplayTime.isNullOrBlank() &&
+                            !proposal.triggerDisplayTime.equals("Sin fecha", ignoreCase = true))
+                    hasDraftAlarms || (proposal.draft == null && hasProposedAlarms)
+                }
+                val needsPlace = selected.any { it.draft?.places?.isNotEmpty() == true }
+                permissionsCoordinator.runWithPermissions(
+                    needsTimeAlarm = needsTime,
+                    needsPlaceAlert = needsPlace,
+                ) {
+                    viewModel.onCreateClick()
+                }
+            },
         )
 
         // ✏️ de una propuesta: el mismo editor que cualquier recordatorio (no un modal aparte).
@@ -236,6 +246,12 @@ private fun ReviewProposedRemindersContent(
     onCreateClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val badgeGoldBg = if (isDark) Color(0xFF2C2415) else Color(0xFFFFF6DC)
+    val badgeGoldBorder = if (isDark) Color(0xFF6B5120) else Color(0xFFD4A72C)
+    val badgeGoldText = if (isDark) Color(0xFFFFD54F) else Color(0xFF7A5200)
+    val secondaryActionBg = MaterialTheme.colorScheme.surfaceContainerHighest
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -283,9 +299,9 @@ private fun ReviewProposedRemindersContent(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Outline, RoundedCornerShape(16.dp)),
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    color = CardSurface,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -298,7 +314,7 @@ private fun ReviewProposedRemindersContent(
                             Icon(
                                 painter = painterResource(R.drawable.ic_mic),
                                 contentDescription = null,
-                                tint = Primary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp),
                             )
                             Text(
@@ -325,9 +341,9 @@ private fun ReviewProposedRemindersContent(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, BadgeGoldBorder, RoundedCornerShape(12.dp)),
+                        .border(1.dp, badgeGoldBorder, RoundedCornerShape(12.dp)),
                     shape = RoundedCornerShape(12.dp),
-                    color = BadgeGoldBg,
+                    color = badgeGoldBg,
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -337,13 +353,13 @@ private fun ReviewProposedRemindersContent(
                         Icon(
                             painter = painterResource(R.drawable.ic_auto_awesome),
                             contentDescription = null,
-                            tint = BadgeGoldText,
+                            tint = badgeGoldText,
                             modifier = Modifier.size(20.dp),
                         )
                         Text(
                             text = uiState.summaryBadge,
                             style = MaterialTheme.typography.bodySmall,
-                            color = BadgeGoldText,
+                            color = badgeGoldText,
                             fontWeight = FontWeight.Medium,
                             lineHeight = 18.sp,
                         )
@@ -358,14 +374,14 @@ private fun ReviewProposedRemindersContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(24.dp))
-                            .background(SurfaceVariant)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(4.dp),
                     ) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(20.dp))
-                                .background(if (uiState.isChecklistView) Primary else Color.Transparent)
+                                .background(if (uiState.isChecklistView) MaterialTheme.colorScheme.primary else Color.Transparent)
                                 .clickable { onSetChecklistView(true) }
                                 .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center,
@@ -377,14 +393,14 @@ private fun ReviewProposedRemindersContent(
                                 Icon(
                                     painter = painterResource(R.drawable.ic_checklist),
                                     contentDescription = null,
-                                    tint = if (uiState.isChecklistView) Color(0xFF0B141B) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (uiState.isChecklistView) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Text(
                                     text = "Checklist",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
-                                    color = if (uiState.isChecklistView) Color(0xFF0B141B) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (uiState.isChecklistView) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -393,7 +409,7 @@ private fun ReviewProposedRemindersContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(20.dp))
-                                .background(if (!uiState.isChecklistView) Primary else Color.Transparent)
+                                .background(if (!uiState.isChecklistView) MaterialTheme.colorScheme.primary else Color.Transparent)
                                 .clickable { onSetChecklistView(false) }
                                 .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center,
@@ -405,14 +421,14 @@ private fun ReviewProposedRemindersContent(
                                 Icon(
                                     painter = painterResource(R.drawable.ic_notes),
                                     contentDescription = null,
-                                    tint = if (!uiState.isChecklistView) Color(0xFF0B141B) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (!uiState.isChecklistView) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Text(
                                     text = "Separados",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
-                                    color = if (!uiState.isChecklistView) Color(0xFF0B141B) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (!uiState.isChecklistView) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -453,13 +469,13 @@ private fun ReviewProposedRemindersContent(
                         Icon(
                             painter = painterResource(R.drawable.ic_add),
                             contentDescription = null,
-                            tint = Primary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp),
                         )
                         Text(
                             text = "Agregar otro",
                             style = MaterialTheme.typography.labelLarge,
-                            color = Primary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
@@ -485,7 +501,7 @@ private fun ReviewProposedRemindersContent(
                 if (uiState.canMerge) {
                     Button(
                         onClick = onMergeAllIntoOne,
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkButtonBg),
+                        colors = ButtonDefaults.buttonColors(containerColor = secondaryActionBg),
                         shape = RoundedCornerShape(24.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     ) {
@@ -502,7 +518,7 @@ private fun ReviewProposedRemindersContent(
                 if (uiState.canUnmerge) {
                     Button(
                         onClick = onUnmergeSelected,
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkButtonBg),
+                        colors = ButtonDefaults.buttonColors(containerColor = secondaryActionBg),
                         shape = RoundedCornerShape(24.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     ) {
@@ -520,8 +536,9 @@ private fun ReviewProposedRemindersContent(
                     onClick = onCreateClick,
                     enabled = uiState.selectedCount > 0,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Primary,
-                        disabledContainerColor = Primary.copy(alpha = 0.4f),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                     ),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.weight(1f),
@@ -530,7 +547,6 @@ private fun ReviewProposedRemindersContent(
                     Text(
                         // Cuenta los recordatorios que se van a crear (no los ítems de una lista).
                         text = pluralStringResource(R.plurals.review_create_button, uiState.selectedCount, uiState.selectedCount),
-                        color = Color(0xFF0B141B),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                     )
@@ -554,16 +570,18 @@ private fun ProposedReminderCard(
     onUnmerge: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val outlineColor = MaterialTheme.colorScheme.outlineVariant
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .border(
                 1.dp,
-                if (proposal.isSelected) Outline else Outline.copy(alpha = 0.3f),
+                if (proposal.isSelected) outlineColor else outlineColor.copy(alpha = 0.4f),
                 RoundedCornerShape(16.dp),
             ),
         shape = RoundedCornerShape(16.dp),
-        color = CardSurface,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -578,8 +596,8 @@ private fun ProposedReminderCard(
                     checked = proposal.isSelected,
                     onCheckedChange = { onToggle() },
                     colors = CheckboxDefaults.colors(
-                        checkedColor = Primary,
-                        checkmarkColor = Color(0xFF0B141B),
+                        checkedColor = MaterialTheme.colorScheme.primary,
+                        checkmarkColor = MaterialTheme.colorScheme.onPrimary,
                         uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     ),
                     modifier = Modifier.size(24.dp),
@@ -664,7 +682,7 @@ private fun ProposedReminderCard(
                         Text(
                             text = "Desunir",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Primary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.clickable { onUnmerge() },
                         )
@@ -682,7 +700,7 @@ private fun ProposedReminderCard(
                                     if (item.isChecked) R.drawable.ic_check_box else R.drawable.ic_check_box_outline_blank,
                                 ),
                                 contentDescription = null,
-                                tint = if (item.isChecked) Primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (item.isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp),
                             )
                             Text(
@@ -706,13 +724,25 @@ private fun ProposedReminderCard(
                 // Chip de Hora
                 val timeLabel = proposal.triggerDisplayTime ?: "Sin fecha"
                 val hasTime = timeLabel != "Sin fecha"
+                val timeChipBg = when {
+                    !hasTime -> MaterialTheme.colorScheme.surfaceVariant
+                    isDark -> Color(0xFF162D45)
+                    else -> MaterialTheme.colorScheme.primaryContainer
+                }
+                val timeChipBorder = when {
+                    !hasTime -> MaterialTheme.colorScheme.outlineVariant
+                    isDark -> Color(0xFF2A5380)
+                    else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                }
+                val timeChipTint = when {
+                    !hasTime -> MaterialTheme.colorScheme.onSurfaceVariant
+                    isDark -> Color(0xFF90CAF9)
+                    else -> MaterialTheme.colorScheme.onPrimaryContainer
+                }
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = if (hasTime) Color(0xFF162D45) else SurfaceVariant,
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        if (hasTime) Color(0xFF2A5380) else Outline.copy(alpha = 0.5f),
-                    ),
+                    color = timeChipBg,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, timeChipBorder),
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -722,13 +752,13 @@ private fun ProposedReminderCard(
                         Icon(
                             painter = painterResource(R.drawable.ic_schedule),
                             contentDescription = null,
-                            tint = if (hasTime) Color(0xFF90CAF9) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = timeChipTint,
                             modifier = Modifier.size(13.dp),
                         )
                         Text(
                             text = timeLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (hasTime) Color(0xFF90CAF9) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = timeChipTint,
                             fontWeight = FontWeight.Medium,
                         )
                     }
@@ -736,10 +766,13 @@ private fun ProposedReminderCard(
 
                 // Chip de Lugar
                 if (!proposal.placeName.isNullOrBlank()) {
+                    val placeChipBg = if (isDark) Color(0xFF2E2211) else Color(0xFFFFF4E0)
+                    val placeChipBorder = if (isDark) Color(0xFF664D24) else Color(0xFFD4A72C)
+                    val placeChipTint = if (isDark) Color(0xFFFFCC80) else Color(0xFF8A5200)
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF2E2211),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF664D24)),
+                        color = placeChipBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, placeChipBorder),
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -751,13 +784,13 @@ private fun ProposedReminderCard(
                                     if (proposal.placeName.contains("Casa", ignoreCase = true)) R.drawable.ic_home else R.drawable.ic_location_on,
                                 ),
                                 contentDescription = null,
-                                tint = Color(0xFFFFCC80),
+                                tint = placeChipTint,
                                 modifier = Modifier.size(13.dp),
                             )
                             Text(
                                 text = proposal.placeName,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFFFCC80),
+                                color = placeChipTint,
                                 fontWeight = FontWeight.Medium,
                             )
                         }
@@ -766,10 +799,13 @@ private fun ProposedReminderCard(
 
                 // Chip de Prioridad
                 if (!proposal.priorityName.isNullOrBlank()) {
+                    val priorityChipBg = if (isDark) Color(0xFF331A1A) else MaterialTheme.colorScheme.errorContainer
+                    val priorityChipBorder = if (isDark) Color(0xFF662929) else MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+                    val priorityChipTint = if (isDark) Color(0xFFFF8A80) else MaterialTheme.colorScheme.onErrorContainer
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF331A1A),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF662929)),
+                        color = priorityChipBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, priorityChipBorder),
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -779,13 +815,13 @@ private fun ProposedReminderCard(
                             Icon(
                                 painter = painterResource(R.drawable.ic_alarm),
                                 contentDescription = null,
-                                tint = Color(0xFFFF8A80),
+                                tint = priorityChipTint,
                                 modifier = Modifier.size(13.dp),
                             )
                             Text(
                                 text = proposal.priorityName,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFFF8A80),
+                                color = priorityChipTint,
                                 fontWeight = FontWeight.Medium,
                             )
                         }
@@ -796,8 +832,8 @@ private fun ProposedReminderCard(
                 if (!proposal.listName.isNullOrBlank()) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = SurfaceVariant,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Outline.copy(alpha = 0.5f)),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -834,12 +870,15 @@ private fun SeparateReminderProposalCard(
     onEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val badgeBg = if (isDark) Color(0xFF2C2415) else Color(0xFFFFF4DC)
+    val badgeTint = if (isDark) Color(0xFFFFD54F) else Color(0xFF8A5200)
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, Outline, RoundedCornerShape(16.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        color = CardSurface,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Row(
             modifier = Modifier
@@ -856,13 +895,13 @@ private fun SeparateReminderProposalCard(
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .background(Color(0xFF2C2415), CircleShape),
+                        .background(badgeBg, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_calendar_month),
                         contentDescription = null,
-                        tint = Color(0xFFFFD54F),
+                        tint = badgeTint,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -886,8 +925,8 @@ private fun SeparateReminderProposalCard(
                 checked = proposal.isSelected,
                 onCheckedChange = { onToggle() },
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
                 ),
             )
         }

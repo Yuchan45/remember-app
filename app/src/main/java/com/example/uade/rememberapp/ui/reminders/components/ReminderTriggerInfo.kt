@@ -6,6 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,8 +34,11 @@ import com.example.uade.rememberapp.domain.model.Reminder
 import com.example.uade.rememberapp.domain.model.isDueSoon
 import com.example.uade.rememberapp.domain.model.nextAlarm
 import com.example.uade.rememberapp.ui.theme.DueSoonAmber
+import com.example.uade.rememberapp.ui.theme.DueSoonAmberLight
+import com.example.uade.rememberapp.ui.theme.LocalIsDarkTheme
 import com.example.uade.rememberapp.ui.theme.RememberAppTheme
 import com.example.uade.rememberapp.ui.theme.TriggerTimeColor
+import com.example.uade.rememberapp.ui.theme.TriggerTimeColorLight
 import com.example.uade.rememberapp.ui.theme.rememberAppLocale
 import java.time.Duration
 import java.time.Instant
@@ -51,19 +56,24 @@ import java.time.Instant
  * [placeName] es el nombre del primer lugar: PlaceAlert solo guarda el id. Con [onTimeClick] y
  * [onPlaceClick] cada chip se puede tocar (ej. para abrir el detalle con ese modal).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReminderTriggerInfo(
     reminder: Reminder,
     placeName: String?,
     now: Instant,
     modifier: Modifier = Modifier,
+    onDarkBackground: Boolean = false,
     onTimeClick: (() -> Unit)? = null,
     onPlaceClick: (() -> Unit)? = null,
 ) {
     val next = reminder.nextAlarm(now)
-    Row(
+    val useDarkColors = LocalIsDarkTheme.current || onDarkBackground
+    val dueSoonColor = if (useDarkColors) DueSoonAmber else DueSoonAmberLight
+    val timeColor = if (useDarkColors) TriggerTimeColor else TriggerTimeColorLight
+    FlowRow(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (next != null) {
@@ -76,7 +86,8 @@ fun ReminderTriggerInfo(
             TriggerChip(
                 icon = icon,
                 text = if (extra > 0) stringResource(R.string.reminders_trigger_more_alarms, time, extra) else time,
-                color = if (dueSoon) DueSoonAmber else TriggerTimeColor,
+                color = if (dueSoon) dueSoonColor else timeColor,
+                useLightChipContrast = !useDarkColors,
                 trailingIcon = if (dueSoon) R.drawable.ic_priority_high else null,
                 trailingDescription = stringResource(R.string.reminders_trigger_due_soon),
                 onClick = onTimeClick,
@@ -94,6 +105,7 @@ fun ReminderTriggerInfo(
                 icon = R.drawable.ic_near_me,
                 text = stringResource(textRes, placeName),
                 color = MaterialTheme.colorScheme.primary,
+                useLightChipContrast = !useDarkColors,
                 onClick = onPlaceClick,
             )
         }
@@ -114,16 +126,19 @@ private fun TriggerChip(
     text: String,
     color: Color,
     modifier: Modifier = Modifier,
+    useLightChipContrast: Boolean = false,
     @DrawableRes trailingIcon: Int? = null,
     trailingDescription: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
+    val bgAlpha = if (useLightChipContrast) 0.12f else 0.16f
+    val borderAlpha = if (useLightChipContrast) 0.40f else 0.35f
     Row(
         modifier = modifier
             .clip(CircleShape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
-            .background(color.copy(alpha = 0.16f))
-            .border(1.dp, color.copy(alpha = 0.35f), CircleShape)
+            .background(color.copy(alpha = bgAlpha))
+            .border(1.dp, color.copy(alpha = borderAlpha), CircleShape)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),

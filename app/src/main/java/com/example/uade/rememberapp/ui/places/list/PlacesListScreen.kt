@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,8 +40,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.uade.rememberapp.RememberApp
 import com.example.uade.rememberapp.platform.location.LocationPermissionHelper
+import com.example.uade.rememberapp.platform.permissions.PermissionsHelper
+import com.example.uade.rememberapp.platform.permissions.findActivity
+import com.example.uade.rememberapp.ui.components.ContextualPermission
+import com.example.uade.rememberapp.ui.components.ContextualPermissionDialog
 import com.example.uade.rememberapp.ui.components.LocationPermissionDialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -120,11 +128,35 @@ fun PlacesListScreen(
     }
 
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showForegroundPermissionDialog by remember { mutableStateOf(false) }
+    var hasAllLocationPermissions by remember {
+        mutableStateOf(LocationPermissionHelper.hasAllLocationPermissions(context))
+    }
+    var isLocationServiceEnabled by remember {
+        mutableStateOf(LocationPermissionHelper.isLocationServiceEnabled(context))
+    }
+
+    fun refreshLocationStatus() {
+        hasAllLocationPermissions = LocationPermissionHelper.hasAllLocationPermissions(context)
+        isLocationServiceEnabled = LocationPermissionHelper.isLocationServiceEnabled(context)
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshLocationStatus()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val backgroundPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
+        refreshLocationStatus()
         if (isGranted) {
             val app = context.applicationContext as? RememberApp
             app?.let {
@@ -138,6 +170,7 @@ fun PlacesListScreen(
     val foregroundPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
+        refreshLocationStatus()
         val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
         if (fineGranted && !LocationPermissionHelper.hasBackgroundLocation(context)) {
             showPermissionDialog = true
@@ -146,29 +179,55 @@ fun PlacesListScreen(
 
     PlacesListContent(
         uiState = uiState,
-        hasAllLocationPermissions = LocationPermissionHelper.hasAllLocationPermissions(context),
+        hasAllLocationPermissions = hasAllLocationPermissions,
+        isLocationServiceEnabled = isLocationServiceEnabled,
         onRequestPermissions = {
             if (!LocationPermissionHelper.hasFineLocation(context)) {
-                foregroundPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                    ),
-                )
+                showForegroundPermissionDialog = true
             } else {
                 showPermissionDialog = true
             }
         },
+        onOpenLocationSettings = { LocationPermissionHelper.openLocationSettings(context) },
         onAddNewPlace = viewModel::onAddNewPlaceClick,
         onEditPlace = viewModel::onEditPlaceClick,
         onDeletePlace = viewModel::onRequestDeletePlace,
         contentPadding = contentPadding,
     )
 
+    if (showForegroundPermissionDialog) {
+        ContextualPermissionDialog(
+            permission = ContextualPermission.ForegroundLocation,
+            onAllow = {
+                showForegroundPermissionDialog = false
+                PermissionsHelper.setLocationPrompted(context, true)
+                val activity = context.findActivity()
+                if (activity != null &&
+                    PermissionsHelper.isPermanentlyDenied(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+                ) {
+                    LocationPermissionHelper.openAppSettings(context)
+                } else {
+                    PermissionsHelper.markPermissionRequested(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                    foregroundPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                        ),
+                    )
+                }
+            },
+            onReject = {
+                showForegroundPermissionDialog = false
+                PermissionsHelper.setLocationPrompted(context, true)
+            },
+        )
+    }
+
     if (showPermissionDialog) {
         LocationPermissionDialog(
             onConfirm = {
                 showPermissionDialog = false
+                PermissionsHelper.setBackgroundLocationPrompted(context, true)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 } else {
@@ -183,12 +242,14 @@ fun PlacesListScreen(
 @Composable
 private fun PlacesListContent(
     uiState: PlacesListUiState,
-    hasAllLocationPermissions: Boolean = true,
-    onRequestPermissions: () -> Unit = {},
     onAddNewPlace: () -> Unit,
     onEditPlace: (Place) -> Unit,
     onDeletePlace: (Place) -> Unit,
     modifier: Modifier = Modifier,
+    hasAllLocationPermissions: Boolean = true,
+    isLocationServiceEnabled: Boolean = true,
+    onRequestPermissions: () -> Unit = {},
+    onOpenLocationSettings: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     Box(
@@ -203,31 +264,21 @@ private fun PlacesListContent(
                 .padding(horizontal = 16.dp),
         ) {
             // Cabecera superior
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.places_list_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.places_list_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                CircleIconButton(
-                    icon = R.drawable.ic_add,
-                    contentDescription = stringResource(R.string.places_list_add),
-                    onClick = onAddNewPlace,
+                Text(
+                    text = stringResource(R.string.places_list_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.places_list_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -268,6 +319,48 @@ private fun PlacesListContent(
                         ) {
                             Text(
                                 text = stringResource(R.string.location_permission_banner_action),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    }
+                }
+            } else if (!uiState.isEmpty && !isLocationServiceEnabled) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_priority_high),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.location_permission_gps_disabled_warning),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Button(
+                            onClick = onOpenLocationSettings,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError,
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.location_permission_gps_action),
                                 style = MaterialTheme.typography.labelMedium,
                             )
                         }

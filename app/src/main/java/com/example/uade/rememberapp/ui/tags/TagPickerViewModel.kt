@@ -7,7 +7,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uade.rememberapp.RememberApp
-import com.example.uade.rememberapp.domain.repository.InvalidTagNameException
+import com.example.uade.rememberapp.domain.model.InvalidTagNameException
+import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.domain.repository.TagRepository
 import com.example.uade.rememberapp.ui.components.hueOf
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,7 +95,7 @@ class TagPickerViewModel(
     }
 
     fun onNameChange(name: String) {
-        if (name.length > TagRepository.MaxNameLength) return
+        if (name.length > Tag.MaxNameLength) return
         _uiState.update { it.copy(editorName = name, error = null) }
     }
 

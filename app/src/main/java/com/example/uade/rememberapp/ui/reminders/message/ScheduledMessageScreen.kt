@@ -2,7 +2,6 @@ package com.example.uade.rememberapp.ui.reminders.message
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -45,6 +44,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,7 +82,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -98,8 +97,16 @@ import com.example.uade.rememberapp.domain.model.Tag
 import com.example.uade.rememberapp.platform.contacts.ContactInfo
 import com.example.uade.rememberapp.platform.contacts.ContactPickerHelper
 import com.example.uade.rememberapp.platform.message.MessageLauncherHelper
+import com.example.uade.rememberapp.platform.permissions.PermissionsHelper
+import com.example.uade.rememberapp.platform.permissions.findActivity
+import com.example.uade.rememberapp.ui.components.AppDialogDefaults
+import com.example.uade.rememberapp.ui.components.ContextualPermission
+import com.example.uade.rememberapp.ui.components.ContextualPermissionDialog
+import com.example.uade.rememberapp.ui.components.DialogDismissButton
+import com.example.uade.rememberapp.ui.components.DialogFilledConfirmButton
 import com.example.uade.rememberapp.ui.components.ImageCropDialog
 import com.example.uade.rememberapp.ui.components.SectionLabel
+import com.example.uade.rememberapp.ui.permissions.rememberTriggerPermissionsCoordinator
 import com.example.uade.rememberapp.ui.reminders.components.ImportanceSheet
 import com.example.uade.rememberapp.ui.reminders.components.PlaceSheet
 import com.example.uade.rememberapp.ui.reminders.components.ReminderDateDialog
@@ -145,30 +152,9 @@ fun ScheduledMessageScreen(
         }
     }
 
-    // Solicitud de permisos de notificación (Android 13+)
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { isGranted ->
-        if (!isGranted) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.scheduled_message_notifications_permission_needed),
-                Toast.LENGTH_LONG,
-            ).show()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val hasNotif = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS,
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!hasNotif) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-    }
+    val permissionsCoordinator = rememberTriggerPermissionsCoordinator()
+    var showContactsExplanationDialog by remember { mutableStateOf(false) }
+    var showContactsDeniedDialog by remember { mutableStateOf(false) }
 
     // Selector de contactos
     val contactPickerLauncher = rememberLauncherForActivityResult(
@@ -199,24 +185,17 @@ fun ScheduledMessageScreen(
         if (isGranted) {
             contactPickerLauncher.launch(null)
         } else {
-            Toast.makeText(
-                context,
-                context.getString(R.string.scheduled_message_contacts_permission_denied),
-                Toast.LENGTH_SHORT,
-            ).show()
+            showContactsDeniedDialog = true
         }
     }
 
     fun onPickContactClick() {
-        val hasPermission = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.READ_CONTACTS,
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (hasPermission) {
+        if (PermissionsHelper.hasContactsPermission(context)) {
             contactPickerLauncher.launch(null)
+        } else if (!PermissionsHelper.hasPromptedContacts(context)) {
+            showContactsExplanationDialog = true
         } else {
-            contactPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+            showContactsDeniedDialog = true
         }
     }
 
@@ -234,23 +213,12 @@ fun ScheduledMessageScreen(
     }
 
     fun onSaveWithPermissionCheck() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val hasNotif = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS,
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!hasNotif) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+        permissionsCoordinator.runWithPermissions(
+            needsTimeAlarm = uiState.alarms.isNotEmpty(),
+            needsPlaceAlert = uiState.places.isNotEmpty(),
+        ) {
+            viewModel.onSave()
         }
-        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.scheduled_message_notifications_permission_needed),
-                Toast.LENGTH_LONG,
-            ).show()
-        }
-        viewModel.onSave()
     }
 
     ScheduledMessageContent(
@@ -334,8 +302,74 @@ fun ScheduledMessageScreen(
             editor = editor,
             onPlaceClick = viewModel::onSelectPlace,
             onEventClick = viewModel::onPlaceEventSelect,
-            onSave = viewModel::onSavePlace,
+            onSave = {
+                viewModel.onSavePlace()
+                if (editor.selectedPlaceId != null) {
+                    permissionsCoordinator.requestLocationInContext()
+                }
+            },
             onClose = viewModel::onCancelPlace,
+        )
+    }
+
+    if (showContactsExplanationDialog) {
+        ContextualPermissionDialog(
+            permission = ContextualPermission.Contacts,
+            onAllow = {
+                showContactsExplanationDialog = false
+                PermissionsHelper.setContactsPrompted(context, true)
+                val activity = context.findActivity()
+                val permanentlyDenied = activity != null &&
+                    PermissionsHelper.isPermanentlyDenied(activity, Manifest.permission.READ_CONTACTS)
+                if (permanentlyDenied) {
+                    PermissionsHelper.openAppSettings(context)
+                } else {
+                    PermissionsHelper.markPermissionRequested(context, Manifest.permission.READ_CONTACTS)
+                    contactPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                }
+            },
+            onReject = {
+                showContactsExplanationDialog = false
+                PermissionsHelper.setContactsPrompted(context, true)
+                showContactsDeniedDialog = true
+            },
+        )
+    }
+
+    if (showContactsDeniedDialog) {
+        AlertDialog(
+            onDismissRequest = { showContactsDeniedDialog = false },
+            shape = AppDialogDefaults.shape,
+            containerColor = AppDialogDefaults.containerColor,
+            title = {
+                Text(
+                    text = stringResource(R.string.scheduled_message_contacts_denied_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.scheduled_message_contacts_denied_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            confirmButton = {
+                DialogFilledConfirmButton(
+                    text = stringResource(R.string.permission_limitation_btn_settings),
+                    onClick = {
+                        showContactsDeniedDialog = false
+                        PermissionsHelper.openAppSettings(context)
+                    },
+                )
+            },
+            dismissButton = {
+                DialogDismissButton(
+                    text = stringResource(R.string.permission_limitation_btn_ok),
+                    onClick = { showContactsDeniedDialog = false },
+                )
+            },
         )
     }
 

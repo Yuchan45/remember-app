@@ -1,4 +1,4 @@
-package com.example.uade.rememberapp.data.remote
+package com.example.uade.rememberapp.domain.repository
 
 import com.example.uade.rememberapp.data.remote.dto.GroqChatRequest
 import com.example.uade.rememberapp.data.remote.dto.GroqChatResponse

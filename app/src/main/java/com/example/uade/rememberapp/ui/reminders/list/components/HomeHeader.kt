@@ -24,6 +24,9 @@ fun HomeHeader(
     onCollapseAll: () -> Unit,
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
+    isGridLayout: Boolean = false,
+    areAllCollapsed: Boolean = false,
+    isSearchActive: Boolean = false,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -38,19 +41,43 @@ fun HomeHeader(
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             CircleIconButton(
-                icon = R.drawable.ic_grid_view,
-                contentDescription = stringResource(R.string.reminders_home_action_toggle_layout),
+                icon = if (isGridLayout) R.drawable.ic_notes else R.drawable.ic_grid_view,
+                contentDescription = stringResource(
+                    if (isGridLayout) R.string.reminders_home_action_list_layout else R.string.reminders_home_action_grid_layout,
+                ),
                 onClick = onToggleLayout,
+                containerColor = if (isGridLayout) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                contentColor = if (isGridLayout) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
             )
             CircleIconButton(
-                icon = R.drawable.ic_unfold_less,
-                contentDescription = stringResource(R.string.reminders_home_action_collapse_all),
+                icon = if (areAllCollapsed) R.drawable.ic_unfold_more else R.drawable.ic_unfold_less,
+                contentDescription = stringResource(
+                    if (areAllCollapsed) R.string.reminders_home_action_expand_all else R.string.reminders_home_action_collapse_all,
+                ),
                 onClick = onCollapseAll,
             )
             CircleIconButton(
                 icon = R.drawable.ic_search,
                 contentDescription = stringResource(R.string.reminders_home_action_search),
                 onClick = onSearch,
+                containerColor = if (isSearchActive) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                contentColor = if (isSearchActive) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
             )
         }
     }

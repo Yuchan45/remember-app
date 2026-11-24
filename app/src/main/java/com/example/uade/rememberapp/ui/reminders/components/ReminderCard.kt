@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -86,6 +88,7 @@ fun ReminderCard(
     isExpanded: Boolean = false,
     onToggleExpanded: (() -> Unit)? = null,
     onSectionClick: ((ReminderDetailSection) -> Unit)? = null,
+    isGridCard: Boolean = false,
 ) {
     val accentBrush = remember(reminder.tags) { accentBrush(reminder.tags) }
     val hasPhoto = reminder.photoPath != null
@@ -118,6 +121,7 @@ fun ReminderCard(
                     isExpanded = isExpanded,
                     onToggleExpanded = onToggleExpanded,
                     onSectionClick = onSectionClick,
+                    isGridCard = isGridCard,
                     modifier = Modifier
                         .weight(1f)
                         // Una card de solo foto no tiene texto: se le da alto para que la foto se vea.
@@ -140,6 +144,7 @@ private fun ReminderCardContent(
     onToggleExpanded: (() -> Unit)? = null,
     onSectionClick: ((ReminderDetailSection) -> Unit)? = null,
     modifier: Modifier = Modifier,
+    isGridCard: Boolean = false,
 ) {
     Column(
         modifier = modifier,
@@ -147,7 +152,7 @@ private fun ReminderCardContent(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(
                 painter = painterResource(reminder.typeIcon()),
@@ -160,13 +165,13 @@ private fun ReminderCardContent(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = if (isGridCard) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
                 // weight: el título toma lo que sobra y "Marcar todo" queda pegado a la derecha.
                 modifier = Modifier.weight(1f),
             )
             // Arriba a la derecha, lejos de los checkbox de los ítems; pide confirmación antes.
-            if (onCheckAllItems != null && reminder.items.any { !it.isChecked }) {
+            if (!isGridCard && onCheckAllItems != null && reminder.items.any { !it.isChecked }) {
                 CheckAllChip(onClick = onCheckAllItems)
             }
         }
@@ -212,15 +217,17 @@ private fun ReminderCardContent(
                 placeName = placeName,
                 now = now,
                 onSectionClick = onSectionClick,
+                isGridCard = isGridCard,
             )
         }
     }
 }
 
 /**
- * Etiquetas a la izquierda y cuándo avisa a la derecha. Con [onSectionClick], cada parte se puede
- * tocar para abrir el detalle con su modal ya abierto (las etiquetas como un solo grupo).
+ * Etiquetas a la izquierda y cuándo avisa a la derecha. En vista grilla ([isGridCard]), apila
+ * etiquetas y avisos verticalmente con [FlowRow] para aprovechar el ancho compacto.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ReminderCardFooter(
     reminder: Reminder,
@@ -228,38 +235,71 @@ private fun ReminderCardFooter(
     now: Instant,
     modifier: Modifier = Modifier,
     onSectionClick: ((ReminderDetailSection) -> Unit)? = null,
+    isGridCard: Boolean = false,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .then(
-                    if (onSectionClick != null && reminder.tags.isNotEmpty()) {
-                        Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable(role = Role.Button) { onSectionClick(ReminderDetailSection.Tags) }
-                    } else {
-                        Modifier
-                    },
-                ),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+    val tagsClickModifier = if (onSectionClick != null && reminder.tags.isNotEmpty()) {
+        Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(role = Role.Button) { onSectionClick(ReminderDetailSection.Tags) }
+    } else {
+        Modifier
+    }
+
+    if (isGridCard) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            reminder.tags.forEach { tag ->
-                TagChip(name = tag.name, color = Color(tag.colorArgb))
+            if (reminder.tags.isNotEmpty()) {
+                FlowRow(
+                    modifier = tagsClickModifier,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    reminder.tags.forEach { tag ->
+                        TagChip(name = tag.name, color = Color(tag.colorArgb))
+                    }
+                }
+            }
+            if (hasVisibleTrigger(reminder, placeName)) {
+                ReminderTriggerInfo(
+                    reminder = reminder,
+                    placeName = placeName,
+                    now = now,
+                    onDarkBackground = reminder.photoPath != null,
+                    onTimeClick = onSectionClick?.let { { it(ReminderDetailSection.Time) } },
+                    onPlaceClick = onSectionClick?.let { { it(ReminderDetailSection.Place) } },
+                )
             }
         }
-        ReminderTriggerInfo(
-            reminder = reminder,
-            placeName = placeName,
-            now = now,
-            onTimeClick = onSectionClick?.let { { it(ReminderDetailSection.Time) } },
-            onPlaceClick = onSectionClick?.let { { it(ReminderDetailSection.Place) } },
-        )
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .then(tagsClickModifier),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                reminder.tags.forEach { tag ->
+                    TagChip(name = tag.name, color = Color(tag.colorArgb))
+                }
+            }
+            ReminderTriggerInfo(
+                reminder = reminder,
+                placeName = placeName,
+                now = now,
+                onDarkBackground = reminder.photoPath != null,
+                onTimeClick = onSectionClick?.let { { it(ReminderDetailSection.Time) } },
+                onPlaceClick = onSectionClick?.let { { it(ReminderDetailSection.Place) } },
+            )
+        }
     }
 }
 
